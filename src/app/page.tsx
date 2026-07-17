@@ -1,28 +1,16 @@
-import { Suspense } from 'react'
-import { searchMedicines, getDistinctValues } from '@/lib/actions/search'
-import { SearchForm } from '@/components/medicines/search-form'
-import { MedicineTable } from '@/components/medicines/medicine-table'
+import Link from 'next/link'
 import { SemanticSearch } from '@/components/medicines/semantic-search'
 import { Badge } from '@/components/ui/badge'
-import { Skeleton } from '@/components/ui/skeleton'
 
-export default async function HomePage() {
-  const initialData = await searchMedicines(1, 10)
-  const [references, activeIngredients, tradeNames, categories] = await Promise.all([
-    getDistinctValues('reference'),
-    getDistinctValues('activeIngredient'),
-    getDistinctValues('tradeName'),
-    getDistinctValues('category'),
-  ])
-
+export default function HomePage() {
   return (
-    <section className="py-12 md:py-20 bg-neon-yellow border-b-8 border-brutalist-black">
-      <div className="max-w-7xl mx-auto px-6 lg:px-12">
+    <section className="py-16 md:py-28 bg-neon-yellow min-h-screen border-b-8 border-brutalist-black">
+      <div className="max-w-3xl mx-auto px-6 lg:px-12">
         <div className="text-center mb-12">
           <Badge variant="secondary" className="mb-6">
             LISTA ANVISA
           </Badge>
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-black uppercase tracking-tighter leading-[0.9] text-brutalist-black">
+          <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-[0.9] text-brutalist-black">
             Medicamentos
             <br />
             Intercambiáveis
@@ -33,20 +21,16 @@ export default async function HomePage() {
           </p>
         </div>
 
-        <Suspense fallback={<div className="bg-white border-8 border-brutalist-black shadow-hard-lg p-6 md:p-10"><Skeleton className="h-12 w-full mb-4" /><Skeleton className="h-64 w-full" /></div>}>
-          <div className="bg-white border-8 border-brutalist-black shadow-hard-lg p-6 md:p-10">
-            <SemanticSearch />
-            <SearchForm
-              references={references}
-              activeIngredients={activeIngredients}
-              tradeNames={tradeNames}
-              categories={categories}
-            />
-            <div className="mt-8">
-              <MedicineTable initialData={initialData} />
-            </div>
-          </div>
-        </Suspense>
+        <SemanticSearch />
+
+        <p className="mt-6 text-center">
+          <Link
+            href="/buscar-avancado"
+            className="text-xs font-mono font-bold uppercase text-brutalist-black underline hover:text-slate-600 transition-colors"
+          >
+            Busca avançada e listagem completa →
+          </Link>
+        </p>
       </div>
     </section>
   )
