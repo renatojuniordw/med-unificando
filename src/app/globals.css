@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+@theme {
+  --color-neon-yellow: #ccff00;
+  --color-brutalist-black: #020617;
+  --color-error-red: #ff4d4d;
+  --color-success-green: #00ff66;
+  --shadow-hard-lg: 8px 8px 0px #000;
+  --shadow-hard-md: 4px 4px 0px #000;
+  --shadow-hard-sm: 2px 2px 0px #000;
+  --shadow-hard-neon: 8px 8px 0px #ccff00;
+  --shadow-hard-white: 4px 4px 0px #fff;
+  --font-sans: 'Inter', sans-serif;
+}
+
+*, *::before, *::after {
+  border-radius: 0 !important;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+}
