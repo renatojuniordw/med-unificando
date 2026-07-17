@@ -3,6 +3,7 @@
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { getMedicinesByIds, searchMedicinesForCompare } from '@/lib/actions/compare'
+import { useDebouncedSearch } from '@/hooks/use-debounced-search'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -35,9 +36,9 @@ export function CompareView() {
 
   const [medicines, setMedicines] = useState<MedicineResult[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState<{ id: number; label: string }[]>([])
   const [selectedIds, setSelectedIds] = useState<number[]>(ids)
+  const { query: searchQuery, setQuery: setSearchQuery, results: searchResults } =
+    useDebouncedSearch(searchMedicinesForCompare)
 
   useEffect(() => {
     async function fetchData() {
@@ -54,23 +55,10 @@ export function CompareView() {
     fetchData()
   }, [selectedIds])
 
-  useEffect(() => {
-    if (searchQuery.length < 2) {
-      setSearchResults([])
-      return
-    }
-    const timer = setTimeout(async () => {
-      const results = await searchMedicinesForCompare(searchQuery)
-      setSearchResults(results)
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [searchQuery])
-
   function addMedicine(id: number) {
     if (!selectedIds.includes(id)) {
       setSelectedIds((prev) => [...prev, id])
       setSearchQuery('')
-      setSearchResults([])
     }
   }
 

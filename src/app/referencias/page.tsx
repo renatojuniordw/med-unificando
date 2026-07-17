@@ -1,34 +1,12 @@
 import { Suspense } from 'react'
 import { getReferenceMedicines } from '@/lib/actions/references'
+import { ReferenceSearch } from '@/components/medicines/reference-search'
 import { Badge } from '@/components/ui/badge'
-import { Card } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import Link from 'next/link'
 
 async function ReferenceList() {
   const references = await getReferenceMedicines()
-
-  return (
-    <div className="space-y-3">
-      {references.length === 0 ? (
-        <p className="font-bold uppercase text-sm">Nenhum medicamento de referência encontrado.</p>
-      ) : (
-        references.map(ref => (
-          <Link
-            key={ref.name}
-            href={`/referencias/${encodeURIComponent(ref.name)}`}
-            className="block border-4 border-brutalist-black bg-white p-4 hover:bg-neon-yellow hover:-translate-y-1 hover:shadow-hard-lg transition-all"
-          >
-            <div className="flex justify-between items-center">
-              <span className="font-black uppercase tracking-tight">{ref.name}</span>
-              <Badge variant="primary">{ref.count} similares</Badge>
-            </div>
-          </Link>
-        ))
-      )}
-    </div>
-  )
+  return <ReferenceSearch initialReferences={references} />
 }
 
 export default function ReferencesPage() {
