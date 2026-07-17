@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
-import { ThemeProvider } from "@/lib/theme";
 import { ScrollToTop } from "@/components/ui/scroll-to-top";
 
 export const metadata: Metadata = {
@@ -28,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" suppressHydrationWarning>
+    <html lang="pt-BR">
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#020617" />
@@ -44,12 +43,10 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-white text-brutalist-black antialiased min-h-screen flex flex-col">
-        <ThemeProvider>
-          <Header />
-          <main className="flex-1">{children}</main>
-          <Footer />
-          <ScrollToTop />
-        </ThemeProvider>
+        <Header />
+        <main className="flex-1">{children}</main>
+        <Footer />
+        <ScrollToTop />
       </body>
     </html>
   );
