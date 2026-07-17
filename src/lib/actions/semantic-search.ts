@@ -21,14 +21,19 @@ async function getEmbeddings() {
   const fs = await import("fs")
   const path = await import("path")
 
-  const headerPath = path.join(process.cwd(), "public", "embeddings-header.json")
-  const binPath = path.join(process.cwd(), "public", "embeddings.bin")
+  const headerPath = path.join(process.cwd(), "public", "embeddings", "embeddings-header.json")
+  const binPath = path.join(process.cwd(), "public", "embeddings", "embeddings.bin")
 
   header = JSON.parse(fs.readFileSync(headerPath, "utf-8"))
   const buffer = fs.readFileSync(binPath)
   embeddings = new Float32Array(buffer.buffer, buffer.byteOffset, buffer.byteLength / 4)
 
   return { header, embeddings }
+}
+
+export async function clearEmbeddingsCache() {
+  header = null
+  embeddings = null
 }
 
 function cosineSimilarity(a: Float32Array, b: Float32Array, dim: number): number {
