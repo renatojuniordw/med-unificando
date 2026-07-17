@@ -9,7 +9,7 @@ import { ExportButton } from '@/components/medicines/export-button'
 import Link from 'next/link'
 import type { MedicineResult, SearchResponse, SearchFilters } from '@/types'
 
-const columns = [
+export const columns = [
   { key: 'reference', label: 'REFERÊNCIA', mobile: true },
   { key: 'activeIngredient', label: 'PRINCÍPIO ATIVO', mobile: true },
   { key: 'tradeName', label: 'NOME COMERCIAL', mobile: true },
