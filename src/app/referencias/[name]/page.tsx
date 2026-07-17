@@ -1,8 +1,9 @@
 import { prisma } from '@/lib/prisma'
 import { Badge } from '@/components/ui/badge'
-import { Card } from '@/components/ui/card'
+import { SimilarMedicinesList } from '@/components/medicines/similar-medicines-list'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import type { MedicineResult } from '@/types'
 
 export default async function ReferenceDetailPage({ params }: { params: Promise<{ name: string }> }) {
   const { name } = await params
@@ -32,30 +33,7 @@ export default async function ReferenceDetailPage({ params }: { params: Promise<
           </p>
         </div>
 
-        <div className="space-y-3">
-          {medicines.map(med => (
-            <Link
-              key={med.id}
-              href={`/medicamento/${med.id}`}
-              className="block border-4 border-brutalist-black bg-white p-4 hover:bg-neon-yellow hover:-translate-y-1 hover:shadow-hard-lg transition-all"
-            >
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-                <div>
-                  <span className="font-black uppercase text-sm">{med.tradeName}</span>
-                  <p className="text-xs font-mono font-bold text-slate-600 mt-1">{med.activeIngredient}</p>
-                </div>
-                <div className="flex gap-2 flex-wrap">
-                  {med.category && <Badge variant="primary">{med.category}</Badge>}
-                  {med.status === 'Ativo' && <span className="text-[10px] font-black uppercase text-success-green bg-white border-2 border-brutalist-black px-2 py-1">ATIVO</span>}
-                  {med.status === 'Inativo' && <span className="text-[10px] font-black uppercase text-error-red bg-white border-2 border-brutalist-black px-2 py-1">INATIVO</span>}
-                </div>
-              </div>
-              <div className="mt-2 text-[10px] font-mono text-slate-500">
-                Ref: {med.reference} | {med.similarHolder}
-              </div>
-            </Link>
-          ))}
-        </div>
+        <SimilarMedicinesList medicines={medicines as unknown as MedicineResult[]} />
       </div>
     </section>
   )
