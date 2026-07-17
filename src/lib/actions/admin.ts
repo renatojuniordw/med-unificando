@@ -183,11 +183,25 @@ export async function syncWithAnvisa() {
       count: medicines.length,
     }
   } catch (error) {
+    const message = error instanceof Error ? error.message : 'erro desconhecido'
+    await prisma.syncLog.create({
+      data: { type: 'medicines', count: 0, status: 'error', message },
+    })
     return {
       success: false,
-      error: `Erro ao sincronizar: ${error instanceof Error ? error.message : 'erro desconhecido'}`,
+      error: `Erro ao sincronizar: ${message}`,
     }
   }
+}
+
+export async function getSyncLogs() {
+  const session = await auth()
+  if (!session?.user) return []
+
+  return prisma.syncLog.findMany({
+    orderBy: { createdAt: 'desc' },
+    take: 20,
+  })
 }
 
 export async function getImportInfo(): Promise<ImportInfo | null> {

@@ -57,9 +57,17 @@ export async function syncPrices() {
       await prisma.price.createMany({ data: prices.slice(i, i + batchSize) as never })
     }
 
+    await prisma.syncLog.create({
+      data: { type: 'prices', count: prices.length, status: 'success' },
+    })
+
     return { success: true, count: prices.length, message: `${prices.length} preços importados!` }
   } catch (error) {
-    return { success: false, error: `Erro: ${error instanceof Error ? error.message : 'desconhecido'}` }
+    const message = error instanceof Error ? error.message : 'desconhecido'
+    await prisma.syncLog.create({
+      data: { type: 'prices', count: 0, status: 'error', message },
+    })
+    return { success: false, error: `Erro: ${message}` }
   }
 }
 
