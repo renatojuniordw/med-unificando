@@ -2,22 +2,27 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { signOut } from 'next-auth/react'
-import { syncWithAnvisa, getImportInfo } from '@/lib/actions/admin'
+import { syncWithAnvisa, getImportInfo, getSyncLogs } from '@/lib/actions/admin'
 import { syncPrices, getPriceStats } from '@/lib/actions/prices'
+import { regenerateEmbeddings } from '@/lib/actions/embeddings'
+import { SyncLogList } from '@/components/admin/sync-log-list'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import type { ImportInfo } from '@/types'
+import type { SyncLog } from '@/generated/prisma/client'
 
 export default function AdminImportPage() {
   const router = useRouter()
-  const [loading, setLoading] = useState<'medicines' | 'prices' | null>(null)
+  const [loading, setLoading] = useState<'medicines' | 'prices' | 'embeddings' | null>(null)
   const [importInfo, setImportInfo] = useState<ImportInfo | null>(null)
   const [priceInfo, setPriceInfo] = useState<{ total: number; withPrice: number } | null>(null)
+  const [syncLogs, setSyncLogs] = useState<SyncLog[]>([])
   const [infoLoaded, setInfoLoaded] = useState(false)
   const [result, setResult] = useState<{
-    type: 'medicines' | 'prices'
+    type: 'medicines' | 'prices' | 'embeddings'
     success: boolean
     message?: string
     error?: string
@@ -26,12 +31,18 @@ export default function AdminImportPage() {
   } | null>(null)
 
   useEffect(() => {
-    Promise.all([getImportInfo(), getPriceStats()]).then(([info, pStats]) => {
+    Promise.all([getImportInfo(), getPriceStats(), getSyncLogs()]).then(([info, pStats, logs]) => {
       setImportInfo(info)
       setPriceInfo(pStats)
+      setSyncLogs(logs)
       setInfoLoaded(true)
     })
   }, [])
+
+  async function refreshLogs() {
+    const logs = await getSyncLogs()
+    setSyncLogs(logs)
+  }
 
   async function handleSyncMedicines() {
     setLoading('medicines')
@@ -41,6 +52,7 @@ export default function AdminImportPage() {
     setLoading(null)
     const info = await getImportInfo()
     setImportInfo(info)
+    await refreshLogs()
   }
 
   async function handleSyncPrices() {
@@ -51,6 +63,16 @@ export default function AdminImportPage() {
     setLoading(null)
     const pStats = await getPriceStats()
     setPriceInfo(pStats)
+    await refreshLogs()
+  }
+
+  async function handleGenerateEmbeddings() {
+    setLoading('embeddings')
+    setResult(null)
+    const response = await regenerateEmbeddings()
+    setResult({ type: 'embeddings', ...response })
+    setLoading(null)
+    await refreshLogs()
   }
 
   return (
@@ -138,15 +160,54 @@ export default function AdminImportPage() {
         </div>
       </Card>
 
+      {/* Editar Medicamento Section */}
+      <Card className="mb-6">
+        <div className="space-y-5">
+          <p className="text-lg font-black uppercase tracking-tight">3. Editar Medicamento</p>
+          <p className="text-xs font-mono text-slate-500">
+            Busque um medicamento e corrija dados manualmente. Edições podem ser perdidas na próxima sincronização com a ANVISA.
+          </p>
+          <Link href="/admin/medicamentos">
+            <Button type="button" variant="secondary" size="lg" className="w-full">
+              BUSCAR MEDICAMENTO PARA EDITAR
+            </Button>
+          </Link>
+        </div>
+      </Card>
+
+      {/* Busca Semântica Section */}
+      <Card className="mb-6">
+        <div className="space-y-5">
+          <p className="text-lg font-black uppercase tracking-tight">4. Busca Semântica</p>
+          <p className="text-xs font-mono text-slate-500">
+            Regenera os embeddings usados pela busca por IA a partir dos medicamentos atuais no banco. Pode levar alguns minutos.
+          </p>
+          <Button
+            type="button" variant="secondary" size="lg" className="w-full"
+            disabled={loading === 'embeddings'} onClick={handleGenerateEmbeddings}
+          >
+            {loading === 'embeddings' ? 'GERANDO EMBEDDINGS...' : 'GERAR EMBEDDINGS'}
+          </Button>
+        </div>
+      </Card>
+
       {result && (
-        <Card variant={result.success ? 'active' : 'inactive'} className={result.success ? 'bg-success-green' : 'bg-error-red text-white'}>
+        <Card
+          variant={result.success ? 'active' : 'inactive'}
+          className={`mb-6 ${result.success ? 'bg-success-green' : 'bg-error-red text-white'}`}
+        >
           <p className="font-black uppercase tracking-wider">
-            {result.type === 'medicines' ? '💊 ' : '💰 '}
+            {result.type === 'medicines' ? '💊 ' : result.type === 'prices' ? '💰 ' : '🧠 '}
             {result.success ? '✅ SUCESSO' : '❌ ERRO'}
           </p>
           <p className="text-sm font-bold mt-2">{result.success ? result.message : result.error}</p>
         </Card>
       )}
+
+      <Card className="mb-6">
+        <p className="text-lg font-black uppercase tracking-tight mb-4">Histórico de Sincronizações</p>
+        <SyncLogList logs={syncLogs} />
+      </Card>
 
       <div className="bg-white border-4 border-brutalist-black p-4 text-[10px] font-mono text-slate-500 space-y-1">
         <p><strong className="text-brutalist-black">Fontes:</strong></p>
