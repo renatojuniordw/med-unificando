@@ -2,6 +2,7 @@ import "dotenv/config"
 import { PrismaClient } from "../src/generated/prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
 import * as XLSX from "xlsx"
+import iconv from "iconv-lite"
 import https from "https"
 
 const prisma = new PrismaClient({
@@ -16,7 +17,7 @@ async function main() {
     https.get(URL, { rejectUnauthorized: false }, (res) => {
       const chunks: Buffer[] = []
       res.on("data", (c: Buffer) => chunks.push(c))
-      res.on("end", () => resolve(Buffer.concat(chunks).toString()))
+      res.on("end", () => resolve(iconv.decode(Buffer.concat(chunks), "latin1")))
       res.on("error", reject)
     }).on("error", reject)
   })

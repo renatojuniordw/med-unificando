@@ -1,6 +1,5 @@
 import "dotenv/config"
-import * as tf from '@tensorflow/tfjs'
-import * as use from '@tensorflow-models/universal-sentence-encoder'
+import { pipeline } from "@xenova/transformers"
 import { PrismaClient } from "../src/generated/prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
 import fs from "fs"
@@ -13,86 +12,59 @@ const prisma = new PrismaClient({
 const OUTPUT_DIR = path.resolve(__dirname, "../public")
 
 async function main() {
-  console.log("Carregando modelo USE...")
-  await tf.ready()
-  const model = await use.load()
+  console.log("Carregando modelo de embedding (all-MiniLM-L6-v2)...")
+  const extractor = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2")
 
   console.log("Buscando medicamentos...")
   const medicines = await prisma.medicine.findMany({
     orderBy: { id: "asc" },
     select: {
-      id: true,
-      reference: true,
-      tradeName: true,
-      activeIngredient: true,
-      category: true,
-      similarHolder: true,
-      pharmaceuticalForm: true,
-      concentration: true,
-      status: true,
+      id: true, reference: true, tradeName: true, activeIngredient: true,
+      category: true, similarHolder: true, pharmaceuticalForm: true,
+      concentration: true, status: true,
     },
   })
   console.log(`Total: ${medicines.length} medicamentos`)
 
-  const texts = medicines.map(m => {
-    return [
-      m.tradeName,
-      m.activeIngredient,
-      m.category,
-      m.similarHolder,
-      m.pharmaceuticalForm,
-      m.concentration,
-      m.status === "Ativo" ? "ativo" : "inativo",
-      m.reference,
-    ].filter(Boolean).join(" | ")
-  })
+  const texts = medicines.map(m =>
+    [m.tradeName, m.activeIngredient, m.category, m.similarHolder,
+     m.pharmaceuticalForm, m.concentration,
+     m.status === "Ativo" ? "ativo" : "inativo", m.reference]
+      .filter(Boolean).join(" | ")
+  )
 
-  const DIM = 512
+  const DIM = 384
   const embeddings: number[] = []
   const BATCH = 50
 
   for (let i = 0; i < texts.length; i += BATCH) {
     const batch = texts.slice(i, i + BATCH)
-    const result = await model.embed(batch)
-    const values = await result.array()
-    result.dispose()
+    const result = await extractor(batch, { pooling: "mean", normalize: true })
+    const data = result.data as Float32Array
 
-    for (const vec of values as number[][]) {
+    for (let j = 0; j < batch.length; j++) {
       for (let d = 0; d < DIM; d++) {
-        embeddings.push(vec[d] ?? 0)
+        embeddings.push(data[j * DIM + d] ?? 0)
       }
     }
 
-    if ((i + BATCH) % 500 === 0 || i + BATCH >= texts.length) {
-      console.log(`${Math.min(i + BATCH, texts.length)}/${texts.length} embeddings gerados`)
+    const done = Math.min(i + BATCH, texts.length)
+    if (done % 1000 === 0 || done >= texts.length) {
+      console.log(`${done}/${texts.length} embeddings gerados`)
     }
   }
 
-  const ids = medicines.map(m => m.id)
-  const totalEmbeddings = ids.length
-  const header = { count: totalEmbeddings, dim: DIM, ids }
+  const header = { count: medicines.length, dim: DIM, ids: medicines.map(m => m.id) }
+  const buf = Buffer.alloc(embeddings.length * 4)
+  for (let i = 0; i < embeddings.length; i++) buf.writeFloatLE(embeddings[i], i * 4)
 
-  const binaryBuffer = Buffer.alloc(embeddings.length * 4)
-  for (let i = 0; i < embeddings.length; i++) {
-    binaryBuffer.writeFloatLE(embeddings[i], i * 4)
-  }
+  fs.writeFileSync(path.join(OUTPUT_DIR, "embeddings-header.json"), JSON.stringify(header))
+  fs.writeFileSync(path.join(OUTPUT_DIR, "embeddings.bin"), buf)
 
-  const headerPath = path.join(OUTPUT_DIR, "embeddings-header.json")
-  const dataPath = path.join(OUTPUT_DIR, "embeddings.bin")
+  const binSize = fs.statSync(path.join(OUTPUT_DIR, "embeddings.bin")).size
+  console.log(`\nConcluído! ${medicines.length} medicamentos, ${(binSize / 1024 / 1024).toFixed(1)} MB (${DIM}d)`)
 
-  fs.writeFileSync(headerPath, JSON.stringify(header))
-  fs.writeFileSync(dataPath, binaryBuffer)
-
-  const headerSize = fs.statSync(headerPath).size
-  const binSize = fs.statSync(dataPath).size
-
-  console.log(`\nConcluído!`)
-  console.log(`Header: ${(headerSize / 1024).toFixed(1)} KB (${totalEmbeddings} medicamentos)`)
-  console.log(`Embeddings: ${(binSize / 1024 / 1024).toFixed(1)} MB (${DIM} dimensões, float32)`)
-
-  model.dispose()
+  extractor.dispose()
 }
 
-main()
-  .catch(e => { console.error(e); process.exit(1) })
-  .finally(() => prisma.$disconnect())
+main().catch(e => { console.error(e); process.exit(1) }).finally(() => prisma.$disconnect())

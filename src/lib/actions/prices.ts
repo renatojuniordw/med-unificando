@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 import * as XLSX from 'xlsx'
 import https from 'https'
+import iconv from 'iconv-lite'
 
 const PRICES_URL = 'https://dados.anvisa.gov.br/dados/TA_PRECOS_MEDICAMENTOS.csv'
 const agent = new https.Agent({ rejectUnauthorized: false })
@@ -17,7 +18,7 @@ export async function syncPrices() {
       https.get(PRICES_URL, { agent }, (res) => {
         const chunks: Buffer[] = []
         res.on('data', (c: Buffer) => chunks.push(c))
-        res.on('end', () => resolve(Buffer.concat(chunks).toString()))
+        res.on('end', () => resolve(iconv.decode(Buffer.concat(chunks), 'latin1')))
         res.on('error', reject)
       }).on('error', reject)
     })

@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { searchMedicines, getDistinctValues } from '@/lib/actions/search'
 import { SearchForm } from '@/components/medicines/search-form'
 import { MedicineTable } from '@/components/medicines/medicine-table'
+import { SemanticSearch } from '@/components/medicines/semantic-search'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -34,6 +35,7 @@ export default async function HomePage() {
 
         <Suspense fallback={<div className="bg-white border-8 border-brutalist-black shadow-hard-lg p-6 md:p-10"><Skeleton className="h-12 w-full mb-4" /><Skeleton className="h-64 w-full" /></div>}>
           <div className="bg-white border-8 border-brutalist-black shadow-hard-lg p-6 md:p-10">
+            <SemanticSearch />
             <SearchForm
               references={references}
               activeIngredients={activeIngredients}

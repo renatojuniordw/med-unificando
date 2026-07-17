@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 import * as XLSX from 'xlsx'
 import https from 'https'
+import iconv from 'iconv-lite'
 import type { ImportInfo } from "@/types"
 
 const CSV_URL = 'https://dados.anvisa.gov.br/dados/CONSULTAS/PRODUTOS/TA_CONSULTA_MEDICAMENTOS.CSV'
@@ -86,7 +87,7 @@ function downloadCSV(url: string): Promise<string> {
     https.get(url, { agent }, (res) => {
       const chunks: Buffer[] = []
       res.on('data', (chunk: Buffer) => chunks.push(chunk))
-      res.on('end', () => resolve(Buffer.concat(chunks).toString()))
+      res.on('end', () => resolve(iconv.decode(Buffer.concat(chunks), 'latin1')))
       res.on('error', reject)
     }).on('error', reject)
   })

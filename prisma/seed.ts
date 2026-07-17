@@ -2,6 +2,7 @@ import "dotenv/config"
 import { PrismaClient } from "../src/generated/prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
 import * as XLSX from "xlsx"
+import iconv from "iconv-lite"
 import bcrypt from "bcryptjs"
 
 const prisma = new PrismaClient({
@@ -65,7 +66,8 @@ async function main() {
 
   const remoteDate = resp.headers.get('last-modified')
   const remoteTimestamp = remoteDate ? new Date(remoteDate) : new Date()
-  const csvText = await resp.text()
+  const csvBuffer = Buffer.from(await resp.arrayBuffer())
+  const csvText = iconv.decode(csvBuffer, 'latin1')
 
   console.log("Parseando CSV...")
   const workbook = XLSX.read(csvText, { type: 'string', raw: true })
