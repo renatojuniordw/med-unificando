@@ -4,9 +4,22 @@
 
 PostgreSQL 16 via Prisma 7 ORM.
 
+## Migrations
+
+Total: 7 migrations (em `prisma/migrations/`):
+
+| Migration | Descrição |
+|-----------|-----------|
+| `init` | Criação inicial da tabela `medicines` |
+| `add_users` | Adiciona modelo `User` para autenticação |
+| `enrich_medicine_model` | Adiciona campos: category, atcCode, status, etc. |
+| `add_prices` | Adiciona modelo `Price` para preços CMED |
+| `add_synonyms_indications` | Adiciona campos `synonyms` e `indications` |
+| `add_sync_log` | Adiciona modelo `SyncLog` para log de sincronizações |
+
 ## Modelos
 
-### Medicine
+### Medicine (32.585 registros)
 
 ```prisma
 model Medicine {
@@ -14,20 +27,20 @@ model Medicine {
   reference            String   // Número de registro ANVISA (9 dígitos)
   activeIngredient     String   // Princípio ativo
   tradeName            String   // Nome comercial
-  similarHolder        String   @map("holder_of_similar_medicine_registration")  // Detentor do registro
+  similarHolder        String   @map("holder_of_similar_medicine_registration")  // Detentor
   pharmaceuticalForm   String   // Forma farmacêutica
   concentration        String   // Concentração
-  inclusionDate        String   // Data de inclusão na lista
+  inclusionDate        String   // Data de publicação ANVISA
   category             String?  // Similar, Genérico, Novo, Específico, Fitoterápico, Biológico, Dinamizado, Radiofármaco
-  referenceMedicine    String?  // Medicamento de referência
+  referenceMedicine    String?  // Medicamento de referência (para similares)
   atcCode              String?  // Código ATC
   prescriptionType     String?  // Tarja (tipo de prescrição)
   status               String?  // Ativo / Inativo
   authorization        String?  // Número de autorização
-  presentationCount    Int?     // Quantidade de apresentações
-  synonyms             String?  // Sinônimos do produto
-  indications          String?  // Indicações terapêuticas
-  anvisaFileDate       DateTime? // Data do arquivo ANVISA (Last-Modified)
+  presentationCount    Int?     // Quantidade de apresentações registradas
+  synonyms             String?  // Sinônimos do produto (quando disponível)
+  indications          String?  // Indicações terapêuticas (quando disponível)
+  anvisaFileDate       DateTime? // Data do arquivo ANVISA (Last-Modified do CSV)
   lastImportAt         DateTime? // Data da última importação
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
@@ -42,19 +55,17 @@ model Medicine {
 }
 ```
 
-Cardinalidade: ~32.585 registros (07/2026).
-
-### Price
+### Price (53.422 registros)
 
 ```prisma
 model Price {
   id           Int      @id @default(autoincrement())
-  reference    String   // Registro ANVISA (primeiros 9 dígitos)
+  reference    String   // Registro ANVISA (primeiros 9 dígitos do NU_REGISTRO)
   cnpj         String   // CNPJ do detentor
   company      String   // Razão social
   productName  String   // Nome do produto
   presentation String   // Apresentação (dosagem + embalagem)
-  substance    String   // Substância
+  substance    String   // Substância ativa
   pf0Price     Float?   // Preço Fábrica ICMS 0%
   pf18Price    Float?   // Preço Fábrica ICMS 18%
   hospitalOnly String?  // Restrição hospitalar (S/N)
@@ -66,8 +77,6 @@ model Price {
   @@map("prices")
 }
 ```
-
-Cardinalidade: ~53.422 registros.
 
 ### User
 
@@ -88,32 +97,51 @@ model User {
 }
 ```
 
-## Migrations
+Cardinalidade: 1 usuário admin por instalação.
 
-As migrations ficam em `prisma/migrations/` e são versionadas.
+### SyncLog
 
-```bash
-# Criar nova migration
-npx prisma migrate dev --name descricao_da_mudanca
+```prisma
+model SyncLog {
+  id        Int      @id @default(autoincrement())
+  type      String   // 'medicines' | 'prices'
+  count     Int      // Quantidade de registros importados
+  status    String   // 'success' | 'error'
+  message   String?  // Mensagem de erro (se houver)
+  createdAt DateTime @default(now())
 
-# Aplicar migrations em produção
-npm run migrate
-
-# Gerar cliente Prisma
-npm run generate
+  @@map("sync_logs")
+}
 ```
 
 ## Índices
 
-| Tabela | Índices | Query beneficiada |
-|--------|---------|-------------------|
-| medicines | reference, activeIngredient, tradeName, similarHolder, category, status | Busca textual, filtros |
-| prices | reference, cnpj | Join com medicines, filtro por empresa |
+| Tabela | Índices | Queries beneficiadas |
+|--------|---------|----------------------|
+| medicines | reference, activeIngredient, tradeName, similarHolder, category, status | Busca textual, autocomplete, filtros por categoria/situação |
+| prices | reference, cnpj | Join com medicines por registro, filtro por empresa |
 
 ## Embeddings
 
-Os embeddings são armazenados em arquivos binários em `public/`:
-- `embeddings-header.json`: metadados (count, dim, ids)
-- `embeddings.bin`: Float32Array raw (32585 × 384 = ~47MB)
+Os embeddings **não** ficam no banco de dados. São armazenados como arquivos binários:
 
-Não ficam no banco de dados porque são carregados em memória pelo runtime ONNX.
+- `public/embeddings-header.json`: metadados (`{ count: 32585, dim: 384, ids: [...] }`)
+- `public/embeddings.bin`: Float32Array raw (~47MB)
+
+Motivo: são carregados em memória pelo runtime ONNX (Xenova Transformers) para busca semântica. Não faz sentido armazená-los em linhas do banco.
+
+## Comandos
+
+```bash
+# Criar migration
+npx prisma migrate dev --name descricao
+
+# Aplicar em produção
+npm run migrate
+
+# Gerar cliente
+npm run generate
+
+# Seed
+npm run seed
+```

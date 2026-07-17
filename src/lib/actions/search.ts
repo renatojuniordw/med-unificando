@@ -80,7 +80,6 @@ export async function getDistinctValues(field: string): Promise<DistinctValue[]>
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {
-  const extractYear = (date: string) => date.length >= 4 ? date.substring(6, 10) + date.substring(3, 5) : ''
   const allInclusionDates = await prisma.medicine.findMany({ select: { inclusionDate: true } })
   const yearCounts: Record<string, number> = {}
   for (const { inclusionDate } of allInclusionDates) {

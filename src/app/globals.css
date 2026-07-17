@@ -10,7 +10,7 @@
   --shadow-hard-sm: 2px 2px 0px #000;
   --shadow-hard-neon: 8px 8px 0px #ccff00;
   --shadow-hard-white: 4px 4px 0px #fff;
-  --font-sans: 'Inter', sans-serif;
+  --font-sans: var(--font-inter), sans-serif;
 }
 
 *, *::before, *::after {
@@ -18,5 +18,5 @@
 }
 
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
 }

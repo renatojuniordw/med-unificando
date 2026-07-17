@@ -3,7 +3,7 @@
 ## 1. Intercambialidade de Medicamentos
 
 ### Definição
-Um medicamento **similar** é intercambiável com seu **medicamento de referência** quando atende aos requisitos da RDC 58/2014 da ANVISA. A lista de medicamentos intercambiáveis é publicada periodicamente pela ANVISA.
+Um medicamento **similar** é intercambiável com seu **medicamento de referência** quando atende aos requisitos da RDC 58/2014 da ANVISA.
 
 ### Regras
 - Todo medicamento Similar possui um medicamento de Referência correspondente
@@ -13,8 +13,8 @@ Um medicamento **similar** é intercambiável com seu **medicamento de referênc
 
 ## 2. Categorias ANVISA
 
-| Categoria | Descrição | Registro |
-|-----------|-----------|----------|
+| Categoria | Descrição | Origem |
+|-----------|-----------|--------|
 | Similar | Medicamento similar ao de referência | Registro ANVISA |
 | Genérico | Medicamento genérico | Registro ANVISA |
 | Novo | Medicamento inovador | Registro ANVISA |
@@ -24,48 +24,72 @@ Um medicamento **similar** é intercambiável com seu **medicamento de referênc
 | Dinamizado | Medicamento homeopático | Registro ANVISA |
 | Radiofármaco | Medicamento radioativo | Registro ANVISA |
 
+Total: ~32.585 registros de medicamentos (07/2026).
++ ~53.422 preços CMED vinculados por número de registro.
+
 ## 3. Situação do Registro
 
-- **Ativo**: registro válido e vigente
-- **Inativo**: registro vencido, cancelado ou não renovado
-
-Medicamentos inativos não devem ser considerados para prescrição ou dispensação.
+- **Ativo**: registro válido e vigente → ~4.701
+- **Inativo**: registro vencido, cancelado ou não renovado → ~16.003
+- Medicamentos inativos não devem ser considerados para prescrição ou dispensação
 
 ## 4. Classificação ATC (Anatomical Therapeutic Chemical)
 
-Sistema de classificação da OMS que organiza medicamentos em 5 níveis:
+Sistema da OMS com 5 níveis hierárquicos para classificar medicamentos:
 
-1. **Nível 1 (Anatômico)**: 1 letra — grupo anatômico (ex: `N` = Sistema Nervoso)
-2. **Nível 2 (Terapêutico)**: 2 dígitos — grupo terapêutico (ex: `N06` = Psicoanalépticos)
-3. **Nível 3 (Farmacológico)**: 1 letra — subgrupo farmacológico
-4. **Nível 4 (Químico)**: 1 letra — subgrupo químico
-5. **Nível 5 (Substância)**: 2 dígitos — princípio ativo
+1. **Nível 1** (1 letra) — grupo anatômico: `N` = Sistema Nervoso
+2. **Nível 2** (3 chars) — grupo terapêutico: `N06` = Psicoanalépticos
+3. **Nível 3** (4 chars) — subgrupo farmacológico
+4. **Nível 4** (5 chars) — subgrupo químico
+5. **Nível 5** (7 chars) — princípio ativo específico
+
+A aplicação navega pelos níveis 1-3 com drill-down até a lista de medicamentos.
 
 ## 5. Preços CMED
 
-A Câmara de Regulação do Mercado de Medicamentos (CMED) define preços máximos:
+A CMED define preços máximos por apresentação:
 
-- **PF0**: Preço Fábrica sem ICMS (alíquota 0%)
-- **PF18**: Preço Fábrica com ICMS (alíquota 18%)
-
-Os preços são por apresentação do produto (dosagem + embalagem).
+- **PF0**: Preço Fábrica sem ICMS
+- **PF18**: Preço Fábrica com ICMS 18%
+- Os preços são por apresentação (dosagem + embalagem)
+- Exibidos em gráfico de barras na página de detalhes
 
 ## 6. Busca Semântica
 
-A busca semântica utiliza embeddings de texto para encontrar medicamentos
-pela **intenção** da busca, não por correspondência textual exata.
+A busca semântica utiliza IA local (Xenova Transformers) para encontrar medicamentos pela **intenção** da busca, não por correspondência textual exata.
+
+**Modelo**: `all-MiniLM-L6-v2` — 384 dimensões, ~23MB
+**Texto usado para embedding**: nome + princípio ativo + categoria + detentor + forma farmacêutica + concentração + sinônimos + indicações + situação + registro
 
 **Exemplos:**
-- "anti-inflamatório para articulação" → encontra anti-inflamatórios como ibuprofeno, naproxeno, diclofenaco
-- "remédio para dormir" → encontra benzodiazepínicos, zolpidem, etc.
-- "antibiótico para infecção urinária" → encontra nitrofurantoína, norfloxacino, etc.
+- "anti-inflamatório para articulação" → ibuprofeno, naproxeno, diclofenaco
+- "remédio para dormir" → benzodiazepínicos, zolpidem
+- "antibiótico para infecção urinária" → nitrofurantoína, norfloxacino
 
-O modelo usado é `all-MiniLM-L6-v2` (384 dimensões), rodando 100% local via ONNX Runtime.
+Processamento 100% server-side (modelo cacheado em memória). Zero custo de API.
 
-## 7. Sincronização
+## 7. Sincronização com ANVISA
 
-- A base é atualizada via CSV dos Dados Abertos ANVISA
-- O sistema verifica o header `Last-Modified` do CSV antes de baixar
-- Só baixa e processa se o arquivo remoto foi alterado
-- A importação substitui **todos** os registros existentes
-- Preços CMED são importados separadamente
+- Base atualizada via CSV dos Dados Abertos ANVISA
+- Verificação do header `Last-Modified` antes de baixar (evita downloads desnecessários)
+- Importação substitui **todos** os registros existentes
+- Preços CMED importados separadamente
+- Cada sincronização é registrada em `SyncLog` (type, count, status, timestamp)
+
+## 8. SEO
+
+- Cada página de medicamento possui meta tags dinâmicas (title, description, OG)
+- JSON-LD estruturado (Schema.org/MedicalDrug) para buscadores
+- Sitemap com 32.585+ URLs para indexação completa
+- Robots.txt bloqueia áreas administrativas
+
+## 9. PWA
+
+Aplicativo instalável via navegador com `manifest.json`. Ideal para acesso mobile.
+
+## 10. Segurança
+
+- Rate limit de 60 requisições/minuto nas rotas `/api/*`
+- Security headers: X-Frame-Options: DENY, X-Content-Type-Options: nosniff, X-XSS-Protection, Referrer-Policy, Permissions-Policy
+- Docker: read-only filesystem, non-root user, sem privilégios
+- Body size limit de 10MB para uploads

@@ -12,25 +12,22 @@ export function useDebouncedSearch<T>(
   { minLength = 2, delay = 300 }: UseDebouncedSearchOptions = {}
 ) {
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<T[]>([])
-  const [searching, setSearching] = useState(false)
+  const [resolved, setResolved] = useState<{ query: string; results: T[] }>({ query: '', results: [] })
 
   useEffect(() => {
-    if (query.length < minLength) {
-      setResults([])
-      setSearching(false)
-      return
-    }
+    if (query.length < minLength) return
 
-    setSearching(true)
     const timer = setTimeout(async () => {
       const data = await searchFn(query)
-      setResults(data)
-      setSearching(false)
+      setResolved({ query, results: data })
     }, delay)
 
     return () => clearTimeout(timer)
   }, [query, minLength, delay, searchFn])
+
+  const isQueryTooShort = query.length < minLength
+  const results = isQueryTooShort ? [] : resolved.results
+  const searching = !isQueryTooShort && resolved.query !== query
 
   return { query, setQuery, results, searching }
 }

@@ -2,8 +2,9 @@
 
 import { prisma } from "@/lib/prisma"
 import type { MedicineResult } from "@/types"
+import type { FeatureExtractionPipeline } from "@xenova/transformers"
 
-let extractor: any = null
+let extractor: FeatureExtractionPipeline | null = null
 let embeddings: Float32Array | null = null
 let header: { count: number; dim: number; ids: number[] } | null = null
 

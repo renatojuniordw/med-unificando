@@ -53,7 +53,7 @@ async function DashboardStats() {
             TOP 10 MEDICAMENTOS
           </Badge>
           <div className="space-y-2">
-            {stats.topReferences.map((item, i) => {
+            {stats.topReferences.map((item) => {
               const maxCount = stats.topReferences[0]?.count || 1
               const width = (item.count / maxCount) * 100
               return (
@@ -79,7 +79,7 @@ async function DashboardStats() {
             TOP 10 PRINCÍPIOS ATIVOS
           </Badge>
           <div className="space-y-2">
-            {stats.topActiveIngredients.map((item, i) => {
+            {stats.topActiveIngredients.map((item) => {
               const maxCount = stats.topActiveIngredients[0]?.count || 1
               const width = (item.count / maxCount) * 100
               return (
@@ -105,7 +105,7 @@ async function DashboardStats() {
             CATEGORIAS
           </Badge>
           <div className="space-y-2">
-            {stats.categories.map((item, i) => {
+            {stats.categories.map((item) => {
               const maxCount = stats.categories[0]?.count || 1
               const width = (item.count / maxCount) * 100
               return (
@@ -129,7 +129,7 @@ async function DashboardStats() {
           TIMELINE — REGISTROS POR ANO
         </Badge>
         <div className="space-y-1 max-h-80 overflow-y-auto">
-          {stats.timeline.map((item, i) => {
+          {stats.timeline.map((item) => {
             const maxCount = stats.timeline[0]?.count || 1
             const width = (item.count / maxCount) * 100
             return (

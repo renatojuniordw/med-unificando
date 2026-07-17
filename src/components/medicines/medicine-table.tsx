@@ -1,7 +1,7 @@
 'use client'
 
 import { useSearchParams, useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { searchMedicines } from '@/lib/actions/search'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
@@ -30,7 +30,7 @@ export function MedicineTable({ initialData }: MedicineTableProps) {
   const router = useRouter()
   const [data, setData] = useState<SearchResponse>(initialData)
   const [loading, setLoading] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
+  const [isMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
 
   const page = Number(searchParams.get('page')) || 1
@@ -41,17 +41,15 @@ export function MedicineTable({ initialData }: MedicineTableProps) {
   const category = searchParams.get('category') || ''
   const status = searchParams.get('status') || ''
 
-  const currentFilters: SearchFilters = {
+  const currentFilters: SearchFilters = useMemo(() => ({
     reference: reference || undefined,
     activeIngredient: activeIngredient || undefined,
     tradeName: tradeName || undefined,
     category: category || undefined,
     status: status || undefined,
-  }
+  }), [reference, activeIngredient, tradeName, category, status])
 
   useEffect(() => {
-    setIsMobile(window.innerWidth < 768)
-
     async function fetchData() {
       setLoading(true)
       const result = await searchMedicines(page, pageSize, currentFilters)
@@ -59,7 +57,7 @@ export function MedicineTable({ initialData }: MedicineTableProps) {
       setLoading(false)
     }
     fetchData()
-  }, [page, pageSize, reference, activeIngredient, tradeName, category, status])
+  }, [page, pageSize, currentFilters])
 
   function handlePageChange(newPage: number) {
     const params = new URLSearchParams(searchParams.toString())

@@ -10,11 +10,11 @@ Lista medicamentos com paginação, filtros e exportação.
 |-----------|------|--------|-----------|
 | `page` | number | 1 | Número da página |
 | `pageSize` | number | 20 | Itens por página (max 100) |
-| `reference` | string | — | Filtro por número de registro (LIKE) |
-| `activeIngredient` | string | — | Filtro por princípio ativo (LIKE) |
-| `tradeName` | string | — | Filtro por nome comercial (LIKE) |
-| `category` | string | — | Filtro por categoria (Similar, Genérico, etc.) |
-| `status` | string | — | Filtro por situação (Ativo, Inativo) |
+| `reference` | string | — | Filtro por número de registro (LIKE insensitive) |
+| `activeIngredient` | string | — | Filtro por princípio ativo (LIKE insensitive) |
+| `tradeName` | string | — | Filtro por nome comercial (LIKE insensitive) |
+| `category` | string | — | Filtro exato por categoria (Similar, Genérico, etc.) |
+| `status` | string | — | Filtro exato por situação (Ativo, Inativo) |
 | `format` | string | — | Se `csv`, retorna CSV ao invés de JSON |
 
 ### Exemplos
@@ -81,13 +81,11 @@ referencia,principio_ativo,nome_comercial,detentor,...
 
 Health check da aplicação.
 
-### Exemplo
-
 ```bash
 curl "http://localhost:11006/api/health"
 ```
 
-### Resposta
+### Resposta (sucesso — 200)
 
 ```json
 {
@@ -101,8 +99,45 @@ curl "http://localhost:11006/api/health"
 }
 ```
 
+### Resposta (falha — 503)
+
+```json
+{
+  "status": "unhealthy",
+  "timestamp": "2026-07-17T20:00:00.000Z",
+  "database": "disconnected",
+  "error": "ERRO: conexão recusada"
+}
+```
+
+## GET /sitemap.xml
+
+Sitemap gerado dinamicamente com todas as URLs da aplicação (~32.585+ URLs):
+
+```
+/
+/dashboard
+/referencias
+/atc
+/medicamento/1
+/medicamento/2
+...
+/medicamento/32585
+```
+
+## GET /robots.txt
+
+```txt
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+
+Sitemap: https://medicamentos.unificando.com.br/sitemap.xml
+```
+
 ## Rate Limit
 
 Todas as rotas `/api/*` têm limite de **60 requisições por minuto por IP**.
 
-Em caso de excesso, retorna `429 Too Many Requests` com header `Retry-After`.
+Em caso de excesso, retorna `429 Too Many Requests`.
