@@ -3,10 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 11006",
     "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "start": "next start -p 11006",
+    "lint": "eslint",
+    "seed": "tsx prisma/seed.ts",
+    "migrate": "prisma migrate deploy",
+    "generate": "prisma generate",
+    "embeddings": "tsx scripts/generate-embeddings.ts",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:build": "docker compose build --no-cache"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
