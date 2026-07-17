@@ -12,9 +12,9 @@ const prisma = new PrismaClient({
 const CSV_URL = 'https://dados.anvisa.gov.br/dados/CONSULTAS/PRODUTOS/TA_CONSULTA_MEDICAMENTOS.CSV'
 
 const VALID_CATEGORIES = new Set([
-  'Similar', 'Genérico', 'Referência', 'Novo', 'Específico',
-  'Fitoterápico', 'Biológico', 'Dinamizado', 'BAIXO RISCO',
-  'DINAMIZADO', 'Gases Medicinais', 'Radiofármaco',
+  'SIMILAR', 'GENÉRICO', 'REFERÊNCIA', 'NOVO', 'ESPECÍFICO',
+  'FITOTERÁPICO', 'BIOLÓGICO', 'DINAMIZADO', 'BAIXO RISCO',
+  'GASES MEDICINAIS', 'RADIOFÁRMACO',
 ])
 
 async function main() {
@@ -84,7 +84,7 @@ async function main() {
     if (!reference) continue
 
     const category = (row['DS_TIPO_CATEGORIA_REGULATORIA'] ?? '').trim()
-    if (category && !VALID_CATEGORIES.has(category)) continue
+    if (category && !VALID_CATEGORIES.has(category.toUpperCase())) continue
 
     medicines.push({
       reference,
@@ -101,6 +101,8 @@ async function main() {
       status: (row['VALIDADE_SITUACAO'] ?? '').trim(),
       authorization: (row['AUTORIZACAO_MEDICAMENTO'] ?? '').trim(),
       presentationCount: parseInt((row['NUMERO_APRESENTACOES'] ?? '').trim(), 10) || 0,
+      synonyms: (row['SINONIMOS'] ?? '').trim(),
+      indications: (row['INDICACOES'] ?? '').trim(),
       anvisaFileDate: remoteTimestamp,
       lastImportAt: now,
     })

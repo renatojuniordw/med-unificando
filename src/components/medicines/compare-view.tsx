@@ -24,6 +24,8 @@ const detailFields = [
   { key: 'status', label: 'SITUAÇÃO' },
   { key: 'authorization', label: 'AUTORIZAÇÃO' },
   { key: 'presentationCount', label: 'APRESENTAÇÕES' },
+  { key: 'synonyms', label: 'SINÔNIMOS' },
+  { key: 'indications', label: 'INDICAÇÕES' },
   { key: 'inclusionDate', label: 'DATA DE INCLUSÃO' },
 ]
 

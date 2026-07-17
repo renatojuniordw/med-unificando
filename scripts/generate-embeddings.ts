@@ -21,14 +21,14 @@ async function main() {
     select: {
       id: true, reference: true, tradeName: true, activeIngredient: true,
       category: true, similarHolder: true, pharmaceuticalForm: true,
-      concentration: true, status: true,
+      concentration: true, status: true, synonyms: true, indications: true,
     },
   })
   console.log(`Total: ${medicines.length} medicamentos`)
 
   const texts = medicines.map(m =>
     [m.tradeName, m.activeIngredient, m.category, m.similarHolder,
-     m.pharmaceuticalForm, m.concentration,
+     m.pharmaceuticalForm, m.concentration, m.synonyms, m.indications,
      m.status === "Ativo" ? "ativo" : "inativo", m.reference]
       .filter(Boolean).join(" | ")
   )

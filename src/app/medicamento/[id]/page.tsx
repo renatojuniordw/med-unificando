@@ -29,6 +29,8 @@ export default async function MedicineDetailPage({ params }: { params: Promise<{
     { label: 'Autorização', value: med.authorization },
     { label: 'Apresentações', value: med.presentationCount?.toString() },
     { label: 'Data de Inclusão', value: med.inclusionDate },
+    { label: 'Sinônimos', value: med.synonyms },
+    { label: 'Indicações', value: med.indications },
     { label: 'Data ANVISA', value: med.anvisaFileDate?.toLocaleDateString('pt-BR') },
     { label: 'Última Importação', value: med.lastImportAt?.toLocaleString('pt-BR') },
   ]

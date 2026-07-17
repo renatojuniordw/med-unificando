@@ -38,6 +38,8 @@ model Medicine {
   status                               String?
   authorization                        String?
   presentationCount                    Int?
+  synonyms                             String?
+  indications                          String?
   anvisaFileDate                       DateTime?
   lastImportAt                         DateTime?
   createdAt                            DateTime @default(now())
