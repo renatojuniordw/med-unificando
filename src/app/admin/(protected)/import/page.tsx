@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import { syncWithAnvisa, getImportInfo } from '@/lib/actions/admin'
@@ -25,13 +25,13 @@ export default function AdminImportPage() {
     skipped?: boolean
   } | null>(null)
 
-  useState(() => {
+  useEffect(() => {
     Promise.all([getImportInfo(), getPriceStats()]).then(([info, pStats]) => {
       setImportInfo(info)
       setPriceInfo(pStats)
       setInfoLoaded(true)
     })
-  })
+  }, [])
 
   async function handleSyncMedicines() {
     setLoading('medicines')
