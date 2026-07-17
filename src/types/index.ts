@@ -49,6 +49,7 @@ export interface DashboardStats {
   ativoCount: number
   inativoCount: number
   categories: { name: string; count: number }[]
+  timeline: { year: string; count: number }[]
 }
 
 export interface ImportInfo {

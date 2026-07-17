@@ -72,3 +72,14 @@ model Price {
   @@index([cnpj])
   @@map("prices")
 }
+
+model SyncLog {
+  id        Int      @id @default(autoincrement())
+  type      String
+  count     Int
+  status    String
+  message   String?
+  createdAt DateTime @default(now())
+
+  @@map("sync_logs")
+}

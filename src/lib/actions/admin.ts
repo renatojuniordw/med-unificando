@@ -173,6 +173,10 @@ export async function syncWithAnvisa() {
       await prisma.medicine.createMany({ data: batch as never })
     }
 
+    await prisma.syncLog.create({
+      data: { type: 'medicines', count: medicines.length, status: 'success' },
+    })
+
     return {
       success: true,
       message: `${medicines.length} medicamentos sincronizados com a ANVISA!`,

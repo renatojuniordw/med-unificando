@@ -115,15 +115,35 @@ async function DashboardStats() {
                     <span>{item.count}</span>
                   </div>
                   <div className="h-6 border-2 border-brutalist-black bg-white">
-                    <div
-                      className="h-full bg-neon-yellow border-r-2 border-brutalist-black"
-                      style={{ width: `${width}%` }}
-                    />
+                    <div className="h-full bg-neon-yellow border-r-2 border-brutalist-black" style={{ width: `${width}%` }} />
                   </div>
                 </div>
               )
             })}
           </div>
+        </div>
+      </div>
+
+      <div className="border-4 border-brutalist-black bg-white shadow-hard-lg p-8">
+        <Badge variant="secondary" className="mb-4">
+          TIMELINE — REGISTROS POR ANO
+        </Badge>
+        <div className="space-y-1 max-h-80 overflow-y-auto">
+          {stats.timeline.map((item, i) => {
+            const maxCount = stats.timeline[0]?.count || 1
+            const width = (item.count / maxCount) * 100
+            return (
+              <div key={item.year}>
+                <div className="flex justify-between text-[10px] font-bold uppercase mb-0.5">
+                  <span>{item.year}</span>
+                  <span>{item.count}</span>
+                </div>
+                <div className="h-4 border-2 border-brutalist-black bg-white">
+                  <div className="h-full bg-brutalist-black" style={{ width: `${width}%` }} />
+                </div>
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>
@@ -144,6 +164,7 @@ function DashboardSkeleton() {
         <Skeleton className="h-96" />
         <Skeleton className="h-96" />
       </div>
+      <Skeleton className="h-64" />
     </div>
   )
 }

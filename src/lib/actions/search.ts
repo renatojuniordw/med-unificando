@@ -80,6 +80,21 @@ export async function getDistinctValues(field: string): Promise<DistinctValue[]>
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {
+  const extractYear = (date: string) => date.length >= 4 ? date.substring(6, 10) + date.substring(3, 5) : ''
+  const allInclusionDates = await prisma.medicine.findMany({ select: { inclusionDate: true } })
+  const yearCounts: Record<string, number> = {}
+  for (const { inclusionDate } of allInclusionDates) {
+    if (inclusionDate && inclusionDate.length >= 4) {
+      const year = inclusionDate.substring(6, 10)
+      if (year >= '2000' && year <= '2030') {
+        yearCounts[year] = (yearCounts[year] || 0) + 1
+      }
+    }
+  }
+  const timeline = Object.entries(yearCounts)
+    .map(([year, count]) => ({ year, count }))
+    .sort((a, b) => a.year.localeCompare(b.year))
+
   const [totalMedicines, totalTradeNames, topTradeNames, topActiveIngredients, groupByStatus, groupByCategory] = await Promise.all([
     prisma.medicine.count(),
     prisma.medicine.groupBy({
@@ -121,5 +136,6 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     ativoCount,
     inativoCount,
     categories: groupByCategory,
+    timeline,
   }
 }

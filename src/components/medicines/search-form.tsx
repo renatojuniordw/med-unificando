@@ -20,6 +20,7 @@ export function SearchForm({ references, activeIngredients, tradeNames, categori
   const [activeIngredient, setActiveIngredient] = useState(searchParams.get('activeIngredient') || '')
   const [tradeName, setTradeName] = useState(searchParams.get('tradeName') || '')
   const [category, setCategory] = useState(searchParams.get('category') || '')
+  const [status, setStatus] = useState(searchParams.get('status') || '')
   const [suggestions, setSuggestions] = useState<{ field: string; items: string[] }>({ field: '', items: [] })
 
   function handleSubmit(e: React.FormEvent) {
@@ -29,6 +30,7 @@ export function SearchForm({ references, activeIngredients, tradeNames, categori
     if (activeIngredient) params.set('activeIngredient', activeIngredient)
     if (tradeName) params.set('tradeName', tradeName)
     if (category) params.set('category', category)
+    if (status) params.set('status', status)
     params.set('page', '1')
     router.push(`?${params.toString()}`)
   }
@@ -38,6 +40,7 @@ export function SearchForm({ references, activeIngredients, tradeNames, categori
     setActiveIngredient('')
     setTradeName('')
     setCategory('')
+    setStatus('')
     router.push('/')
   }
 
@@ -141,6 +144,31 @@ export function SearchForm({ references, activeIngredients, tradeNames, categori
             ))}
           </select>
         </div>
+      </div>
+
+      <div className="flex items-center gap-3 mb-6">
+        <span className="text-[10px] font-black uppercase tracking-widest text-brutalist-black">SITUAÇÃO:</span>
+        {['', 'Ativo', 'Inativo'].map(s => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => {
+              setStatus(s)
+              const params = new URLSearchParams(searchParams.toString())
+              if (s) params.set('status', s)
+              else params.delete('status')
+              params.set('page', '1')
+              router.push(`?${params.toString()}`)
+            }}
+            className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest border-4 transition-all ${
+              status === s
+                ? 'bg-brutalist-black text-neon-yellow border-brutalist-black'
+                : 'bg-white text-brutalist-black border-brutalist-black hover:bg-neon-yellow'
+            }`}
+          >
+            {s || 'TODOS'}
+          </button>
+        ))}
       </div>
 
       <div className="flex gap-4">

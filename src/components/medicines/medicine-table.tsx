@@ -34,16 +34,19 @@ export function MedicineTable({ initialData }: MedicineTableProps) {
   const [selectedIds, setSelectedIds] = useState<number[]>([])
 
   const page = Number(searchParams.get('page')) || 1
+  const pageSize = Number(searchParams.get('pageSize')) || 10
   const reference = searchParams.get('reference') || ''
   const activeIngredient = searchParams.get('activeIngredient') || ''
   const tradeName = searchParams.get('tradeName') || ''
   const category = searchParams.get('category') || ''
+  const status = searchParams.get('status') || ''
 
   const currentFilters: SearchFilters = {
     reference: reference || undefined,
     activeIngredient: activeIngredient || undefined,
     tradeName: tradeName || undefined,
     category: category || undefined,
+    status: status || undefined,
   }
 
   useEffect(() => {
@@ -51,12 +54,12 @@ export function MedicineTable({ initialData }: MedicineTableProps) {
 
     async function fetchData() {
       setLoading(true)
-      const result = await searchMedicines(page, 10, currentFilters)
+      const result = await searchMedicines(page, pageSize, currentFilters)
       setData(result)
       setLoading(false)
     }
     fetchData()
-  }, [page, reference, activeIngredient, tradeName, category])
+  }, [page, pageSize, reference, activeIngredient, tradeName, category, status])
 
   function handlePageChange(newPage: number) {
     const params = new URLSearchParams(searchParams.toString())
@@ -185,9 +188,25 @@ export function MedicineTable({ initialData }: MedicineTableProps) {
 
       {data.total > 0 && (
         <div className="flex items-center justify-between mt-6 pt-6 border-t-4 border-brutalist-black gap-4 flex-wrap">
-          <span className="text-xs font-mono font-bold uppercase text-slate-500">
-            {data.total} medicamento{data.total !== 1 ? 's' : ''} encontrado{data.total !== 1 ? 's' : ''}
-          </span>
+          <div className="flex items-center gap-4">
+            <span className="text-xs font-mono font-bold uppercase text-slate-500">
+              {data.total} medicamento{data.total !== 1 ? 's' : ''} encontrado{data.total !== 1 ? 's' : ''}
+            </span>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                const params = new URLSearchParams(searchParams.toString())
+                params.set('pageSize', e.target.value)
+                params.set('page', '1')
+                router.push(`?${params.toString()}`)
+              }}
+              className="border-2 border-brutalist-black bg-white p-1 text-[10px] font-bold uppercase"
+            >
+              <option value={10}>10/pág</option>
+              <option value={25}>25/pág</option>
+              <option value={50}>50/pág</option>
+            </select>
+          </div>
           <div className="flex gap-2 items-center">
             <Button
               variant="ghost"
