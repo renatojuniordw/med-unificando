@@ -10,7 +10,7 @@ export function ActionBar({ medicineId }: { medicineId: number }) {
         href={bulaSearchUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-2 border border-border rounded-sm bg-[var(--color-bg)] px-4 py-2.5 text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition-colors"
+        className="inline-flex items-center gap-2 border border-border rounded-sm bg-[var(--color-bg)] px-4 min-h-[44px] text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition-colors"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <circle cx="11" cy="11" r="8" />

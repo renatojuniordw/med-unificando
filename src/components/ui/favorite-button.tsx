@@ -20,7 +20,7 @@ export function FavoriteButton({ medicineId }: { medicineId: number }) {
     <button
       type="button"
       onClick={handleClick}
-      className={`inline-flex items-center gap-2 border rounded-sm px-4 py-2.5 text-sm font-medium transition-colors ${
+      className={`inline-flex items-center gap-2 border rounded-sm px-4 min-h-[44px] text-sm font-medium transition-colors ${
         active
           ? 'bg-brand-yellow text-brand-black border-brand-yellow'
           : 'border-border bg-[var(--color-bg)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)]'

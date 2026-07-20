@@ -93,7 +93,7 @@ export function SearchForm({ references, activeIngredients, tradeNames, categori
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="w-full border border-border rounded-sm p-3 text-sm text-[var(--color-text)] bg-[var(--color-bg)]"
+            className="w-full border border-border rounded-sm px-3 py-2.5 min-h-[44px] text-sm text-[var(--color-text)] bg-[var(--color-bg)]"
           >
             <option value="">Todas</option>
             {categories?.map(c => (

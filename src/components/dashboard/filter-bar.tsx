@@ -32,7 +32,7 @@ export function FilterBar({
       <div>
         <label className="text-xs font-semibold text-muted mb-1 block">Ano</label>
         <select value={year} onChange={e => onYearChange(e.target.value)}
-          className="border border-border rounded-sm bg-[var(--color-bg)] p-2.5 text-sm text-[var(--color-text)]">
+          className="border border-border rounded-sm bg-[var(--color-bg)] px-3 py-2.5 min-h-[44px] text-sm text-[var(--color-text)]">
           <option value="">Todos</option>
           {[...availableYears].reverse().map(y => <option key={y} value={y}>{y}</option>)}
         </select>
@@ -40,28 +40,28 @@ export function FilterBar({
       <div>
         <label className="text-xs font-semibold text-muted mb-1 block">Categoria</label>
         <select value={category} onChange={e => onCategoryChange(e.target.value)}
-          className="border border-border rounded-sm bg-[var(--color-bg)] p-2.5 text-sm text-[var(--color-text)]">
+          className="border border-border rounded-sm bg-[var(--color-bg)] px-3 py-2.5 min-h-[44px] text-sm text-[var(--color-text)]">
           <option value="">Todas</option>
           {categories.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
       </div>
-      <div className="flex items-center gap-2 pb-1">
+      <div className="flex items-center gap-2 pb-1 flex-wrap">
         <span className="text-xs font-semibold text-muted">Situação:</span>
         {['', 'Ativo', 'Inativo'].map(s => (
           <button key={s} onClick={() => onStatusChange(s)}
-            className={`px-3 py-1.5 text-xs font-medium rounded-sm border transition-colors ${status === s ? 'bg-brand-black text-white border-brand-black' : 'bg-[var(--color-bg)] text-muted border-border hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)]'}`}>
+            className={`px-3 min-h-[44px] flex items-center text-xs font-medium rounded-sm border transition-colors ${status === s ? 'bg-brand-black text-white border-brand-black' : 'bg-[var(--color-bg)] text-muted border-border hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)]'}`}>
             {s || 'Todos'}
           </button>
         ))}
       </div>
       <div className="flex gap-2">
         <button onClick={onApply} disabled={loading || !hasFilters}
-          className="bg-brand-black text-white px-5 py-2.5 text-xs font-semibold rounded-sm hover:bg-primary-light transition-colors disabled:opacity-50">
+          className="bg-brand-black text-white px-5 min-h-[48px] text-xs font-semibold rounded-sm hover:bg-primary-light transition-colors disabled:opacity-50">
           {loading ? 'Filtrando...' : 'Filtrar'}
         </button>
         {hasFilters && (
           <button onClick={onReset}
-            className="border border-border px-5 py-2.5 text-xs font-semibold rounded-sm text-muted hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition-colors">
+            className="border border-border px-5 min-h-[48px] text-xs font-semibold rounded-sm text-muted hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition-colors">
             Limpar
           </button>
         )}
