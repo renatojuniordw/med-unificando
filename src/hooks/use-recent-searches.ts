@@ -1,26 +1,33 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
+import { STORAGE_KEYS } from '@/lib/constants'
 
-const STORAGE_KEY = 'recent-searches'
 const MAX_ITEMS = 5
 
-export function useRecentSearches() {
-  const [recent, setRecent] = useState<string[]>([])
+function loadRecent(): string[] {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEYS.RECENT_SEARCHES)
+    if (stored) return JSON.parse(stored)
+  } catch { console.warn('Failed to read recent searches from localStorage') }
+  return []
+}
 
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored) setRecent(JSON.parse(stored))
-    } catch { console.warn('Failed to read recent searches from localStorage') }
-  }, [])
+function saveRecent(items: string[]) {
+  try {
+    localStorage.setItem(STORAGE_KEYS.RECENT_SEARCHES, JSON.stringify(items))
+  } catch { console.warn('Failed to save recent searches to localStorage') }
+}
+
+export function useRecentSearches() {
+  const [recent, setRecent] = useState<string[]>(loadRecent)
 
   const add = useCallback((query: string) => {
     const trimmed = query.trim()
     if (!trimmed) return
     setRecent(prev => {
       const next = [trimmed, ...prev.filter(s => s !== trimmed)].slice(0, MAX_ITEMS)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+      saveRecent(next)
       return next
     })
   }, [])

@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma"
 import { buildWhere } from "@/lib/build-where"
-import { YEARS, MEDICINE_LIMITS } from "@/lib/constants"
+import { YEARS } from "@/lib/constants"
 import type { Medicine } from "@/generated/prisma/client"
 import * as Prisma from "@/generated/prisma/internal/prismaNamespace"
 import type { SearchFilters, SearchResponse, DistinctValue, DashboardStats } from "@/types"

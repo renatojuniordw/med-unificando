@@ -1,6 +1,5 @@
 import { getDashboardStats } from '@/lib/actions/search'
 import { Badge } from '@/components/ui/badge'
-import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DashboardFilters } from '@/components/dashboard/dashboard-filters'
 import { Suspense } from 'react'

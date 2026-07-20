@@ -11,6 +11,13 @@ interface ThemeContextValue {
   setTheme: (t: Theme) => void
 }
 
+function getInitialTheme(): Theme {
+  if (typeof window === 'undefined') return 'light'
+  const stored = localStorage.getItem(STORAGE_KEYS.THEME) as Theme | null
+  if (stored === 'light' || stored === 'dark') return stored
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
 const ThemeContext = createContext<ThemeContextValue>({
   theme: 'light',
   toggle: () => {},
@@ -18,30 +25,15 @@ const ThemeContext = createContext<ThemeContextValue>({
 })
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('light')
-  const [mounted, setMounted] = useState(false)
+  const [theme, setThemeState] = useState<Theme>(getInitialTheme)
 
   useEffect(() => {
-    setMounted(true)
-    const stored = localStorage.getItem(STORAGE_KEYS.THEME) as Theme | null
-    if (stored === 'light' || stored === 'dark') {
-      setThemeState(stored)
-    } else {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-      setThemeState(prefersDark ? 'dark' : 'light')
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!mounted) return
     const root = document.documentElement
     root.classList.toggle('dark', theme === 'dark')
     localStorage.setItem(STORAGE_KEYS.THEME, theme)
-    document.querySelector('meta[name="theme-color"]')?.setAttribute(
-      'content',
-      theme === 'dark' ? THEME_COLORS.DARK : THEME_COLORS.LIGHT
-    )
-  }, [theme, mounted])
+    const meta = document.querySelector('meta[name="theme-color"]')
+    if (meta) meta.setAttribute('content', theme === 'dark' ? THEME_COLORS.DARK : THEME_COLORS.LIGHT)
+  }, [theme])
 
   const toggle = useCallback(() => setThemeState(prev => prev === 'light' ? 'dark' : 'light'), [])
   const setTheme = useCallback((t: Theme) => setThemeState(t), [])

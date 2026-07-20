@@ -9,8 +9,6 @@ import { ExportButton } from '@/components/medicines/export-button'
 import Link from 'next/link'
 import type { MedicineResult, SearchResponse } from '@/types'
 
-const DEFAULT_PAGE_SIZE = 10
-
 export const columns = [
   { key: 'reference', label: 'Referência', mobile: true },
   { key: 'activeIngredient', label: 'Princípio Ativo', mobile: true },
@@ -70,7 +68,7 @@ function MedicineTableContent({ data, selectedIds, toggleSelect }: {
         </tr>
       </thead>
       <tbody>
-        {data.map((medicine: MedicineResult, index: number) => (
+        {data.map((medicine: MedicineResult) => (
           <tr
             key={medicine.id}
             className={`border-b border-border hover:bg-brand-yellow/5 transition-colors ${

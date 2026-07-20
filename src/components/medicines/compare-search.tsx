@@ -39,7 +39,7 @@ export function CompareSearch({ query, onQueryChange, results, searching, onAdd 
             <button
               key={item.id}
               type="button"
-              role="option"
+              role="option" aria-selected={false}
               className="block w-full text-left px-4 py-2.5 text-sm text-[var(--color-text)] hover:bg-brand-yellow/10 transition-colors border-b border-border last:border-b-0"
               onClick={() => onAdd(item.id)}
             >

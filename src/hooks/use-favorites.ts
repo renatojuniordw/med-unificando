@@ -1,31 +1,34 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
+import { STORAGE_KEYS } from '@/lib/constants'
 
-const STORAGE_KEY = 'favorite-medicines'
+function loadFavorites(): number[] {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEYS.FAVORITES)
+    if (stored) return JSON.parse(stored)
+  } catch { console.warn('Falha ao ler favoritos do localStorage') }
+  return []
+}
+
+function saveFavorites(ids: number[]) {
+  try {
+    localStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(ids))
+  } catch { console.warn('Falha ao salvar favoritos no localStorage') }
+}
 
 export function useFavorites() {
-  const [favorites, setFavorites] = useState<number[]>([])
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored) setFavorites(JSON.parse(stored))
-    } catch { console.warn('Failed to read favorites from localStorage') }
-  }, [])
-
-  const persist = useCallback((ids: number[]) => {
-    setFavorites(ids)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(ids))
-  }, [])
+  const [favorites, setFavorites] = useState<number[]>(loadFavorites)
 
   const toggle = useCallback((id: number) => {
-    persist(
-      favorites.includes(id)
-        ? favorites.filter(i => i !== id)
-        : [...favorites, id]
-    )
-  }, [favorites, persist])
+    setFavorites(prev => {
+      const next = prev.includes(id)
+        ? prev.filter(i => i !== id)
+        : [...prev, id]
+      saveFavorites(next)
+      return next
+    })
+  }, [])
 
   const isFavorite = useCallback((id: number) => favorites.includes(id), [favorites])
 

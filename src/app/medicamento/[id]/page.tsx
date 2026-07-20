@@ -6,7 +6,6 @@ import { MedicineInfoCard } from '@/components/medicines/medicine-info-card'
 import { ActionBar } from '@/components/medicines/action-bar'
 import { PriceSection } from '@/components/medicines/price-section'
 import { SimilarSection } from '@/components/medicines/similar-section'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 
