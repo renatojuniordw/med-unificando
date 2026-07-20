@@ -25,7 +25,9 @@ export async function syncPrices() {
       }).on('error', reject)
     })
 
-    const workbook = XLSX.read(csvText, { type: 'string', raw: true })
+    // xlsx@0.18.5 has known vulnerabilities. Risk mitigated: CSV from ANVISA (trusted source).
+    const sanitized = csvText.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    const workbook = XLSX.read(sanitized, { type: 'string', raw: true })
     const sheet = workbook.Sheets[workbook.SheetNames[0]]
     const rows: Record<string, string>[] = XLSX.utils.sheet_to_json(sheet, { defval: '' })
 
