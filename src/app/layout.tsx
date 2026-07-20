@@ -39,21 +39,12 @@ export const metadata: Metadata = {
     locale: "pt_BR",
     siteName: "Med Unificando",
     url: "https://medicamentos.unificando.com.br",
-    images: [
-      {
-        url: "https://medicamentos.unificando.com.br/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Med Unificando — Medicamentos Intercambiáveis ANVISA",
-      },
-    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Med Unificando — Medicamentos Intercambiáveis",
     description:
       "Consulte medicamentos similares conforme dados abertos ANVISA. Busca semântica com IA local.",
-    images: ["https://medicamentos.unificando.com.br/og-image.png"],
   },
   robots: {
     index: true,
@@ -86,6 +77,10 @@ export default function RootLayout({
         <meta name="theme-color" content="#ffffff" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="apple-touch-icon" href="/icon-192.svg" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+        <link rel="dns-prefetch" href="https://medicamentos.unificando.com.br" />
+        <link rel="dns-prefetch" href="https://data.unificando.com.br" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -93,7 +88,7 @@ export default function RootLayout({
               "@context": "https://schema.org",
               "@type": "WebSite",
               name: "Med Unificando",
-              alternateName: "Med Unificandoicamentos",
+              alternateName: "Med Unificando",
               url: "https://medicamentos.unificando.com.br",
               description: "Consulta de medicamentos intercambiáveis ANVISA com busca semântica por IA local",
               publisher: {

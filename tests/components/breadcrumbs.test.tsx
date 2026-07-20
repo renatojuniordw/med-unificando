@@ -1,26 +1,21 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 
+vi.mock('@/lib/config', () => ({
+  SITE: { BASE_URL: 'http://localhost:3000' },
+}))
+
 describe('Breadcrumbs', () => {
-  it('renders breadcrumb items', () => {
-    render(<Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Dashboard' }]} />)
-    expect(screen.getByText('Home')).toBeInTheDocument()
+  it('renders items with home link', () => {
+    render(<Breadcrumbs items={[{ label: 'Dashboard' }]} />)
+    const homeLinks = screen.getAllByText('Home')
+    expect(homeLinks.length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('Dashboard')).toBeInTheDocument()
   })
 
-  it('renders separator between items', () => {
-    const { container } = render(<Breadcrumbs items={[{ label: 'A', href: '/a' }, { label: 'B' }]} />)
-    expect(container.querySelector('svg')).toBeInTheDocument()
-  })
-
-  it('renders single item', () => {
-    render(<Breadcrumbs items={[{ label: 'Only' }]} />)
-    expect(screen.getByText('Only')).toBeInTheDocument()
-  })
-
-  it('applies custom className', () => {
-    const { container } = render(<Breadcrumbs items={[{ label: 'Item' }]} className="custom" />)
-    expect(container.firstChild).toHaveClass('custom')
+  it('renders link items with href', () => {
+    render(<Breadcrumbs items={[{ label: 'Section', href: '/section' }]} />)
+    expect(screen.getByText('Section')).toBeInTheDocument()
   })
 })

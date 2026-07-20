@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   title: "Comparar Medicamentos",
   description: "Compare medicamentos lado a lado. Veja diferenças em referência, princípio ativo, categoria e mais.",
   openGraph: {
-    title: "Comparar Medicamentos — Unificando Med",
+    title: "Comparar Medicamentos — Med Unificando",
     description: "Compare medicamentos lado a lado.",
   },
 }

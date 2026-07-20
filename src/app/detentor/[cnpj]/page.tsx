@@ -13,7 +13,7 @@ export async function generateMetadata({ params }: { params: Promise<{ cnpj: str
     title: `${decoded} — Detentor de Registro`,
     description: `Medicamentos do detentor de registro ${decoded}. Consulte todos os medicamentos e similares.`,
     openGraph: {
-      title: `${decoded} — Detentor de Registro | Unificando Med`,
+      title: `${decoded} — Detentor de Registro | Med Unificando`,
       description: `Medicamentos do detentor de registro ${decoded}.`,
     },
   }

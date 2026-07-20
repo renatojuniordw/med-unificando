@@ -12,7 +12,7 @@ export async function generateMetadata({ params }: { params: Promise<{ code: str
     title: `ATC ${decoded}`,
     description: `Medicamentos com classificação ATC ${decoded}. Veja todos os medicamentos deste código.`,
     openGraph: {
-      title: `ATC ${decoded} — Unificando Med`,
+      title: `ATC ${decoded} — Med Unificando`,
       description: `Medicamentos com classificação ATC ${decoded}.`,
     },
   }

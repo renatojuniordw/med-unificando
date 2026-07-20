@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: "Classificação ATC",
   description: "Explore medicamentos por classificação Anatômica, Terapêutica e Química (ATC). Navegue pela árvore de códigos ATC.",
   openGraph: {
-    title: "Classificação ATC — Unificando Med",
+    title: "Classificação ATC — Med Unificando",
     description: "Explore medicamentos por classificação Anatômica, Terapêutica e Química.",
   },
 }

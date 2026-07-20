@@ -6,7 +6,7 @@ Projeto ofertado por Unificando (unificando.com.br) e desenvolvido por Renato Be
 
 ## Sobre
 
-Unificando Med e uma plataforma para consultar medicamentos similares e de referencia conforme a lista de medicamentos intercambiaveis da ANVISA (Agencia Nacional de Vigilancia Sanitaria). Oferece busca semantica por IA local, precos CMED, classificacao ATC, comparacao lado a lado e exportacao para PDF/CSV/Excel.
+Med Unificando e uma plataforma para consultar medicamentos similares e de referencia conforme a lista de medicamentos intercambiaveis da ANVISA (Agencia Nacional de Vigilancia Sanitaria). Oferece busca semantica por IA local, precos CMED, classificacao ATC, comparacao lado a lado e exportacao para PDF/CSV/Excel.
 
 Tech stack: Next.js 16, TypeScript, Tailwind CSS v4, Prisma 7, PostgreSQL, NextAuth v5, Xenova Transformers, Vercel.
 

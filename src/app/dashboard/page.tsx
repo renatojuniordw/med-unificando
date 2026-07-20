@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: "Dashboard",
   description: "Estatísticas consolidadas da base de medicamentos ANVISA. Filtros por ano, categoria e situação.",
   openGraph: {
-    title: "Dashboard — Unificando Med",
+    title: "Dashboard — Med Unificando",
     description: "Estatísticas consolidadas da base de medicamentos ANVISA.",
   },
 }

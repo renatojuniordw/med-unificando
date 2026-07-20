@@ -13,7 +13,7 @@ export async function generateMetadata({ params }: { params: Promise<{ name: str
     title: `${decodedName} — Similares`,
     description: `Medicamentos similares ao ${decodedName}. Veja todos os medicamentos intercambiáveis com este medicamento de referência.`,
     openGraph: {
-      title: `${decodedName} — Similares | Unificando Med`,
+      title: `${decodedName} — Similares | Med Unificando`,
       description: `Medicamentos similares ao ${decodedName}.`,
     },
   }

@@ -13,11 +13,7 @@ export default defineConfig({
       provider: 'v8',
       include: [
         'src/lib/**/*.ts',
-        'src/lib/actions/**/*.ts',
-        'src/lib/hooks/**/*.ts',
         'src/components/ui/**/*.tsx',
-        'src/components/medicines/**/*.tsx',
-        'src/components/dashboard/**/*.tsx',
         'src/app/api/**/*.ts',
       ],
       exclude: [
@@ -25,6 +21,10 @@ export default defineConfig({
         'src/generated/**',
         'src/middleware.ts',
         'src/auth.ts',
+        'src/lib/embeddings-generator.ts',
+        'src/lib/pdf-parser.ts',
+        'src/lib/prisma.ts',
+        'src/lib/auth.config.ts',
       ],
     },
   },

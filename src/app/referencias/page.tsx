@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: "Medicamentos de Referência",
   description: "Consulte todos os medicamentos de referência e seus similares conforme lista ANVISA.",
   openGraph: {
-    title: "Medicamentos de Referência — Unificando Med",
+    title: "Medicamentos de Referência — Med Unificando",
     description: "Consulte medicamentos de referência e seus similares ANVISA.",
   },
 }
