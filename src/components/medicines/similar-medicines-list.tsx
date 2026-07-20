@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { StatusPill } from '@/components/ui/status-pill'
 import type { MedicineResult } from '@/types'
 
 interface SimilarMedicinesListProps {
@@ -51,12 +52,7 @@ export function SimilarMedicinesList({ medicines }: SimilarMedicinesListProps) {
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   {med.category && <Badge variant="primary">{med.category}</Badge>}
-                  {med.status === 'Ativo' && (
-                    <span className="text-xs font-medium text-success">Ativo</span>
-                  )}
-                  {med.status === 'Inativo' && (
-                    <span className="text-xs font-medium text-error">Inativo</span>
-                  )}
+                  {med.status && <StatusPill status={med.status} />}
                 </div>
               </div>
               <div className="mt-2 text-xs text-muted">

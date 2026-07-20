@@ -5,6 +5,7 @@ import { semanticSearch } from '@/lib/actions/semantic-search'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { StatusPill } from '@/components/ui/status-pill'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SemanticResultsTable } from '@/components/medicines/semantic-results-table'
 import { useRecentSearches } from '@/hooks/use-recent-searches'
@@ -139,9 +140,7 @@ export function SemanticSearch() {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       {r.medicine.category && <Badge variant="primary">{r.medicine.category}</Badge>}
-                      {r.medicine.status === 'Ativo' && (
-                        <span className="text-[11px] font-medium text-success">Ativo</span>
-                      )}
+                      {r.medicine.status && <StatusPill status={r.medicine.status} />}
                       <span className="text-xs text-muted">
                         {(r.score * 100).toFixed(0)}%
                       </span>

@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { Badge } from '@/components/ui/badge'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
+import { StatusPill } from '@/components/ui/status-pill'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
@@ -61,11 +62,7 @@ export default async function HolderPage({ params }: { params: Promise<{ cnpj: s
                   <td className="p-3 text-sm text-[var(--color-text)]">{med.activeIngredient}</td>
                   <td className="p-3 text-sm text-[var(--color-text)]">{med.category}</td>
                   <td className="p-3 text-center text-sm font-medium">
-                    {med.status === 'Ativo'
-                      ? <span className="text-success">Ativo</span>
-                      : med.status === 'Inativo'
-                      ? <span className="text-error">Inativo</span>
-                      : '-'}
+                    {med.status ? <StatusPill status={med.status} /> : '-'}
                   </td>
                 </tr>
               ))}

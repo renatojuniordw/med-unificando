@@ -1,20 +1,9 @@
 'use server'
 
 import { prisma } from "@/lib/prisma"
+import { buildWhere } from "@/lib/build-where"
 import * as XLSX from 'xlsx'
 import type { SearchFilters } from "@/types"
-
-function buildWhere(filters?: SearchFilters): Record<string, unknown> {
-  const where: Record<string, unknown> = {}
-  if (!filters) return where
-
-  if (filters.reference) where.reference = { contains: filters.reference, mode: 'insensitive' }
-  if (filters.activeIngredient) where.activeIngredient = { contains: filters.activeIngredient, mode: 'insensitive' }
-  if (filters.tradeName) where.tradeName = { contains: filters.tradeName, mode: 'insensitive' }
-  if (filters.similarHolder) where.similarHolder = { contains: filters.similarHolder, mode: 'insensitive' }
-
-  return where
-}
 
 export async function exportToExcel(filters?: SearchFilters): Promise<{ filename: string; buffer: Buffer }> {
   const where = buildWhere(filters)

@@ -1,37 +1,10 @@
 'use server'
 
 import { prisma } from "@/lib/prisma"
+import { buildWhere } from "@/lib/build-where"
 import type { Medicine } from "@/generated/prisma/client"
 import * as Prisma from "@/generated/prisma/internal/prismaNamespace"
 import type { SearchFilters, SearchResponse, DistinctValue, DashboardStats } from "@/types"
-
-function buildWhere(filters: SearchFilters): Record<string, unknown> {
-  const where: Record<string, unknown> = {}
-
-  if (filters.reference) {
-    where.reference = { contains: filters.reference, mode: 'insensitive' }
-  }
-  if (filters.activeIngredient) {
-    where.activeIngredient = { contains: filters.activeIngredient, mode: 'insensitive' }
-  }
-  if (filters.tradeName) {
-    where.tradeName = { contains: filters.tradeName, mode: 'insensitive' }
-  }
-  if (filters.similarHolder) {
-    where.similarHolder = { contains: filters.similarHolder, mode: 'insensitive' }
-  }
-  if (filters.pharmaceuticalForm) {
-    where.pharmaceuticalForm = { contains: filters.pharmaceuticalForm, mode: 'insensitive' }
-  }
-  if (filters.category) {
-    where.category = { contains: filters.category, mode: 'insensitive' }
-  }
-  if (filters.status) {
-    where.status = { contains: filters.status, mode: 'insensitive' }
-  }
-
-  return where
-}
 
 export async function searchMedicines(
   page: number = 1,

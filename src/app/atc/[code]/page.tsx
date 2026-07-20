@@ -1,5 +1,6 @@
 import { getMedicinesByAtc } from '@/lib/actions/atc'
 import { Badge } from '@/components/ui/badge'
+import { StatusPill } from '@/components/ui/status-pill'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
@@ -51,11 +52,7 @@ export default async function AtcCodePage({ params }: { params: Promise<{ code: 
                   <td className="p-3 text-sm text-muted">{med.similarHolder}</td>
                   <td className="p-3 text-sm text-[var(--color-text)]">{med.category}</td>
                   <td className="p-3 text-center text-sm font-medium">
-                    {med.status === 'Ativo' ? (
-                      <span className="text-success">Ativo</span>
-                    ) : med.status === 'Inativo' ? (
-                      <span className="text-error">Inativo</span>
-                    ) : '-'}
+                    {med.status ? <StatusPill status={med.status} /> : '-'}
                   </td>
                 </tr>
               ))}

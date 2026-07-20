@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { ClipboardButton } from '@/components/ui/clipboard-button'
 import { PdfDownloadButton } from '@/components/ui/pdf-download-button'
+import { StatusPill } from '@/components/ui/status-pill'
 import { FavoriteButton } from '@/components/ui/favorite-button'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -171,9 +172,7 @@ export default async function MedicineDetailPage({ params }: { params: Promise<{
                   <div className="flex items-center gap-3 flex-wrap">
                     <span className="font-medium text-sm text-[var(--color-text)]">{s.tradeName}</span>
                     <span className="text-xs text-muted">{s.similarHolder}</span>
-                    <span className={`text-xs font-medium ${s.status === 'Ativo' ? 'text-success' : 'text-error'}`}>
-                      {s.status}
-                    </span>
+                    <StatusPill status={s.status} />
                   </div>
                 </Link>
               ))}

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { getFilteredStats } from '@/lib/actions/search'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
+import { BarChart } from '@/components/ui/bar-chart'
 import type { DashboardStats } from '@/types'
 
 interface Props {
@@ -119,86 +120,24 @@ export function DashboardFilters({ availableYears, categories, initialStats }: P
       <div className="grid md:grid-cols-3 gap-6 mt-8">
         <div className="bg-[var(--color-bg)] border border-border rounded-md shadow-card p-6">
           <Badge variant="primary" className="mb-4">Top 10 Medicamentos</Badge>
-          <div className="space-y-2">
-            {stats.topReferences.map((item, i) => {
-              const maxCount = stats.topReferences[0]?.count || 1
-              const width = (item.count / maxCount) * 100
-              return (
-                <div key={item.name}>
-                  <div className="flex justify-between text-xs font-medium text-[var(--color-text)] mb-1">
-                    <span className="truncate mr-2">{item.name}</span>
-                    <span>{item.count}</span>
-                  </div>
-                  <div className="h-4 bg-[var(--color-bg-secondary)] rounded-sm overflow-hidden">
-                    <div className="h-full bg-brand-yellow rounded-sm" style={{ width: `${width}%` }} />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          <BarChart items={stats.topReferences} barColor="bg-brand-yellow" />
         </div>
 
         <div className="bg-[var(--color-bg)] border border-border rounded-md shadow-card p-6">
           <Badge variant="primary" className="mb-4">Top 10 Princípios Ativos</Badge>
-          <div className="space-y-2">
-            {stats.topActiveIngredients.map((item, i) => {
-              const maxCount = stats.topActiveIngredients[0]?.count || 1
-              const width = (item.count / maxCount) * 100
-              return (
-                <div key={item.name}>
-                  <div className="flex justify-between text-xs font-medium text-[var(--color-text)] mb-1">
-                    <span className="truncate mr-2">{item.name}</span>
-                    <span>{item.count}</span>
-                  </div>
-                  <div className="h-4 bg-[var(--color-bg-secondary)] rounded-sm overflow-hidden">
-                    <div className="h-full bg-brand-black rounded-sm" style={{ width: `${width}%` }} />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          <BarChart items={stats.topActiveIngredients} barColor="bg-brand-black" />
         </div>
 
         <div className="bg-[var(--color-bg)] border border-border rounded-md shadow-card p-6">
           <Badge variant="primary" className="mb-4">Categorias</Badge>
-          <div className="space-y-2">
-            {stats.categories.map((item, i) => {
-              const maxCount = stats.categories[0]?.count || 1
-              const width = (item.count / maxCount) * 100
-              return (
-                <div key={item.name}>
-                  <div className="flex justify-between text-xs font-medium text-[var(--color-text)] mb-1">
-                    <span className="truncate mr-2">{item.name || 'Sem categoria'}</span>
-                    <span>{item.count}</span>
-                  </div>
-                  <div className="h-4 bg-[var(--color-bg-secondary)] rounded-sm overflow-hidden">
-                    <div className="h-full bg-brand-yellow rounded-sm" style={{ width: `${width}%` }} />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          <BarChart items={stats.categories.map(c => ({ name: c.name || 'Sem categoria', count: c.count }))} barColor="bg-brand-yellow" />
         </div>
       </div>
 
       <div className="bg-[var(--color-bg)] border border-border rounded-md shadow-card p-6 mt-8">
         <Badge variant="primary" className="mb-4">Timeline — Registros por Ano</Badge>
-        <div className="space-y-1 max-h-80 overflow-y-auto">
-          {stats.timeline.map((item, i) => {
-            const maxCount = stats.timeline[0]?.count || 1
-            const width = (item.count / maxCount) * 100
-            return (
-              <div key={item.year}>
-                <div className="flex justify-between text-xs font-medium text-[var(--color-text)] mb-0.5">
-                  <span>{item.year}</span>
-                  <span>{item.count}</span>
-                </div>
-                <div className="h-3 bg-[var(--color-bg-secondary)] rounded-sm overflow-hidden">
-                  <div className="h-full bg-brand-black rounded-sm" style={{ width: `${width}%` }} />
-                </div>
-              </div>
-            )
-          })}
+        <div className="max-h-80 overflow-y-auto">
+          <BarChart items={stats.timeline.map(t => ({ name: t.year, count: t.count }))} barColor="bg-brand-black" className="space-y-0.5" />
         </div>
       </div>
     </>
