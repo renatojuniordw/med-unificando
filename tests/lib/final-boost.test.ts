@@ -1,9 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-
-class MockAgent {
-  options: any
-  constructor(options: any) { this.options = options }
-}
+import { MockAgent, mockAuth, MOCK_SESSION } from './http-mock'
 
 vi.mock('https', () => ({
   default: { Agent: MockAgent, get: vi.fn() },
@@ -41,14 +37,14 @@ describe('admin - importPdf edge cases', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns unauthorized when not logged in', async () => {
-    vi.mocked(auth).mockResolvedValue(null)
+    mockAuth(auth).mockResolvedValue(null)
     const { importPdf } = await import('@/lib/actions/admin')
     const result = await importPdf(new FormData())
     expect(result.error).toContain('Não autorizado')
   })
 
   it('returns error when PDF has no medicines', async () => {
-    vi.mocked(auth).mockResolvedValue({ user: { id: '1' } })
+    mockAuth(auth).mockResolvedValue(MOCK_SESSION)
     const pdfParser = await import('@/lib/pdf-parser')
     vi.mocked(pdfParser.parseMedicinePDF).mockResolvedValue([])
 
@@ -61,7 +57,7 @@ describe('admin - importPdf edge cases', () => {
   })
 
   it('handles PDF parse error', async () => {
-    vi.mocked(auth).mockResolvedValue({ user: { id: '1' } })
+    mockAuth(auth).mockResolvedValue(MOCK_SESSION)
     const pdfParser = await import('@/lib/pdf-parser')
     vi.mocked(pdfParser.parseMedicinePDF).mockRejectedValue(new Error('PDF parse error'))
 
@@ -78,7 +74,7 @@ describe('admin - syncWithAnvisa unauthorized', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns unauthorized when not logged in', async () => {
-    vi.mocked(auth).mockResolvedValue(null)
+    mockAuth(auth).mockResolvedValue(null)
     const { syncWithAnvisa } = await import('@/lib/actions/admin')
     const result = await syncWithAnvisa()
     expect(result.error).toContain('Não autorizado')
@@ -89,7 +85,7 @@ describe('admin - getImportInfo no medicines', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns null lastImport when no medicine found', async () => {
-    vi.mocked(auth).mockResolvedValue({ user: { id: '1' } })
+    mockAuth(auth).mockResolvedValue(MOCK_SESSION)
     vi.mocked(prisma.medicine.count).mockResolvedValue(0)
     vi.mocked(prisma.medicine.findFirst).mockResolvedValue(null)
     const { getImportInfo } = await import('@/lib/actions/admin')

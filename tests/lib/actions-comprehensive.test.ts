@@ -1,9 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-
-class MockAgent {
-  options: any
-  constructor(options: any) { this.options = options }
-}
+import { MockAgent, mockAuth, mockHttpsGet, createMockHttpsResponse, MOCK_SESSION, FULL_MEDICINE_UPDATE } from './http-mock'
 
 vi.mock('https', () => {
   const get = vi.fn()
@@ -62,11 +58,6 @@ vi.mock('@/lib/pdf-parser', () => ({
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 
-function makeMockHttps(getFn: any) {
-  const https = vi.importActual('https') as any
-  return getFn
-}
-
 describe('admin.ts internal functions', async () => {
   beforeEach(() => vi.clearAllMocks())
 
@@ -74,18 +65,12 @@ describe('admin.ts internal functions', async () => {
     const xlsx = await import('xlsx')
     vi.mocked(xlsx.utils.sheet_to_json).mockReturnValue([{ 'NU_REGISTRO_PRODUTO': '', 'DS_TIPO_CATEGORIA_REGULATORIA': 'Similar' }])
     const https = await import('https')
-    vi.mocked(https.default.get).mockImplementation((url: string, options: any, cb: any) => {
-      const callback = typeof options === 'function' ? options : cb
-      const res: any = { headers: {}, resume: vi.fn() }
-      res.on = vi.fn().mockImplementation((e: string, h: Function) => {
-        if (e === 'data') h(Buffer.from(''))
-        if (e === 'end') h()
-        return res
-      })
-      callback(res)
+    mockHttpsGet(https.default.get).mockImplementation((url, options, cb) => {
+      const callback = typeof options === 'function' ? options : cb!
+      callback(createMockHttpsResponse({ data: '' }))
       return { on: vi.fn() }
     })
-    vi.mocked(auth).mockResolvedValue({ user: { id: '1' } })
+    mockAuth(auth).mockResolvedValue(MOCK_SESSION)
     vi.mocked(prisma.medicine.findFirst).mockResolvedValue({ anvisaFileDate: new Date('2020-01-01') } as never)
     vi.mocked(prisma.medicine.deleteMany).mockResolvedValue({ count: 0 })
     vi.mocked(prisma.medicine.createMany).mockResolvedValue({ count: 0 })
@@ -101,7 +86,7 @@ describe('admin - importPdf', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('rejects non-PDF file', async () => {
-    vi.mocked(auth).mockResolvedValue({ user: { id: '1' } })
+    mockAuth(auth).mockResolvedValue(MOCK_SESSION)
     const { importPdf } = await import('@/lib/actions/admin')
     const fd = new FormData()
     fd.set('file', new File(['test'], 'test.txt', { type: 'text/plain' }))
@@ -111,7 +96,7 @@ describe('admin - importPdf', () => {
   })
 
   it('rejects when no file', async () => {
-    vi.mocked(auth).mockResolvedValue({ user: { id: '1' } })
+    mockAuth(auth).mockResolvedValue(MOCK_SESSION)
     const { importPdf } = await import('@/lib/actions/admin')
     const result = await importPdf(new FormData())
     expect(result.success).toBe(false)
@@ -119,7 +104,7 @@ describe('admin - importPdf', () => {
   })
 
   it('imports PDF successfully', async () => {
-    vi.mocked(auth).mockResolvedValue({ user: { id: '1' } })
+    mockAuth(auth).mockResolvedValue(MOCK_SESSION)
     vi.mocked(prisma.medicine.deleteMany).mockResolvedValue({ count: 0 })
     vi.mocked(prisma.medicine.create).mockResolvedValue({} as never)
     const { importPdf } = await import('@/lib/actions/admin')
@@ -134,7 +119,7 @@ describe('admin - getSyncLogs', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns logs when logged in', async () => {
-    vi.mocked(auth).mockResolvedValue({ user: { id: '1' } })
+    mockAuth(auth).mockResolvedValue(MOCK_SESSION)
     vi.mocked(prisma.syncLog.findMany).mockResolvedValue([{ id: 1 }] as never)
     const { getSyncLogs } = await import('@/lib/actions/admin')
     expect(await getSyncLogs()).toHaveLength(1)
@@ -145,7 +130,7 @@ describe('admin - getImportInfo', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns null when not logged in', async () => {
-    vi.mocked(auth).mockResolvedValue(null)
+    mockAuth(auth).mockResolvedValue(null)
     const { getImportInfo } = await import('@/lib/actions/admin')
     expect(await getImportInfo()).toBeNull()
   })
@@ -167,25 +152,19 @@ describe('prices - syncPrices', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns unauthorized', async () => {
-    vi.mocked(auth).mockResolvedValue(null)
+    mockAuth(auth).mockResolvedValue(null)
     const { syncPrices } = await import('@/lib/actions/prices')
     expect((await syncPrices()).success).toBe(false)
   })
 
   it('syncs prices', async () => {
-    vi.mocked(auth).mockResolvedValue({ user: { id: '1' } })
+    mockAuth(auth).mockResolvedValue(MOCK_SESSION)
     vi.mocked(prisma.price.deleteMany).mockResolvedValue({ count: 0 })
     vi.mocked(prisma.price.createMany).mockResolvedValue({ count: 1 })
     const https = await import('https')
-    vi.mocked(https.default.get).mockImplementation((url: any, options: any, cb: any) => {
-      const callback = typeof options === 'function' ? options : cb
-      const res: any = { headers: {}, resume: vi.fn() }
-      res.on = vi.fn().mockImplementation((e: string, h: Function) => {
-        if (e === 'data') h(Buffer.from('header\nNU_REGISTRO;company\n12345;Test'))
-        if (e === 'end') h()
-        return res
-      })
-      callback(res)
+    mockHttpsGet(https.default.get).mockImplementation((url, options, cb) => {
+      const callback = typeof options === 'function' ? options : cb!
+      callback(createMockHttpsResponse({ data: 'header\nNU_REGISTRO;company\n12345;Test' }))
       return { on: vi.fn() }
     })
     const { syncPrices } = await import('@/lib/actions/prices')
@@ -247,7 +226,7 @@ describe('medicines-admin', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('searches', async () => {
-    vi.mocked(auth).mockResolvedValue({ user: { id: '1' } })
+    mockAuth(auth).mockResolvedValue(MOCK_SESSION)
     vi.mocked(prisma.medicine.findMany).mockResolvedValue([{ id: 1, reference: '123' }] as never)
     const { searchMedicinesForAdmin } = await import('@/lib/actions/medicines-admin')
     expect(await searchMedicinesForAdmin('123')).toHaveLength(1)
@@ -299,7 +278,7 @@ describe('embeddings', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns unauthorized', async () => {
-    vi.mocked(auth).mockResolvedValue(null)
+    mockAuth(auth).mockResolvedValue(null)
     const { regenerateEmbeddings } = await import('@/lib/actions/embeddings')
     expect((await regenerateEmbeddings()).success).toBe(false)
   })
@@ -380,10 +359,10 @@ describe('updateMedicine', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('updates medicine', async () => {
-    vi.mocked(auth).mockResolvedValue({ user: { id: '1' } })
+    mockAuth(auth).mockResolvedValue(MOCK_SESSION)
     vi.mocked(prisma.medicine.update).mockResolvedValue({} as never)
     const { updateMedicine } = await import('@/lib/actions/medicines-admin')
-    const result = await updateMedicine(1, { tradeName: 'New' })
+    const result = await updateMedicine(1, FULL_MEDICINE_UPDATE)
     expect(result.success).toBe(true)
   })
 })

@@ -1,9 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-
-class MockAgent {
-  options: any
-  constructor(options: any) { this.options = options }
-}
+import { MockAgent, mockAuth, mockHttpsGet, createMockHttpsResponse, MOCK_SESSION } from './http-mock'
 
 vi.mock('https', () => ({
   default: { Agent: MockAgent, get: vi.fn() },
@@ -48,23 +44,16 @@ describe('admin - full sync path', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('syncs and creates sync log', async () => {
-    vi.mocked(auth).mockResolvedValue({ user: { id: '1' } })
+    mockAuth(auth).mockResolvedValue(MOCK_SESSION)
     vi.mocked(prisma.medicine.findFirst).mockResolvedValue({ anvisaFileDate: new Date('2020-01-01') } as never)
     vi.mocked(prisma.medicine.deleteMany).mockResolvedValue({ count: 0 })
     vi.mocked(prisma.medicine.createMany).mockResolvedValue({ count: 1 })
     vi.mocked(prisma.syncLog.create).mockResolvedValue({} as never)
 
     const https = await import('https')
-    vi.mocked(https.default.get).mockImplementation((url: any, options: any, cb: any) => {
-      const callback = typeof options === 'function' ? options : cb
-      const res: any = { headers: { 'last-modified': new Date('2025-01-01').toUTCString() }, resume: vi.fn() }
-      let dataSent = false
-      res.on = vi.fn().mockImplementation((e: string, h: Function) => {
-        if (e === 'data' && !dataSent) { dataSent = true; h(Buffer.from('')) }
-        if (e === 'end') h()
-        return res
-      })
-      callback(res)
+    mockHttpsGet(https.default.get).mockImplementation((url, options, cb) => {
+      const callback = typeof options === 'function' ? options : cb!
+      callback(createMockHttpsResponse({ headers: { 'last-modified': new Date('2025-01-01').toUTCString() }, data: '' }))
       return { on: vi.fn() }
     })
 
@@ -126,7 +115,7 @@ describe('admin - getImportInfo with null lastMedicine', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns null for lastImport when no medicine', async () => {
-    vi.mocked(auth).mockResolvedValue({ user: { id: '1' } })
+    mockAuth(auth).mockResolvedValue(MOCK_SESSION)
     vi.mocked(prisma.medicine.count).mockResolvedValue(0)
     vi.mocked(prisma.medicine.findFirst).mockResolvedValue(null)
     const { getImportInfo } = await import('@/lib/actions/admin')

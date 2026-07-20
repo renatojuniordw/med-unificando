@@ -1,9 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-
-class MockAgent {
-  options: any
-  constructor(options: any) { this.options = options }
-}
+import { MockAgent, mockAuth, mockHttpsGet, createMockHttpsResponse, MOCK_SESSION } from './http-mock'
 
 vi.mock('https', () => ({
   default: { Agent: MockAgent, get: vi.fn() },
@@ -81,7 +77,7 @@ describe('admin - getImportInfo', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns info', async () => {
-    vi.mocked(auth).mockResolvedValue({ user: { id: '1' } })
+    mockAuth(auth).mockResolvedValue(MOCK_SESSION)
     vi.mocked(prisma.medicine.count).mockResolvedValue(500)
     vi.mocked(prisma.medicine.findFirst).mockResolvedValue({
       lastImportAt: new Date(),
@@ -111,19 +107,14 @@ describe('admin - syncWithAnvisa up to date', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns skipped when up to date', async () => {
-    vi.mocked(auth).mockResolvedValue({ user: { id: '1' } })
+    mockAuth(auth).mockResolvedValue(MOCK_SESSION)
     const now = new Date()
     vi.mocked(prisma.medicine.findFirst).mockResolvedValue({ anvisaFileDate: now } as never)
     vi.mocked(prisma.medicine.count).mockResolvedValue(999)
     const https = await import('https')
-    vi.mocked(https.default.get).mockImplementation((url: any, options: any, cb: any) => {
-      const callback = typeof options === 'function' ? options : cb
-      const res: any = { headers: { 'last-modified': now.toUTCString() }, resume: vi.fn() }
-      res.on = vi.fn().mockImplementation((e: string, h: Function) => {
-        if (e === 'end') h()
-        return res
-      })
-      callback(res)
+    mockHttpsGet(https.default.get).mockImplementation((url, options, cb) => {
+      const callback = typeof options === 'function' ? options : cb!
+      callback(createMockHttpsResponse({ headers: { 'last-modified': now.toUTCString() } }))
       return { on: vi.fn() }
     })
     const { syncWithAnvisa } = await import('@/lib/actions/admin')

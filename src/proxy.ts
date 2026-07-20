@@ -5,7 +5,7 @@ const rateLimit = new Map<string, { count: number; resetAt: number }>()
 const RATE_LIMIT_MAX = 60
 const RATE_LIMIT_WINDOW = 60_000 // 60 seconds in ms
 
-export default function middleware(request: NextRequest) {
+export default function proxy(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith('/api')) {
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
       ?? request.headers.get('x-real-ip')

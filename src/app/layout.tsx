@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/lib/theme-provider";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { ToastProvider } from "@/components/ui/toast";
 import { ConsoleCredits } from "@/components/ui/console-credits";
+import { SITE } from "@/lib/config";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -17,6 +18,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE.BASE_URL),
   title: {
     default: "Med Unificando — Medicamentos Intercambiáveis",
     template: "%s | Med Unificando",

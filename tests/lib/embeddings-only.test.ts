@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { mockAuth, MOCK_SESSION } from './http-mock'
 
 vi.mock('@/lib/prisma', () => ({
   prisma: {
@@ -26,14 +27,14 @@ describe('embeddings', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns unauthorized when not logged in', async () => {
-    vi.mocked(auth).mockResolvedValue(null)
+    mockAuth(auth).mockResolvedValue(null)
     const { regenerateEmbeddings } = await import('@/lib/actions/embeddings')
     const result = await regenerateEmbeddings()
     expect(result.success).toBe(false)
   })
 
   it('returns error when no medicines', async () => {
-    vi.mocked(auth).mockResolvedValue({ user: { id: '1' } })
+    mockAuth(auth).mockResolvedValue(MOCK_SESSION)
     vi.mocked(prisma.medicine.findMany).mockResolvedValue([])
     const { regenerateEmbeddings } = await import('@/lib/actions/embeddings')
     const result = await regenerateEmbeddings()
@@ -42,7 +43,7 @@ describe('embeddings', () => {
   })
 
   it('generates embeddings successfully', async () => {
-    vi.mocked(auth).mockResolvedValue({ user: { id: '1' } })
+    mockAuth(auth).mockResolvedValue(MOCK_SESSION)
     vi.mocked(prisma.medicine.findMany).mockResolvedValue([{ id: 1 }] as never)
     vi.mocked(prisma.syncLog.create).mockResolvedValue({} as never)
     const { regenerateEmbeddings } = await import('@/lib/actions/embeddings')
@@ -52,7 +53,7 @@ describe('embeddings', () => {
   })
 
   it('handles errors during generation', async () => {
-    vi.mocked(auth).mockResolvedValue({ user: { id: '1' } })
+    mockAuth(auth).mockResolvedValue(MOCK_SESSION)
     vi.mocked(prisma.medicine.findMany).mockRejectedValue(new Error('DB error'))
     const { regenerateEmbeddings } = await import('@/lib/actions/embeddings')
     const result = await regenerateEmbeddings()

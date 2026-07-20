@@ -1,9 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-
-class MockAgent {
-  options: any
-  constructor(options: any) { this.options = options }
-}
+import { MockAgent, mockAuth, mockHttpsGet, createMockHttpsResponse, FULL_MEDICINE_UPDATE, MOCK_SESSION } from './http-mock'
 
 vi.mock('https', () => ({
   default: { Agent: MockAgent, get: vi.fn() },
@@ -66,7 +62,7 @@ describe('embeddings - regenerateEmbeddings', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns unauthorized when not logged in', async () => {
-    vi.mocked(auth).mockResolvedValue(null)
+    mockAuth(auth).mockResolvedValue(null)
     const { regenerateEmbeddings } = await import('@/lib/actions/embeddings')
     const result = await regenerateEmbeddings()
     expect(result.success).toBe(false)
@@ -77,18 +73,12 @@ describe('admin - syncWithAnvisa error handling', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('handles fetch errors gracefully', async () => {
-    vi.mocked(auth).mockResolvedValue({ user: { id: '1' } })
+    mockAuth(auth).mockResolvedValue(MOCK_SESSION)
     vi.mocked(prisma.medicine.findFirst).mockResolvedValue(null)
     const https = await import('https')
-    vi.mocked(https.default.get).mockImplementation((url: any, options: any, cb: any) => {
-      const callback = typeof options === 'function' ? options : cb
-      const res: any = { headers: {}, resume: vi.fn() }
-      res.on = vi.fn().mockImplementation((e: string, h: Function) => {
-        if (e === 'data') h(Buffer.from('header'))
-        if (e === 'end') h()
-        return res
-      })
-      callback(res)
+    mockHttpsGet(https.default.get).mockImplementation((url, options, cb) => {
+      const callback = typeof options === 'function' ? options : cb!
+      callback(createMockHttpsResponse({ data: 'header' }))
       return { on: vi.fn() }
     })
     const { syncWithAnvisa } = await import('@/lib/actions/admin')
@@ -130,7 +120,7 @@ describe('admin - getSyncLogs', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns empty when not logged in', async () => {
-    vi.mocked(auth).mockResolvedValue(null)
+    mockAuth(auth).mockResolvedValue(null)
     const { getSyncLogs } = await import('@/lib/actions/admin')
     expect(await getSyncLogs()).toEqual([])
   })
@@ -140,9 +130,9 @@ describe('medicines-admin - updateMedicine', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns error when not logged in', async () => {
-    vi.mocked(auth).mockResolvedValue(null)
+    mockAuth(auth).mockResolvedValue(null)
     const { updateMedicine } = await import('@/lib/actions/medicines-admin')
-    const result = await updateMedicine(1, { tradeName: 'New' })
+    const result = await updateMedicine(1, FULL_MEDICINE_UPDATE)
     expect(result.success).toBe(false)
   })
 })
@@ -151,18 +141,12 @@ describe('prices - syncPrices error', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('handles sync error', async () => {
-    vi.mocked(auth).mockResolvedValue({ user: { id: '1' } })
+    mockAuth(auth).mockResolvedValue(MOCK_SESSION)
     vi.mocked(prisma.price.deleteMany).mockRejectedValue(new Error('DB error'))
     const https = await import('https')
-    vi.mocked(https.default.get).mockImplementation((url: any, options: any, cb: any) => {
-      const callback = typeof options === 'function' ? options : cb
-      const res: any = { headers: {}, resume: vi.fn() }
-      res.on = vi.fn().mockImplementation((e: string, h: Function) => {
-        if (e === 'data') h(Buffer.from('header'))
-        if (e === 'end') h()
-        return res
-      })
-      callback(res)
+    mockHttpsGet(https.default.get).mockImplementation((url, options, cb) => {
+      const callback = typeof options === 'function' ? options : cb!
+      callback(createMockHttpsResponse({ data: 'header' }))
       return { on: vi.fn() }
     })
     const { syncPrices } = await import('@/lib/actions/prices')
