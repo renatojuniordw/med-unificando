@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server'
 
 const rateLimit = new Map<string, { count: number; resetAt: number }>()
 const RATE_LIMIT_MAX = 60
-const RATE_LIMIT_WINDOW = 60_000
+const RATE_LIMIT_WINDOW = 60_000 // 60 seconds in ms
 
 export default function middleware(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith('/api')) {

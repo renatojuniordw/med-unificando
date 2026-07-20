@@ -9,6 +9,8 @@ import { ExportButton } from '@/components/medicines/export-button'
 import Link from 'next/link'
 import type { MedicineResult, SearchResponse } from '@/types'
 
+const DEFAULT_PAGE_SIZE = 10
+
 export const columns = [
   { key: 'reference', label: 'Referência', mobile: true },
   { key: 'activeIngredient', label: 'Princípio Ativo', mobile: true },
@@ -23,6 +25,89 @@ export const columns = [
 
 interface MedicineTableProps {
   initialData: SearchResponse
+}
+
+function EmptyState() {
+  return (
+    <div className="p-12 text-center">
+      <p className="font-semibold text-lg text-[var(--color-text)]">
+        Nenhum medicamento encontrado
+      </p>
+      <p className="text-sm text-muted mt-1">
+        Tente ajustar os filtros da busca
+      </p>
+    </div>
+  )
+}
+
+function LoadingState() {
+  return (
+    <div className="p-6 space-y-4" aria-live="polite" aria-label="Carregando dados">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Skeleton key={i} className="h-12 w-full" />
+      ))}
+    </div>
+  )
+}
+
+function MedicineTableContent({ data, selectedIds, toggleSelect }: {
+  data: MedicineResult[]
+  selectedIds: number[]
+  toggleSelect: (id: number) => void
+}) {
+  const mobileColumns = columns.filter(col => col.mobile)
+
+  return (
+    <table className="w-full border-collapse">
+      <thead>
+        <tr className="bg-[var(--color-bg-secondary)] border-b border-border">
+          <th className="text-center p-3 text-xs font-semibold text-muted w-12">#</th>
+          {mobileColumns.map((col) => (
+            <th key={col.key} className="text-left p-3 text-xs font-semibold text-muted">
+              {col.label}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {data.map((medicine: MedicineResult, index: number) => (
+          <tr
+            key={medicine.id}
+            className={`border-b border-border hover:bg-brand-yellow/5 transition-colors ${
+              selectedIds.includes(medicine.id) ? 'bg-brand-yellow/10' : ''
+            }`}
+          >
+            <td className="text-center p-3">
+              <input
+                type="checkbox"
+                checked={selectedIds.includes(medicine.id)}
+                onChange={() => toggleSelect(medicine.id)}
+                className="accent-brand-yellow rounded-sm"
+                aria-label={`Selecionar ${medicine.tradeName}`}
+              />
+            </td>
+            {mobileColumns.map((col) => {
+              const value = String(medicine[col.key as keyof MedicineResult] ?? '')
+              if (col.key === 'tradeName' || col.key === 'reference') {
+                return (
+                  <td key={col.key} className="p-3 text-sm font-medium">
+                    <Link href={`/medicamento/${medicine.id}`} className="text-[var(--color-text)] hover:underline">
+                      {value}
+                    </Link>
+                  </td>
+                )
+              }
+              return (
+                <td key={col.key} className="p-3 text-sm text-[var(--color-text)]">
+                  {value}
+                </td>
+              )
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
 }
 
 export function MedicineTable({ initialData }: MedicineTableProps) {
@@ -61,71 +146,15 @@ export function MedicineTable({ initialData }: MedicineTableProps) {
 
       <div className="overflow-x-auto border border-border rounded-md">
         {loading ? (
-          <div className="p-6 space-y-4" aria-live="polite" aria-label="Carregando dados">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </div>
+          <LoadingState />
         ) : data.data.length === 0 ? (
-          <div className="p-12 text-center">
-            <p className="font-semibold text-lg text-[var(--color-text)]">
-              Nenhum medicamento encontrado
-            </p>
-            <p className="text-sm text-muted mt-1">
-              Tente ajustar os filtros da busca
-            </p>
-          </div>
+          <EmptyState />
         ) : (
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-[var(--color-bg-secondary)] border-b border-border">
-                <th className="text-center p-3 text-xs font-semibold text-muted w-12">#</th>
-                {columns.filter(col => col.mobile).map((col) => (
-                  <th key={col.key} className="text-left p-3 text-xs font-semibold text-muted">
-                    {col.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {data.data.map((medicine: MedicineResult, index: number) => (
-                <tr
-                  key={medicine.id}
-                  className={`border-b border-border hover:bg-brand-yellow/5 transition-colors ${
-                    selectedIds.includes(medicine.id) ? 'bg-brand-yellow/10' : ''
-                  }`}
-                >
-                  <td className="text-center p-3">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.includes(medicine.id)}
-                      onChange={() => toggleSelect(medicine.id)}
-                      className="accent-brand-yellow rounded-sm"
-                      aria-label={`Selecionar ${medicine.tradeName}`}
-                    />
-                  </td>
-                  {columns.filter(col => col.mobile).map((col) => {
-                    const value = (medicine as unknown as Record<string, string>)[col.key]
-                    const display = value ?? ''
-                    if (col.key === 'tradeName' || col.key === 'reference') {
-                      return (
-                        <td key={col.key} className="p-3 text-sm font-medium">
-                          <Link href={`/medicamento/${medicine.id}`} className="text-[var(--color-text)] hover:underline">
-                            {display}
-                          </Link>
-                        </td>
-                      )
-                    }
-                    return (
-                      <td key={col.key} className="p-3 text-sm text-[var(--color-text)]">
-                        {display}
-                      </td>
-                    )
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <MedicineTableContent
+            data={data.data}
+            selectedIds={selectedIds}
+            toggleSelect={toggleSelect}
+          />
         )}
       </div>
 

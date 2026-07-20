@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma"
 import { buildWhere } from "@/lib/build-where"
+import { YEARS, MEDICINE_LIMITS } from "@/lib/constants"
 import type { Medicine } from "@/generated/prisma/client"
 import * as Prisma from "@/generated/prisma/internal/prismaNamespace"
 import type { SearchFilters, SearchResponse, DistinctValue, DashboardStats } from "@/types"
@@ -28,7 +29,7 @@ export async function searchMedicines(
 }
 
 export async function getDistinctValues(field: string): Promise<DistinctValue[]> {
-  const validFields: Record<string, Prisma.MedicineScalarFieldEnum> = {
+  const fieldToPrismaEnum: Record<string, Prisma.MedicineScalarFieldEnum> = {
     reference: Prisma.MedicineScalarFieldEnum.reference,
     activeIngredient: Prisma.MedicineScalarFieldEnum.activeIngredient,
     tradeName: Prisma.MedicineScalarFieldEnum.tradeName,
@@ -38,7 +39,7 @@ export async function getDistinctValues(field: string): Promise<DistinctValue[]>
     status: Prisma.MedicineScalarFieldEnum.status,
   }
 
-  const fieldEnum = validFields[field]
+  const fieldEnum = fieldToPrismaEnum[field]
   if (!fieldEnum) return []
 
   const result = await prisma.medicine.findMany({
@@ -52,39 +53,52 @@ export async function getDistinctValues(field: string): Promise<DistinctValue[]>
     .filter((item) => item.value)
 }
 
-export async function getDashboardStats(): Promise<DashboardStats> {
+async function computeTimeline() {
   const allInclusionDates = await prisma.medicine.findMany({ select: { inclusionDate: true } })
   const yearCounts: Record<string, number> = {}
   for (const { inclusionDate } of allInclusionDates) {
     if (inclusionDate && inclusionDate.length >= 4) {
       const year = inclusionDate.substring(6, 10)
-      if (year >= '2000' && year <= '2030') {
+      if (year >= YEARS.MIN && year <= YEARS.MAX) {
         yearCounts[year] = (yearCounts[year] || 0) + 1
       }
     }
   }
-  const timeline = Object.entries(yearCounts)
+  return Object.entries(yearCounts)
     .map(([year, count]) => ({ year, count }))
     .sort((a, b) => a.year.localeCompare(b.year))
+}
 
-  const [totalMedicines, totalTradeNames, topTradeNames, topActiveIngredients, groupByStatus, groupByCategory] = await Promise.all([
+async function computeTopReferences(count: number) {
+  return prisma.medicine.groupBy({
+    by: ['tradeName'],
+    _count: { tradeName: true },
+    orderBy: { _count: { tradeName: 'desc' } },
+    take: count,
+  }).then(r => r.map(item => ({ name: item.tradeName, count: item._count.tradeName })))
+}
+
+async function computeTopActiveIngredients(count: number) {
+  return prisma.medicine.groupBy({
+    by: ['activeIngredient'],
+    _count: { activeIngredient: true },
+    orderBy: { _count: { activeIngredient: 'desc' } },
+    take: count,
+  }).then(r => r.map(item => ({ name: item.activeIngredient, count: item._count.activeIngredient })))
+}
+
+export async function getDashboardStats(): Promise<DashboardStats> {
+  const timeline = await computeTimeline()
+  const topK = 10
+
+  const [totalMedicines, totalTradeNames, topReferences, topActiveIngredients, groupByStatus, groupByCategory] = await Promise.all([
     prisma.medicine.count(),
     prisma.medicine.groupBy({
       by: ['tradeName'],
       _count: { tradeName: true },
     }).then(r => r.length),
-    prisma.medicine.groupBy({
-      by: ['tradeName'],
-      _count: { tradeName: true },
-      orderBy: { _count: { tradeName: 'desc' } },
-      take: 10,
-    }).then(r => r.map(item => ({ name: item.tradeName, count: item._count.tradeName }))),
-    prisma.medicine.groupBy({
-      by: ['activeIngredient'],
-      _count: { activeIngredient: true },
-      orderBy: { _count: { activeIngredient: 'desc' } },
-      take: 10,
-    }).then(r => r.map(item => ({ name: item.activeIngredient, count: item._count.activeIngredient }))),
+    computeTopReferences(topK),
+    computeTopActiveIngredients(topK),
     prisma.medicine.groupBy({
       by: ['status'],
       _count: { status: true },
@@ -97,13 +111,13 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     }).then(r => r.map(item => ({ name: item.category ?? 'Sem categoria', count: item._count.category }))),
   ])
 
-  const ativoCount = groupByStatus.find(s => s.status?.toLowerCase() === 'ativo' || s.status === '')?._count.status ?? 0
-  const inativoCount = groupByStatus.find(s => s.status?.toLowerCase() === 'inativo')?._count.status ?? 0
+  const ativoCount = groupByStatus.find(statusItem => statusItem.status?.toLowerCase() === 'ativo' || statusItem.status === '')?._count.status ?? 0
+  const inativoCount = groupByStatus.find(statusItem => statusItem.status?.toLowerCase() === 'inativo')?._count.status ?? 0
 
   return {
     totalMedicines,
     totalReferences: totalTradeNames,
-    topReferences: topTradeNames,
+    topReferences,
     topActiveIngredients,
     ativoCount,
     inativoCount,
@@ -121,10 +135,15 @@ export interface FilteredStats {
   topIngredient: { name: string; count: number }[]
 }
 
-export async function getFilteredStats(filters: { year?: string; category?: string; status?: string }): Promise<FilteredStats> {
+function applyFilters(params: { year?: string; category?: string; status?: string }) {
   const where: Record<string, unknown> = {}
-  if (filters.category) where.category = filters.category
-  if (filters.status) where.status = filters.status
+  if (params.category) where.category = params.category
+  if (params.status) where.status = params.status
+  return where
+}
+
+export async function getFilteredStats(filters: { year?: string; category?: string; status?: string }): Promise<FilteredStats> {
+  const where = applyFilters(filters)
 
   const raw = await prisma.medicine.findMany({
     where,

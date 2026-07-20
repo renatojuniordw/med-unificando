@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { STORAGE_KEYS, THEME_COLORS } from '@/lib/constants'
 
 type Theme = 'light' | 'dark'
 
@@ -22,7 +23,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setMounted(true)
-    const stored = localStorage.getItem('theme') as Theme | null
+    const stored = localStorage.getItem(STORAGE_KEYS.THEME) as Theme | null
     if (stored === 'light' || stored === 'dark') {
       setThemeState(stored)
     } else {
@@ -35,10 +36,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (!mounted) return
     const root = document.documentElement
     root.classList.toggle('dark', theme === 'dark')
-    localStorage.setItem('theme', theme)
+    localStorage.setItem(STORAGE_KEYS.THEME, theme)
     document.querySelector('meta[name="theme-color"]')?.setAttribute(
       'content',
-      theme === 'dark' ? '#0f172a' : '#ffffff'
+      theme === 'dark' ? THEME_COLORS.DARK : THEME_COLORS.LIGHT
     )
   }, [theme, mounted])
 

@@ -13,21 +13,21 @@ export async function exportToExcel(filters?: SearchFilters): Promise<{ filename
   })
 
   const worksheet = XLSX.utils.json_to_sheet(
-    data.map((med: Record<string, unknown>) => ({
-      Referência: med.reference,
-      'Princípio Ativo': med.activeIngredient,
-      'Nome Comercial': med.tradeName,
-      'Detentor do Registro': med.similarHolder,
-      'Forma Farmacêutica': med.pharmaceuticalForm,
-      Concentração: med.concentration,
-      'Data de Inclusão': med.inclusionDate,
-      Categoria: med.category,
-      'Medicamento Referência': med.referenceMedicine,
-      'Código ATC': med.atcCode,
-      Tarja: med.prescriptionType,
-      Situação: med.status,
-      Autorização: med.authorization,
-      Apresentações: med.presentationCount,
+    data.map((medicine: Record<string, unknown>) => ({
+      Referência: medicine.reference,
+      'Princípio Ativo': medicine.activeIngredient,
+      'Nome Comercial': medicine.tradeName,
+      'Detentor do Registro': medicine.similarHolder,
+      'Forma Farmacêutica': medicine.pharmaceuticalForm,
+      Concentração: medicine.concentration,
+      'Data de Inclusão': medicine.inclusionDate,
+      Categoria: medicine.category,
+      'Medicamento Referência': medicine.referenceMedicine,
+      'Código ATC': medicine.atcCode,
+      Tarja: medicine.prescriptionType,
+      Situação: medicine.status,
+      Autorização: medicine.authorization,
+      Apresentações: medicine.presentationCount,
     }))
   )
 
@@ -50,21 +50,21 @@ export async function exportToCsv(filters?: SearchFilters): Promise<{ filename: 
   })
 
   const headers = ['Referência', 'Princípio Ativo', 'Nome Comercial', 'Detentor', 'Forma Farmacêutica', 'Concentração', 'Inclusão', 'Categoria', 'Medicamento Referência', 'Código ATC', 'Tarja', 'Situação', 'Autorização', 'Apresentações']
-  const rows = data.map((med: Record<string, unknown>) => [
-    med.reference,
-    med.activeIngredient,
-    med.tradeName,
-    med.similarHolder,
-    med.pharmaceuticalForm,
-    med.concentration,
-    med.inclusionDate,
-    med.category,
-    med.referenceMedicine,
-    med.atcCode,
-    med.prescriptionType,
-    med.status,
-    med.authorization,
-    med.presentationCount,
+  const rows = data.map((medicine: Record<string, unknown>) => [
+    medicine.reference,
+    medicine.activeIngredient,
+    medicine.tradeName,
+    medicine.similarHolder,
+    medicine.pharmaceuticalForm,
+    medicine.concentration,
+    medicine.inclusionDate,
+    medicine.category,
+    medicine.referenceMedicine,
+    medicine.atcCode,
+    medicine.prescriptionType,
+    medicine.status,
+    medicine.authorization,
+    medicine.presentationCount,
   ])
 
   const csv = [

@@ -1,0 +1,15 @@
+export const ANVISA = {
+  MEDICINES_URL: process.env.ANVISA_MEDICINES_URL
+    ?? 'https://dados.anvisa.gov.br/dados/CONSULTAS/PRODUTOS/TA_CONSULTA_MEDICAMENTOS.CSV',
+  PRICES_URL: process.env.ANVISA_PRICES_URL
+    ?? 'https://dados.anvisa.gov.br/dados/TA_PRECOS_MEDICAMENTOS.csv',
+  BULA_URL: 'https://consultas.anvisa.gov.br/#/medicamento/',
+} as const
+
+export const EMBEDDING = {
+  MODEL: process.env.EMBEDDING_MODEL ?? 'Xenova/all-MiniLM-L6-v2',
+} as const
+
+export const SITE = {
+  BASE_URL: process.env.BASE_URL ?? 'https://medicamentos.unificando.com.br',
+} as const

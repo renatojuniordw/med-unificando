@@ -1,6 +1,7 @@
 'use server'
 
 import { prisma } from "@/lib/prisma"
+import { MEDICINE_LIMITS } from "@/lib/constants"
 
 export async function getReferenceMedicines() {
   const groups = await prisma.medicine.groupBy({
@@ -10,14 +11,14 @@ export async function getReferenceMedicines() {
       referenceMedicine: { not: '', notIn: ['0'] },
     },
     orderBy: { _count: { referenceMedicine: 'desc' } },
-    take: 100,
+    take: MEDICINE_LIMITS.MAX_REFERENCES,
   })
 
   return groups
-    .filter((g): g is typeof g & { referenceMedicine: string } => !!g.referenceMedicine && g.referenceMedicine.length > 2)
-    .map(g => ({
-      name: g.referenceMedicine,
-      count: g._count.referenceMedicine,
+    .filter((group): group is typeof group & { referenceMedicine: string } => !!group.referenceMedicine && group.referenceMedicine.length > 2)
+    .map(group => ({
+      name: group.referenceMedicine,
+      count: group._count.referenceMedicine,
     }))
 }
 
@@ -43,13 +44,13 @@ export async function searchReferenceMedicines(query: string) {
       },
     },
     orderBy: { _count: { referenceMedicine: 'desc' } },
-    take: 20,
+    take: MEDICINE_LIMITS.SEARCH_LIMIT,
   })
 
   return groups
-    .filter((g): g is typeof g & { referenceMedicine: string } => !!g.referenceMedicine && g.referenceMedicine.length > 2)
-    .map(g => ({
-      name: g.referenceMedicine,
-      count: g._count.referenceMedicine,
+    .filter((group): group is typeof group & { referenceMedicine: string } => !!group.referenceMedicine && group.referenceMedicine.length > 2)
+    .map(group => ({
+      name: group.referenceMedicine,
+      count: group._count.referenceMedicine,
     }))
 }

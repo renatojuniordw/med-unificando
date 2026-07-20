@@ -8,45 +8,15 @@ import { syncWithAnvisa, getImportInfo, getSyncLogs } from '@/lib/actions/admin'
 import { syncPrices, getPriceStats } from '@/lib/actions/prices'
 import { regenerateEmbeddings } from '@/lib/actions/embeddings'
 import { SyncLogList } from '@/components/admin/sync-log-list'
+import { SyncCard } from '@/components/admin/sync-card'
+import { ConfirmModal } from '@/components/admin/confirm-modal'
+import { ImportStats } from '@/components/admin/import-stats'
+import { PriceStats } from '@/components/admin/price-stats'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import type { ImportInfo } from '@/types'
 import type { SyncLog } from '@/generated/prisma/client'
-
-function ConfirmModal({
-  open,
-  title,
-  description,
-  onConfirm,
-  onCancel,
-  loading,
-}: {
-  open: boolean
-  title: string
-  description: string
-  onConfirm: () => void
-  onCancel: () => void
-  loading: boolean
-}) {
-  if (!open) return null
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-[var(--color-bg)] border border-border rounded-md shadow-modal p-6 max-w-sm w-full">
-        <p className="font-semibold text-lg text-[var(--color-text)] mb-2">{title}</p>
-        <p className="text-sm text-muted mb-6">{description}</p>
-        <div className="flex gap-3 justify-end">
-          <Button variant="ghost" size="sm" onClick={onCancel} disabled={loading}>
-            Cancelar
-          </Button>
-          <Button variant="primary" size="sm" onClick={onConfirm} disabled={loading}>
-            {loading ? 'Executando...' : 'Confirmar'}
-          </Button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 export default function AdminImportPage() {
   const router = useRouter()
@@ -87,15 +57,15 @@ export default function AdminImportPage() {
     setLoading(type)
     setResult(null)
     setConfirmAction(null)
-    
+
     let response
     if (type === 'medicines') response = await syncWithAnvisa()
     else if (type === 'prices') response = await syncPrices()
     else response = await regenerateEmbeddings()
-    
+
     setResult({ type, ...response })
     setLoading(null)
-    
+
     if (type === 'medicines') {
       const info = await getImportInfo()
       setImportInfo(info)
@@ -121,83 +91,39 @@ export default function AdminImportPage() {
         </div>
       </div>
 
-      <Card className="mb-6">
-        <div className="space-y-5">
-          <p className="text-lg font-semibold tracking-tight">1. Medicamentos</p>
+      <SyncCard
+        title="1. Medicamentos"
+        action={loading === 'medicines' ? 'Sincronizando...' : 'Sincronizar Medicamentos'}
+        loading={loading === 'medicines'}
+        onAction={() => setConfirmAction({
+          type: 'medicines',
+          title: 'Sincronizar Medicamentos',
+          description: 'Esta ação baixará os dados mais recentes da ANVISA e atualizará o banco. Pode levar alguns minutos.'
+        })}
+      >
+        {!infoLoaded ? (
+          <p className="text-sm text-muted">Carregando...</p>
+        ) : (
+          <ImportStats info={importInfo} />
+        )}
+      </SyncCard>
 
-          <div className="border border-border rounded-sm p-4 bg-[var(--color-bg)] space-y-3">
-            {!infoLoaded ? (
-              <p className="text-sm text-muted">Carregando...</p>
-            ) : (
-              <>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-medium text-muted">Total</span>
-                  <span className="text-2xl font-black text-[var(--color-text)]">{importInfo?.total ?? 0}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-medium text-muted">Última sincronização</span>
-                  <span className="text-sm font-medium text-[var(--color-text)]">
-                    {importInfo?.lastImport ? new Date(importInfo.lastImport).toLocaleString('pt-BR') : 'Nunca'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-medium text-muted">Arquivo ANVISA</span>
-                  <span className="text-sm font-medium text-[var(--color-text)]">
-                    {importInfo?.anvisaFileDate ? new Date(importInfo.anvisaFileDate).toLocaleString('pt-BR') : '---'}
-                  </span>
-                </div>
-              </>
-            )}
-          </div>
-
-          <Button
-            type="button" variant="primary" size="lg" className="w-full"
-            disabled={loading === 'medicines'}
-            onClick={() => setConfirmAction({
-              type: 'medicines',
-              title: 'Sincronizar Medicamentos',
-              description: 'Esta ação baixará os dados mais recentes da ANVISA e atualizará o banco. Pode levar alguns minutos.'
-            })}
-          >
-            {loading === 'medicines' ? 'Sincronizando...' : 'Sincronizar Medicamentos'}
-          </Button>
-        </div>
-      </Card>
-
-      <Card className="mb-6">
-        <div className="space-y-5">
-          <p className="text-lg font-semibold tracking-tight">2. Preços CMED</p>
-
-          <div className="border border-border rounded-sm p-4 bg-[var(--color-bg)] space-y-3">
-            {!infoLoaded ? (
-              <p className="text-sm text-muted">Carregando...</p>
-            ) : (
-              <>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-medium text-muted">Total de preços</span>
-                  <span className="text-2xl font-black text-[var(--color-text)]">{priceInfo?.total ?? 0}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-medium text-muted">Com preço PF0</span>
-                  <span className="text-sm font-medium text-[var(--color-text)]">{priceInfo?.withPrice ?? 0}</span>
-                </div>
-              </>
-            )}
-          </div>
-
-          <Button
-            type="button" variant="primary" size="lg" className="w-full"
-            disabled={loading === 'prices'}
-            onClick={() => setConfirmAction({
-              type: 'prices',
-              title: 'Importar Preços CMED',
-              description: 'Esta ação baixará a tabela de preços CMED mais recente da ANVISA.'
-            })}
-          >
-            {loading === 'prices' ? 'Importando...' : 'Importar Preços CMED'}
-          </Button>
-        </div>
-      </Card>
+      <SyncCard
+        title="2. Preços CMED"
+        action={loading === 'prices' ? 'Importando...' : 'Importar Preços CMED'}
+        loading={loading === 'prices'}
+        onAction={() => setConfirmAction({
+          type: 'prices',
+          title: 'Importar Preços CMED',
+          description: 'Esta ação baixará a tabela de preços CMED mais recente da ANVISA.'
+        })}
+      >
+        {!infoLoaded ? (
+          <p className="text-sm text-muted">Carregando...</p>
+        ) : (
+          <PriceStats info={priceInfo} />
+        )}
+      </SyncCard>
 
       <Card className="mb-6">
         <div className="space-y-5">
@@ -213,25 +139,20 @@ export default function AdminImportPage() {
         </div>
       </Card>
 
-      <Card className="mb-6">
-        <div className="space-y-5">
-          <p className="text-lg font-semibold tracking-tight">4. Busca Semântica</p>
-          <p className="text-xs text-muted">
-            Regenera os embeddings usados pela busca por IA a partir dos medicamentos atuais no banco. Pode levar alguns minutos.
-          </p>
-          <Button
-            type="button" variant="primary" size="lg" className="w-full"
-            disabled={loading === 'embeddings'}
-            onClick={() => setConfirmAction({
-              type: 'embeddings',
-              title: 'Gerar Embeddings',
-              description: 'Esta ação regenerará todos os embeddings de busca semântica. Pode levar vários minutos.'
-            })}
-          >
-            {loading === 'embeddings' ? 'Gerando embeddings...' : 'Gerar Embeddings'}
-          </Button>
-        </div>
-      </Card>
+      <SyncCard
+        title="4. Busca Semântica"
+        action={loading === 'embeddings' ? 'Gerando embeddings...' : 'Gerar Embeddings'}
+        loading={loading === 'embeddings'}
+        onAction={() => setConfirmAction({
+          type: 'embeddings',
+          title: 'Gerar Embeddings',
+          description: 'Esta ação regenerará todos os embeddings de busca semântica. Pode levar vários minutos.'
+        })}
+      >
+        <p className="text-xs text-muted">
+          Regenera os embeddings usados pela busca por IA a partir dos medicamentos atuais no banco. Pode levar alguns minutos.
+        </p>
+      </SyncCard>
 
       {result && (
         <Card

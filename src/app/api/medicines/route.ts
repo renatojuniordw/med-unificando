@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { MEDICINE_LIMITS } from '@/lib/constants'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const page = parseInt(searchParams.get('page') ?? '1', 10)
-  const pageSize = Math.min(parseInt(searchParams.get('pageSize') ?? '20', 10), 100)
+  const pageSize = Math.min(parseInt(searchParams.get('pageSize') ?? '20', 10), MEDICINE_LIMITS.MAX_PAGE_SIZE)
   const reference = searchParams.get('reference')
   const activeIngredient = searchParams.get('activeIngredient')
   const tradeName = searchParams.get('tradeName')
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
       'referencia', 'principio_ativo', 'nome_comercial', 'detentor',
       'forma_farmaceutica', 'concentracao', 'categoria', 'codigo_atc', 'tarja', 'situacao',
     ]
-    const rows = data.map((m: Record<string, unknown>) => [
+    const rows = data.map((m) => [
       m.reference, m.activeIngredient, m.tradeName, m.similarHolder,
       m.pharmaceuticalForm, m.concentration, m.category, m.atcCode, m.prescriptionType, m.status,
     ])

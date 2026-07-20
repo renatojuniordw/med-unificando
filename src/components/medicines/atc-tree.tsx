@@ -22,15 +22,15 @@ export function AtcTree({ level1, level2, level3 }: AtcTreeProps) {
   const isSearching = term.length > 0
 
   const filteredLevel1 = useMemo(
-    () => level1.filter(l => l.code.toLowerCase().includes(term)),
+    () => level1.filter(item => item.code.toLowerCase().includes(term)),
     [level1, term]
   )
   const filteredLevel2 = useMemo(
-    () => level2.filter(l => l.code.toLowerCase().includes(term)),
+    () => level2.filter(item => item.code.toLowerCase().includes(term)),
     [level2, term]
   )
   const filteredLevel3 = useMemo(
-    () => level3.filter(l => l.code.toLowerCase().includes(term)),
+    () => level3.filter(item => item.code.toLowerCase().includes(term)),
     [level3, term]
   )
 
@@ -52,14 +52,14 @@ export function AtcTree({ level1, level2, level3 }: AtcTreeProps) {
           <p className="text-sm text-muted">Nenhum código encontrado.</p>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {filteredLevel1.map(l => (
+            {filteredLevel1.map(item => (
               <Link
-                key={l.code}
-                href={`/atc/${l.code}`}
+                key={item.code}
+                href={`/atc/${item.code}`}
                 className="border border-border rounded-sm bg-[var(--color-bg)] p-4 hover:bg-brand-yellow/10 hover:border-brand-yellow transition-all"
               >
-                <span className="font-semibold text-lg text-[var(--color-text)]">{l.code}</span>
-                <span className="ml-2 text-xs text-muted">{l.count} código{l.count !== 1 ? 's' : ''}</span>
+                <span className="font-semibold text-lg text-[var(--color-text)]">{item.code}</span>
+                <span className="ml-2 text-xs text-muted">{item.count} código{item.count !== 1 ? 's' : ''}</span>
               </Link>
             ))}
           </div>
@@ -72,13 +72,13 @@ export function AtcTree({ level1, level2, level3 }: AtcTreeProps) {
           <p className="text-sm text-muted">Nenhum código encontrado.</p>
         ) : (
           <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-2">
-            {visibleLevel2.map(l => (
+            {visibleLevel2.map(item => (
               <Link
-                key={l.code}
-                href={`/atc/${l.code}`}
+                key={item.code}
+                href={`/atc/${item.code}`}
                 className="border border-border rounded-sm bg-[var(--color-bg)] p-3 hover:bg-brand-yellow/10 hover:border-brand-yellow transition-all text-sm font-medium text-[var(--color-text)]"
               >
-                {l.code} <span className="text-muted ml-1">({l.count})</span>
+                {item.code} <span className="text-muted ml-1">({item.count})</span>
               </Link>
             ))}
           </div>
@@ -96,13 +96,13 @@ export function AtcTree({ level1, level2, level3 }: AtcTreeProps) {
           <p className="text-sm text-muted">Nenhum código encontrado.</p>
         ) : (
           <div className="grid md:grid-cols-4 lg:grid-cols-5 gap-2">
-            {visibleLevel3.map(l => (
+            {visibleLevel3.map(item => (
               <Link
-                key={l.code}
-                href={`/atc/${l.code}`}
+                key={item.code}
+                href={`/atc/${item.code}`}
                 className="border border-border rounded-sm bg-[var(--color-bg)] p-2 hover:bg-brand-yellow/10 hover:border-brand-yellow transition-all text-xs font-medium text-[var(--color-text)]"
               >
-                {l.code} <span className="text-muted">({l.count})</span>
+                {item.code} <span className="text-muted">({item.count})</span>
               </Link>
             ))}
           </div>

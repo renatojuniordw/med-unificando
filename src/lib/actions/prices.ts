@@ -5,8 +5,10 @@ import { auth } from "@/auth"
 import * as XLSX from 'xlsx'
 import https from 'https'
 import iconv from 'iconv-lite'
+import { BATCH } from "@/lib/constants"
+import { ANVISA } from "@/lib/config"
 
-const PRICES_URL = 'https://dados.anvisa.gov.br/dados/TA_PRECOS_MEDICAMENTOS.csv'
+const PRICES_URL = ANVISA.PRICES_URL
 const agent = new https.Agent({ rejectUnauthorized: false })
 
 export async function syncPrices() {
@@ -17,7 +19,7 @@ export async function syncPrices() {
     const csvText = await new Promise<string>((resolve, reject) => {
       https.get(PRICES_URL, { agent }, (res) => {
         const chunks: Buffer[] = []
-        res.on('data', (c: Buffer) => chunks.push(c))
+        res.on('data', (chunk: Buffer) => chunks.push(chunk))
         res.on('end', () => resolve(iconv.decode(Buffer.concat(chunks), 'latin1')))
         res.on('error', reject)
       }).on('error', reject)
@@ -30,10 +32,10 @@ export async function syncPrices() {
     const prices: Array<Record<string, unknown>> = []
 
     for (const row of rows) {
-      const reg = (row['NU_REGISTRO'] ?? '').trim()
-      if (!reg) continue
+      const registrationNumber = (row['NU_REGISTRO'] ?? '').trim()
+      if (!registrationNumber) continue
 
-      const reference = reg.substring(0, 9)
+      const reference = registrationNumber.substring(0, 9)
       const pf0 = parseFloat((row['NU_PF0_INTEIRO'] ?? '').replace(',', '.'))
       const pf18 = parseFloat((row['NU_PF18_INTEIRO'] ?? '').replace(',', '.'))
 
@@ -52,7 +54,7 @@ export async function syncPrices() {
 
     await prisma.price.deleteMany()
 
-    const batchSize = 500
+    const batchSize = BATCH.PRICE_IMPORT
     for (let i = 0; i < prices.length; i += batchSize) {
       await prisma.price.createMany({ data: prices.slice(i, i + batchSize) as never })
     }

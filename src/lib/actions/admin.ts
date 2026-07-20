@@ -5,15 +5,19 @@ import { auth } from "@/auth"
 import * as XLSX from 'xlsx'
 import https from 'https'
 import iconv from 'iconv-lite'
+import { BATCH } from "@/lib/constants"
+import { ANVISA } from "@/lib/config"
 import type { ImportInfo } from "@/types"
 
-const CSV_URL = 'https://dados.anvisa.gov.br/dados/CONSULTAS/PRODUTOS/TA_CONSULTA_MEDICAMENTOS.CSV'
+const CSV_URL = ANVISA.MEDICINES_URL
 
 const VALID_CATEGORIES = new Set([
   'SIMILAR', 'GENÉRICO', 'REFERÊNCIA', 'NOVO', 'ESPECÍFICO',
   'FITOTERÁPICO', 'BIOLÓGICO', 'DINAMIZADO', 'BAIXO RISCO',
   'GASES MEDICINAIS', 'RADIOFÁRMACO',
 ])
+
+const agent = new https.Agent({ rejectUnauthorized: false })
 
 function parseCSV(csvText: string) {
   const workbook = XLSX.read(csvText, { type: 'string', raw: true })
@@ -70,8 +74,6 @@ export async function importPdf(formData: FormData) {
   }
 }
 
-const agent = new https.Agent({ rejectUnauthorized: false })
-
 function getHeader(url: string): Promise<Date | null> {
   return new Promise((resolve, reject) => {
     const req = https.get(url, { agent, method: 'HEAD' }, (res) => {
@@ -90,6 +92,58 @@ function downloadCSV(url: string): Promise<string> {
       res.on('end', () => resolve(iconv.decode(Buffer.concat(chunks), 'latin1')))
       res.on('error', reject)
     }).on('error', reject)
+  })
+}
+
+function validateRow(reference: string, category: string, validCategories: Set<string>): boolean {
+  if (!reference) return false
+  if (category && !validCategories.has(category.toUpperCase())) return false
+  return true
+}
+
+function transformRow(row: Record<string, string>, remoteTimestamp: Date, now: Date): Record<string, unknown> | null {
+  const reference = (row['NU_REGISTRO_PRODUTO'] ?? '').trim()
+  const category = (row['DS_TIPO_CATEGORIA_REGULATORIA'] ?? '').trim()
+
+  if (!validateRow(reference, category, VALID_CATEGORIES)) return null
+
+  return {
+    reference,
+    activeIngredient: (row['SUBSTANCIAS_MEDICAMENTOS'] ?? '').trim(),
+    tradeName: (row['NO_PRODUTO'] ?? '').trim(),
+    similarHolder: (row['NO_RAZAO_SOCIAL_EMPRESA'] ?? '').trim(),
+    pharmaceuticalForm: (row['CO_FORMA_FISICA'] ?? '').trim(),
+    concentration: (row['COMPLEMENTO'] ?? '').trim(),
+    inclusionDate: (row['DATA_PUBLICACAO'] ?? '').trim().split(' ')[0],
+    category,
+    referenceMedicine: (row['DS_REFERENCIA'] ?? '').trim(),
+    atcCode: (row['CO_ATC'] ?? '').trim(),
+    prescriptionType: (row['CO_TARJA'] ?? '').trim(),
+    status: (row['VALIDADE_SITUACAO'] ?? '').trim(),
+    authorization: (row['AUTORIZACAO_MEDICAMENTO'] ?? '').trim(),
+    presentationCount: parseInt((row['NUMERO_APRESENTACOES'] ?? '').trim(), 10) || 0,
+    synonyms: (row['SINONIMOS'] ?? '').trim(),
+    indications: (row['INDICACOES'] ?? '').trim(),
+    anvisaFileDate: remoteTimestamp,
+    lastImportAt: now,
+  }
+}
+
+async function bulkReplaceMedicines(medicines: Array<Record<string, unknown>>) {
+  await prisma.medicine.deleteMany()
+
+  const batchSize = BATCH.MEDICINE_IMPORT
+  for (let i = 0; i < medicines.length; i += batchSize) {
+    const batch = medicines.slice(i, i + batchSize)
+    await prisma.medicine.createMany({ data: batch as never })
+  }
+}
+
+function fetchAndParseCSV(url: string) {
+  return downloadCSV(url).then(csvText => {
+    const rows = parseCSV(csvText)
+    if (rows.length === 0) throw new Error('CSV vazio ou inválido')
+    return rows
   })
 }
 
@@ -122,56 +176,20 @@ export async function syncWithAnvisa() {
       }
     }
 
-    const csvText = await downloadCSV(CSV_URL)
-
-    const rows = parseCSV(csvText)
-    if (rows.length === 0) {
-      return { success: false, error: 'CSV vazio ou inválido' }
-    }
-
+    const rows = await fetchAndParseCSV(CSV_URL)
     const now = new Date()
     const medicines: Array<Record<string, unknown>> = []
 
     for (const row of rows) {
-      const reference = (row['NU_REGISTRO_PRODUTO'] ?? '').trim()
-      if (!reference) continue
-
-      const category = (row['DS_TIPO_CATEGORIA_REGULATORIA'] ?? '').trim()
-      if (category && !VALID_CATEGORIES.has(category.toUpperCase())) continue
-
-      medicines.push({
-        reference,
-        activeIngredient: (row['SUBSTANCIAS_MEDICAMENTOS'] ?? '').trim(),
-        tradeName: (row['NO_PRODUTO'] ?? '').trim(),
-        similarHolder: (row['NO_RAZAO_SOCIAL_EMPRESA'] ?? '').trim(),
-        pharmaceuticalForm: (row['CO_FORMA_FISICA'] ?? '').trim(),
-        concentration: (row['COMPLEMENTO'] ?? '').trim(),
-        inclusionDate: (row['DATA_PUBLICACAO'] ?? '').trim().split(' ')[0],
-        category,
-        referenceMedicine: (row['DS_REFERENCIA'] ?? '').trim(),
-        atcCode: (row['CO_ATC'] ?? '').trim(),
-        prescriptionType: (row['CO_TARJA'] ?? '').trim(),
-        status: (row['VALIDADE_SITUACAO'] ?? '').trim(),
-        authorization: (row['AUTORIZACAO_MEDICAMENTO'] ?? '').trim(),
-        presentationCount: parseInt((row['NUMERO_APRESENTACOES'] ?? '').trim(), 10) || 0,
-        synonyms: (row['SINONIMOS'] ?? '').trim(),
-        indications: (row['INDICACOES'] ?? '').trim(),
-        anvisaFileDate: remoteTimestamp,
-        lastImportAt: now,
-      })
+      const medicine = transformRow(row, remoteTimestamp, now)
+      if (medicine) medicines.push(medicine)
     }
 
     if (medicines.length === 0) {
       return { success: false, error: 'Nenhum medicamento encontrado no CSV' }
     }
 
-    await prisma.medicine.deleteMany()
-
-    const batchSize = 500
-    for (let i = 0; i < medicines.length; i += batchSize) {
-      const batch = medicines.slice(i, i + batchSize)
-      await prisma.medicine.createMany({ data: batch as never })
-    }
+    await bulkReplaceMedicines(medicines)
 
     await prisma.syncLog.create({
       data: { type: 'medicines', count: medicines.length, status: 'success' },

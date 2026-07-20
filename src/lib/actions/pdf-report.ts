@@ -2,6 +2,7 @@
 
 import PdfPrinter from 'pdfmake'
 import { prisma } from '@/lib/prisma'
+import { PDF_COLORS } from '@/lib/constants'
 
 const fonts = {
   Helvetica: {
@@ -13,29 +14,25 @@ const fonts = {
 }
 
 const printer = new PdfPrinter(fonts)
-const GRAY = '#444444'
-const LIGHT = '#f5f5f5'
-const BLACK = '#222222'
+const GRAY = PDF_COLORS.TEXT_SECONDARY
+const LIGHT = PDF_COLORS.BG_STRIPE
+const BLACK = PDF_COLORS.TEXT_PRIMARY
 
-export async function generateMedicinePdf(id: number): Promise<Buffer> {
-  const med = await prisma.medicine.findUnique({ where: { id } })
-  if (!med) throw new Error('Medicamento não encontrado')
-
-  const prices = await prisma.price.findMany({
-    where: { reference: med.reference },
-    take: 10,
-    orderBy: { pf0Price: 'asc' },
-  })
-
-  const similares = med.referenceMedicine
-    ? await prisma.medicine.findMany({
-        where: { referenceMedicine: med.referenceMedicine, id: { not: med.id } },
-        take: 10,
-        orderBy: { tradeName: 'asc' },
-        select: { tradeName: true, similarHolder: true, status: true },
-      })
-    : []
-
+function buildMedicineInfoTable(med: {
+  reference: string
+  status: string | null
+  atcCode: string | null
+  prescriptionType: string | null
+  pharmaceuticalForm: string | null
+  concentration: string | null
+  similarHolder: string | null
+  presentationCount: number | null
+  category: string | null
+  authorization: string | null
+  inclusionDate: string | null
+  synonyms: string | null
+  indications: string | null
+}) {
   const infoRows: { label: string; value: string }[] = [
     { label: 'Referência', value: med.reference },
     { label: 'Situação', value: med.status === 'Ativo' || med.status === 'Inativo' ? `Registro ${med.status}` : med.status ?? '' },
@@ -52,11 +49,13 @@ export async function generateMedicinePdf(id: number): Promise<Buffer> {
   if (med.synonyms) infoRows.push({ label: 'Sinônimos', value: med.synonyms })
   if (med.indications) infoRows.push({ label: 'Indicações', value: med.indications })
 
-  const infoTableBody = infoRows.map(r => [
+  return infoRows.map(r => [
     { text: r.label, style: 'infoLabel' },
     { text: r.value, style: 'infoValue' },
   ])
+}
 
+function buildPriceTable(prices: { presentation: string; pf0Price: number | null; pf18Price: number | null }[]) {
   const priceHeader = [
     { text: 'Apresentação', style: 'tableHeader' },
     { text: 'PF0', style: 'tableHeader', alignment: 'right' as const },
@@ -68,6 +67,49 @@ export async function generateMedicinePdf(id: number): Promise<Buffer> {
     { text: p.pf0Price ? `R$ ${p.pf0Price.toFixed(2)}` : '-', style: 'cell', alignment: 'right' as const },
     { text: p.pf18Price ? `R$ ${p.pf18Price.toFixed(2)}` : '-', style: 'cell', alignment: 'right' as const },
   ])
+
+  return { priceHeader, priceBody }
+}
+
+function buildSimilarSection(similares: { tradeName: string; similarHolder: string | null; status: string | null }[], refName: string) {
+  return [
+    { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 495, y2: 0, lineWidth: 1, color: BLACK }], margin: [0, 0, 0, 10] },
+    { text: `Similares de ${refName}`, fontSize: 12, bold: true, margin: [0, 0, 0, 8] },
+    {
+      ul: similares.map(s => ({
+        text: `${s.tradeName} — ${s.similarHolder} (${s.status})`,
+        fontSize: 9,
+        margin: [0, 1, 0, 1],
+      })),
+      margin: [0, 0, 0, 14],
+    },
+  ]
+}
+
+function buildDocDefinition(
+  med: {
+    tradeName: string
+    activeIngredient: string
+    category: string | null
+    referenceMedicine: string | null
+    reference: string
+    status: string | null
+    atcCode: string | null
+    prescriptionType: string | null
+    pharmaceuticalForm: string | null
+    concentration: string | null
+    similarHolder: string | null
+    presentationCount: number | null
+    authorization: string | null
+    inclusionDate: string | null
+    synonyms: string | null
+    indications: string | null
+  },
+  prices: { presentation: string; pf0Price: number | null; pf18Price: number | null }[],
+  similares: { tradeName: string; similarHolder: string | null; status: string | null }[]
+) {
+  const infoTableBody = buildMedicineInfoTable(med)
+  const { priceHeader, priceBody } = buildPriceTable(prices)
 
   const content: unknown[] = [
     { text: med.tradeName, fontSize: 22, bold: true, margin: [0, 0, 0, 4] },
@@ -110,24 +152,13 @@ export async function generateMedicinePdf(id: number): Promise<Buffer> {
       },
     ] : []),
 
-    ...(similares.length > 0 ? [
-      { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 495, y2: 0, lineWidth: 1, color: BLACK }], margin: [0, 0, 0, 10] },
-      { text: `Similares de ${med.referenceMedicine || med.reference}`, fontSize: 12, bold: true, margin: [0, 0, 0, 8] },
-      {
-        ul: similares.map(s => ({
-          text: `${s.tradeName} — ${s.similarHolder} (${s.status})`,
-          fontSize: 9,
-          margin: [0, 1, 0, 1],
-        })),
-        margin: [0, 0, 0, 14],
-      },
-    ] : []),
+    ...(similares.length > 0 ? buildSimilarSection(similares, med.referenceMedicine || med.reference) : []),
 
-    { text: `Fonte: Dados Abertos ANVISA — dados.anvisa.gov.br`, fontSize: 7, color: GRAY, margin: [0, 30, 0, 0] },
+    { text: 'Fonte: Dados Abertos ANVISA — dados.anvisa.gov.br', fontSize: 7, color: GRAY, margin: [0, 30, 0, 0] },
   ]
 
-  const docDefinition = {
-    pageSize: 'A4',
+  return {
+    pageSize: 'A4' as const,
     pageMargins: [50, 50, 50, 50],
     info: {
       title: `${med.tradeName} — Unificando Med`,
@@ -178,7 +209,28 @@ export async function generateMedicinePdf(id: number): Promise<Buffer> {
       color: BLACK,
     },
   }
+}
 
+export async function generateMedicinePdf(id: number): Promise<Buffer> {
+  const med = await prisma.medicine.findUnique({ where: { id } })
+  if (!med) throw new Error('Medicamento não encontrado')
+
+  const prices = await prisma.price.findMany({
+    where: { reference: med.reference },
+    take: 10,
+    orderBy: { pf0Price: 'asc' },
+  })
+
+  const similares = med.referenceMedicine
+    ? await prisma.medicine.findMany({
+        where: { referenceMedicine: med.referenceMedicine, id: { not: med.id } },
+        take: 10,
+        orderBy: { tradeName: 'asc' },
+        select: { tradeName: true, similarHolder: true, status: true },
+      })
+    : []
+
+  const docDefinition = buildDocDefinition(med, prices, similares)
   const pdfDoc = printer.createPdfKitDocument(docDefinition, {})
 
   return new Promise<Buffer>((resolve, reject) => {

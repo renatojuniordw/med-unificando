@@ -12,7 +12,7 @@ export function useRecentSearches() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
       if (stored) setRecent(JSON.parse(stored))
-    } catch { /* ignorar */ }
+    } catch { console.warn('Failed to read recent searches from localStorage') }
   }, [])
 
   const add = useCallback((query: string) => {

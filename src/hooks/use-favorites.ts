@@ -11,7 +11,7 @@ export function useFavorites() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
       if (stored) setFavorites(JSON.parse(stored))
-    } catch { /* ignorar */ }
+    } catch { console.warn('Failed to read favorites from localStorage') }
   }, [])
 
   const persist = useCallback((ids: number[]) => {

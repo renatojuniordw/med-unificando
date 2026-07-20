@@ -23,7 +23,7 @@ export interface ParsedMedicine {
   inclusionDate: string
 }
 
-function parseLine(line: string): ParsedMedicine | null {
+function parseMedicineLine(line: string): ParsedMedicine | null {
   const regMatch = line.match(/(\d{9})/)
   if (!regMatch) return null
 
@@ -84,7 +84,7 @@ export async function parseMedicinePDF(buffer: Buffer): Promise<ParsedMedicine[]
 
   for (let i = 1; i < lines.length; i++) {
     if (lines[i].startsWith('FÁRMACO')) continue
-    const parsed = parseLine(lines[i])
+    const parsed = parseMedicineLine(lines[i])
     if (parsed && parsed.activeIngredient) {
       results.push(parsed)
     }
