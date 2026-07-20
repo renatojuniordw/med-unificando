@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { STORAGE_KEYS } from '@/lib/constants'
 
 function loadFavorites(): number[] {
@@ -19,7 +19,13 @@ function saveFavorites(ids: number[]) {
 }
 
 export function useFavorites() {
-  const [favorites, setFavorites] = useState<number[]>(loadFavorites)
+  const [favorites, setFavorites] = useState<number[]>([])
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    setFavorites(loadFavorites()) // eslint-disable-line react-hooks/set-state-in-effect
+    setLoaded(true) // eslint-disable-line react-hooks/set-state-in-effect
+  }, [])
 
   const toggle = useCallback((id: number) => {
     setFavorites(prev => {
@@ -33,5 +39,5 @@ export function useFavorites() {
 
   const isFavorite = useCallback((id: number) => favorites.includes(id), [favorites])
 
-  return { favorites, toggle, isFavorite }
+  return { favorites: loaded ? favorites : [], toggle, isFavorite }
 }

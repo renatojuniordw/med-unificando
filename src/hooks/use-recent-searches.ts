@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { STORAGE_KEYS } from '@/lib/constants'
 
 const MAX_ITEMS = 5
@@ -21,7 +21,13 @@ function saveRecent(items: string[]) {
 }
 
 export function useRecentSearches() {
-  const [recent, setRecent] = useState<string[]>(loadRecent)
+  const [recent, setRecent] = useState<string[]>([])
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    setRecent(loadRecent())
+    setLoaded(true)
+  }, [])
 
   const add = useCallback((query: string) => {
     const trimmed = query.trim()
@@ -33,5 +39,5 @@ export function useRecentSearches() {
     })
   }, [])
 
-  return { recent, add }
+  return { recent: loaded ? recent : [], add }
 }
