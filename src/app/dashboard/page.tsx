@@ -3,6 +3,16 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DashboardFilters } from '@/components/dashboard/dashboard-filters'
 import { Suspense } from 'react'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: "Dashboard",
+  description: "Estatísticas consolidadas da base de medicamentos ANVISA. Filtros por ano, categoria e situação.",
+  openGraph: {
+    title: "Dashboard — Unificando Med",
+    description: "Estatísticas consolidadas da base de medicamentos ANVISA.",
+  },
+}
 
 async function DashboardStats() {
   const stats = await getDashboardStats()

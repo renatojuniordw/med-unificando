@@ -4,6 +4,16 @@ import { ReferenceSearch } from '@/components/medicines/reference-search'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { ReferenceItem } from '@/components/medicines/reference-search'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: "Medicamentos de Referência",
+  description: "Consulte todos os medicamentos de referência e seus similares conforme lista ANVISA.",
+  openGraph: {
+    title: "Medicamentos de Referência — Unificando Med",
+    description: "Consulte medicamentos de referência e seus similares ANVISA.",
+  },
+}
 
 async function ReferenceSearchContainer() {
   const refs = await getReferenceMedicines()

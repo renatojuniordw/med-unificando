@@ -4,6 +4,16 @@ import { SearchForm } from '@/components/medicines/search-form'
 import { MedicineTable } from '@/components/medicines/medicine-table'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: "Busca Avançada",
+  description: "Filtre por referência, princípio ativo, nome comercial ou categoria e navegue pela base completa de medicamentos ANVISA.",
+  openGraph: {
+    title: "Busca Avançada — Med Unificando",
+    description: "Filtre e navegue pela base completa de medicamentos intercambiáveis ANVISA.",
+  },
+}
 
 export default async function BuscaAvancadaPage() {
   const initialData = await searchMedicines(1, 10)

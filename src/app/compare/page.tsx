@@ -1,6 +1,16 @@
 import { Suspense } from 'react'
 import { CompareView } from '@/components/medicines/compare-view'
 import { Skeleton } from '@/components/ui/skeleton'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: "Comparar Medicamentos",
+  description: "Compare medicamentos lado a lado. Veja diferenças em referência, princípio ativo, categoria e mais.",
+  openGraph: {
+    title: "Comparar Medicamentos — Unificando Med",
+    description: "Compare medicamentos lado a lado.",
+  },
+}
 
 export default function ComparePage() {
   return (

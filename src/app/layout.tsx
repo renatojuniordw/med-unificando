@@ -18,18 +18,59 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "Unificando Med — Medicamentos Intercambiáveis",
-    template: "%s | Unificando Med",
+    default: "Med Unificando — Medicamentos Intercambiáveis",
+    template: "%s | Med Unificando",
   },
   description:
-    "Consulte medicamentos similares e seus respectivos medicamentos de referência conforme lista ANVISA.",
+    "Consulte medicamentos similares e seus respectivos medicamentos de referência conforme lista ANVISA. Busca semântica com IA local, preços CMED, classificação ATC e comparação lado a lado.",
+  keywords: [
+    "medicamentos", "ANVISA", "intercambiáveis", "similares", "referência",
+    "princípio ativo", "preços CMED", "classificação ATC", "medicamento similar",
+    "consulta medicamento", "lista ANVISA", "RDC 58/2014",
+  ],
+  authors: [{ name: "Renato Bezerra", url: "https://renatobezerra.com.br" }],
+  creator: "Renato Bezerra",
+  publisher: "Unificando",
   openGraph: {
-    title: "Unificando Med — Medicamentos Intercambiáveis",
+    title: "Med Unificando — Medicamentos Intercambiáveis",
     description:
-      "Consulte medicamentos similares e seus respectivos medicamentos de referência conforme dados abertos ANVISA.",
+      "Consulte medicamentos similares e seus respectivos medicamentos de referência conforme dados abertos ANVISA. Busca semântica com IA, preços CMED e comparação.",
     type: "website",
     locale: "pt_BR",
-    siteName: "Unificando Med",
+    siteName: "Med Unificando",
+    url: "https://medicamentos.unificando.com.br",
+    images: [
+      {
+        url: "https://medicamentos.unificando.com.br/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Med Unificando — Medicamentos Intercambiáveis ANVISA",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Med Unificando — Medicamentos Intercambiáveis",
+    description:
+      "Consulte medicamentos similares conforme dados abertos ANVISA. Busca semântica com IA local.",
+    images: ["https://medicamentos.unificando.com.br/og-image.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  alternates: {
+    canonical: "https://medicamentos.unificando.com.br",
+    languages: {
+      "pt-BR": "https://medicamentos.unificando.com.br",
+    },
   },
 };
 
@@ -43,6 +84,41 @@ export default function RootLayout({
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#ffffff" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="apple-touch-icon" href="/icon-192.svg" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              name: "Med Unificando",
+              alternateName: "Med Unificandoicamentos",
+              url: "https://medicamentos.unificando.com.br",
+              description: "Consulta de medicamentos intercambiáveis ANVISA com busca semântica por IA local",
+              publisher: {
+                "@type": "Organization",
+                name: "Unificando",
+                url: "https://unificando.com.br",
+                logo: "https://unificando.com.br/logo.png",
+              },
+              author: {
+                "@type": "Person",
+                name: "Renato Bezerra",
+                url: "https://renatobezerra.com.br",
+              },
+              inLanguage: "pt-BR",
+              potentialAction: {
+                "@type": "SearchAction",
+                target: {
+                  "@type": "EntryPoint",
+                  urlTemplate: "https://medicamentos.unificando.com.br/buscar-avancado?reference={search_term_string}",
+                },
+                "query-input": "required name=search_term_string",
+              },
+            }),
+          }}
+        />
       </head>
       <body className="antialiased min-h-screen flex flex-col">
         <ThemeProvider>

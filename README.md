@@ -1,4 +1,4 @@
-# Unificando Med
+# Med Unificando
 
 Consulta inteligente de medicamentos intercambiáveis da ANVISA com busca semântica por IA local.
 

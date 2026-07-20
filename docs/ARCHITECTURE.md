@@ -2,7 +2,7 @@
 
 ## Visão Geral
 
-Unificando Med é uma aplicação Next.js 16 (App Router) com PostgreSQL que consome dados abertos da ANVISA para fornecer consulta inteligente de medicamentos intercambiáveis brasileiros.
+Med Unificando é uma aplicação Next.js 16 (App Router) com PostgreSQL que consome dados abertos da ANVISA para fornecer consulta inteligente de medicamentos intercambiáveis brasileiros.
 
 ```
 ┌─────────────┐     ┌──────────────┐     ┌─────────────┐

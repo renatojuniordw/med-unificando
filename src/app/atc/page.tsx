@@ -3,6 +3,16 @@ import { getAtcLevels } from '@/lib/actions/atc'
 import { AtcTree } from '@/components/medicines/atc-tree'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: "Classificação ATC",
+  description: "Explore medicamentos por classificação Anatômica, Terapêutica e Química (ATC). Navegue pela árvore de códigos ATC.",
+  openGraph: {
+    title: "Classificação ATC — Unificando Med",
+    description: "Explore medicamentos por classificação Anatômica, Terapêutica e Química.",
+  },
+}
 
 async function AtcTreeContainer() {
   const levels = await getAtcLevels()

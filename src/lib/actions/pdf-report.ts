@@ -161,14 +161,14 @@ function buildDocDefinition(
     pageSize: 'A4' as const,
     pageMargins: [50, 50, 50, 50],
     info: {
-      title: `${med.tradeName} — Unificando Med`,
-      author: 'Unificando Med',
+      title: `${med.tradeName} — Med Unificando`,
+      author: 'Med Unificando',
       subject: 'Relatório de Medicamento',
     },
     header: () => ({
       margin: [50, 15, 50, 0],
       columns: [
-        { text: 'UNIFICANDO MED', fontSize: 12, bold: true, width: '*', color: BLACK },
+        { text: 'Med Unificando', fontSize: 12, bold: true, width: '*', color: BLACK },
         { text: 'Relatório de Medicamento', fontSize: 7, color: GRAY, alignment: 'right', width: 'auto', margin: [0, 4, 0, 0] },
       ],
       columnGap: 10,

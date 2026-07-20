@@ -1,13 +1,13 @@
-# Design System — Unificando Med
+# Design System — Med Unificando
 
-> Documento de referência visual e de desenvolvimento para o **Unificando Med**,
+> Documento de referência visual e de desenvolvimento para o **Med Unificando**,
 > plataforma de consulta de medicamentos intercambiáveis.
 
 ---
 
 ## 0. Filosofia de Design — Healthcare Moderno
 
-O design do Unificando Med adota uma identidade visual própria da marca Unificando
+O design do Med Unificando adota uma identidade visual própria da marca Unificando
 (**amarelo neon** como acento, **preto** como cor primária), porém adaptada para o
 contexto de saúde — priorizando **clareza, confiança e acessibilidade** em vez do
 impacto visual do Brutalismo puro usado em outros projetos da marca.

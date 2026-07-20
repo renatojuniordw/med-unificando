@@ -16,7 +16,7 @@ export function Footer() {
               Unificando
             </a>
             <span className="text-xs text-[var(--color-text-secondary)]">
-              © 2025 Unificando Med
+              © 2025 Med Unificando
             </span>
           </div>
         </div>

@@ -39,7 +39,7 @@ export function ConsoleCredits() {
       'font-family: monospace',
     ].join(';')
 
-    console.log('%c UNIFICANDO MED ', titleStyle)
+    console.log('%c Med Unificando ', titleStyle)
     console.log(
       '%c👋 Medicamentos Intercambiáveis — ANVISA',
       subTitleStyle

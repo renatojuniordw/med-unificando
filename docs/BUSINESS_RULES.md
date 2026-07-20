@@ -88,7 +88,7 @@ Os filtros recalculam totais, top 10 medicamentos e top 10 princípios ativos em
 ## 9. Relatório PDF
 
 Cada medicamento possui um botão "Baixar PDF" que gera um relatório server-side com:
-- Cabeçalho com a marca (Unificando Med)
+- Cabeçalho com a marca (Med Unificando)
 - Informações completas do medicamento em grid 2 colunas
 - Medicamento de referência (se houver)
 - Tabela de preços CMED

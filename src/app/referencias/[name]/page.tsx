@@ -4,6 +4,20 @@ import { SimilarMedicinesList } from '@/components/medicines/similar-medicines-l
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { MedicineResult } from '@/types'
+import type { Metadata } from 'next'
+
+export async function generateMetadata({ params }: { params: Promise<{ name: string }> }): Promise<Metadata> {
+  const { name } = await params
+  const decodedName = decodeURIComponent(name)
+  return {
+    title: `${decodedName} — Similares`,
+    description: `Medicamentos similares ao ${decodedName}. Veja todos os medicamentos intercambiáveis com este medicamento de referência.`,
+    openGraph: {
+      title: `${decodedName} — Similares | Unificando Med`,
+      description: `Medicamentos similares ao ${decodedName}.`,
+    },
+  }
+}
 
 export default async function ReferenceDetailPage({ params }: { params: Promise<{ name: string }> }) {
   const { name } = await params

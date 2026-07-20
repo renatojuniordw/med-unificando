@@ -5,7 +5,7 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Sobre',
-  description: 'Informações sobre o Unificando Med, fontes de dados e metodologia.',
+  description: 'Informações sobre o Med Unificando, fontes de dados e metodologia.',
 }
 
 export default function AboutPage() {
@@ -17,7 +17,7 @@ export default function AboutPage() {
         <div className="mb-12">
           <Badge variant="primary" className="mb-4">Sobre</Badge>
           <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-[var(--color-text)]">
-            Unificando Med
+            Med Unificando
           </h1>
         </div>
 
@@ -25,7 +25,7 @@ export default function AboutPage() {
           <Card>
             <h2 className="font-semibold text-lg mb-3">O que é</h2>
             <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed">
-              O Unificando Med é uma plataforma de consulta de medicamentos intercambiáveis
+              O Med Unificando é uma plataforma de consulta de medicamentos intercambiáveis
               baseada na lista oficial da ANVISA (Agência Nacional de Vigilância Sanitária),
               conforme a RDC 58/2014.
             </p>
@@ -98,7 +98,7 @@ export default function AboutPage() {
           <Card>
             <h2 className="font-semibold text-lg mb-3">Um projeto Unificando</h2>
             <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed">
-              O Unificando Med faz parte do ecossistema Unificando, um laboratório
+              O Med Unificando faz parte do ecossistema Unificando, um laboratório
               de projetos autorais e inteligência artificial. Conheça mais em
               {' '}<a href="https://unificando.com.br" target="_blank" rel="noopener noreferrer"
                 className="text-[var(--color-text)] underline hover:text-brand-yellow transition-colors">

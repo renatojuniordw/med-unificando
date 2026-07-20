@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const med = await prisma.medicine.findUnique({ where: { id: parseInt(id) } })
   if (!med) return { title: 'Medicamento não encontrado' }
 
-  const title = `${med.tradeName} — ${med.activeIngredient} | Unificando Med`
+  const title = `${med.tradeName} — ${med.activeIngredient} | Med Unificando`
   const description = `${med.tradeName} (${med.activeIngredient}) — ${med.category || 'Medicamento'} ${med.status === 'Ativo' ? 'com registro ativo' : 'com registro inativo'} na ANVISA. ${med.similarHolder}.`
 
   return {
@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       title,
       description,
       type: 'article',
-      siteName: 'Unificando Med',
+      siteName: 'Med Unificando',
       locale: 'pt_BR',
     },
   }

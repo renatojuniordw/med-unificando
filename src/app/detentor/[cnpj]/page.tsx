@@ -4,6 +4,20 @@ import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { StatusPill } from '@/components/ui/status-pill'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import type { Metadata } from 'next'
+
+export async function generateMetadata({ params }: { params: Promise<{ cnpj: string }> }): Promise<Metadata> {
+  const { cnpj } = await params
+  const decoded = decodeURIComponent(cnpj)
+  return {
+    title: `${decoded} — Detentor de Registro`,
+    description: `Medicamentos do detentor de registro ${decoded}. Consulte todos os medicamentos e similares.`,
+    openGraph: {
+      title: `${decoded} — Detentor de Registro | Unificando Med`,
+      description: `Medicamentos do detentor de registro ${decoded}.`,
+    },
+  }
+}
 
 export default async function HolderPage({ params }: { params: Promise<{ cnpj: string }> }) {
   const { cnpj } = await params

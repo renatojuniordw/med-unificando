@@ -3,6 +3,20 @@ import { Badge } from '@/components/ui/badge'
 import { StatusPill } from '@/components/ui/status-pill'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import type { Metadata } from 'next'
+
+export async function generateMetadata({ params }: { params: Promise<{ code: string }> }): Promise<Metadata> {
+  const { code } = await params
+  const decoded = decodeURIComponent(code).toUpperCase()
+  return {
+    title: `ATC ${decoded}`,
+    description: `Medicamentos com classificação ATC ${decoded}. Veja todos os medicamentos deste código.`,
+    openGraph: {
+      title: `ATC ${decoded} — Unificando Med`,
+      description: `Medicamentos com classificação ATC ${decoded}.`,
+    },
+  }
+}
 
 export default async function AtcCodePage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params
