@@ -2,6 +2,7 @@ import { getDashboardStats } from '@/lib/actions/search'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { DashboardFilters } from '@/components/dashboard/dashboard-filters'
 import { Suspense } from 'react'
 
 async function DashboardStats() {
@@ -9,143 +10,21 @@ async function DashboardStats() {
 
   return (
     <div className="space-y-12">
-      <div className="grid md:grid-cols-4 gap-8">
-        <Card>
-          <p className="text-[10px] font-black uppercase tracking-widest text-brutalist-black mb-2">
-            TOTAL DE MEDICAMENTOS
-          </p>
-          <p className="text-5xl font-black tracking-tighter text-brutalist-black">
-            {stats.totalMedicines.toLocaleString()}
-          </p>
-        </Card>
-
-        <Card>
-          <p className="text-[10px] font-black uppercase tracking-widest text-brutalist-black mb-2">
-            MEDICAMENTOS DISTINTOS
-          </p>
-          <p className="text-5xl font-black tracking-tighter text-brutalist-black">
-            {stats.totalReferences.toLocaleString()}
-          </p>
-        </Card>
-
-        <Card variant="active">
-          <p className="text-[10px] font-black uppercase tracking-widest text-brutalist-black mb-2">
-            ATIVOS
-          </p>
-          <p className="text-5xl font-black tracking-tighter text-success-green">
-            {stats.ativoCount.toLocaleString()}
-          </p>
-        </Card>
-
-        <Card variant="inactive">
-          <p className="text-[10px] font-black uppercase tracking-widest text-brutalist-black mb-2">
-            INATIVOS
-          </p>
-          <p className="text-5xl font-black tracking-tighter text-error-red">
-            {stats.inativoCount.toLocaleString()}
-          </p>
-        </Card>
-      </div>
-
-      <div className="grid md:grid-cols-3 gap-8">
-        <div className="border-4 border-brutalist-black bg-white shadow-hard-lg p-8">
-          <Badge variant="secondary" className="mb-4">
-            TOP 10 MEDICAMENTOS
-          </Badge>
-          <div className="space-y-2">
-            {stats.topReferences.map((item) => {
-              const maxCount = stats.topReferences[0]?.count || 1
-              const width = (item.count / maxCount) * 100
-              return (
-                <div key={item.name}>
-                  <div className="flex justify-between text-xs font-bold uppercase mb-1">
-                    <span className="truncate mr-2">{item.name}</span>
-                    <span>{item.count}</span>
-                  </div>
-                  <div className="h-6 border-2 border-brutalist-black bg-white">
-                    <div
-                      className="h-full bg-neon-yellow border-r-2 border-brutalist-black"
-                      style={{ width: `${width}%` }}
-                    />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        <div className="border-4 border-brutalist-black bg-white shadow-hard-lg p-8">
-          <Badge variant="secondary" className="mb-4">
-            TOP 10 PRINCÍPIOS ATIVOS
-          </Badge>
-          <div className="space-y-2">
-            {stats.topActiveIngredients.map((item) => {
-              const maxCount = stats.topActiveIngredients[0]?.count || 1
-              const width = (item.count / maxCount) * 100
-              return (
-                <div key={item.name}>
-                  <div className="flex justify-between text-xs font-bold uppercase mb-1">
-                    <span className="truncate mr-2">{item.name}</span>
-                    <span>{item.count}</span>
-                  </div>
-                  <div className="h-6 border-2 border-brutalist-black bg-white">
-                    <div
-                      className="h-full bg-brutalist-black border-r-2 border-brutalist-black"
-                      style={{ width: `${width}%` }}
-                    />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        <div className="border-4 border-brutalist-black bg-white shadow-hard-lg p-8">
-          <Badge variant="secondary" className="mb-4">
-            CATEGORIAS
-          </Badge>
-          <div className="space-y-2">
-            {stats.categories.map((item) => {
-              const maxCount = stats.categories[0]?.count || 1
-              const width = (item.count / maxCount) * 100
-              return (
-                <div key={item.name}>
-                  <div className="flex justify-between text-xs font-bold uppercase mb-1">
-                    <span className="truncate mr-2">{item.name || 'Sem categoria'}</span>
-                    <span>{item.count}</span>
-                  </div>
-                  <div className="h-6 border-2 border-brutalist-black bg-white">
-                    <div className="h-full bg-neon-yellow border-r-2 border-brutalist-black" style={{ width: `${width}%` }} />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-
-      <div className="border-4 border-brutalist-black bg-white shadow-hard-lg p-8">
-        <Badge variant="secondary" className="mb-4">
-          TIMELINE — REGISTROS POR ANO
-        </Badge>
-        <div className="space-y-1 max-h-80 overflow-y-auto">
-          {stats.timeline.map((item) => {
-            const maxCount = stats.timeline[0]?.count || 1
-            const width = (item.count / maxCount) * 100
-            return (
-              <div key={item.year}>
-                <div className="flex justify-between text-[10px] font-bold uppercase mb-0.5">
-                  <span>{item.year}</span>
-                  <span>{item.count}</span>
-                </div>
-                <div className="h-4 border-2 border-brutalist-black bg-white">
-                  <div className="h-full bg-brutalist-black" style={{ width: `${width}%` }} />
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
+      <DashboardFilters
+        availableYears={stats.availableYears}
+        categories={stats.categories.map(c => c.name)}
+        initialStats={{
+          totalMedicines: stats.totalMedicines,
+          totalReferences: stats.totalReferences,
+          ativoCount: stats.ativoCount,
+          inativoCount: stats.inativoCount,
+          topReferences: stats.topReferences,
+          topActiveIngredients: stats.topActiveIngredients,
+          categories: stats.categories,
+          timeline: stats.timeline,
+          availableYears: stats.availableYears,
+        }}
+      />
     </div>
   )
 }

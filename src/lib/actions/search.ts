@@ -136,5 +136,52 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     inativoCount,
     categories: groupByCategory,
     timeline,
+    availableYears: timeline.map(t => t.year),
   }
+}
+
+export interface FilteredStats {
+  total: number
+  ativos: number
+  inativos: number
+  topTrade: { name: string; count: number }[]
+  topIngredient: { name: string; count: number }[]
+}
+
+export async function getFilteredStats(filters: { year?: string; category?: string; status?: string }): Promise<FilteredStats> {
+  const where: Record<string, unknown> = {}
+  if (filters.category) where.category = filters.category
+  if (filters.status) where.status = filters.status
+
+  const raw = await prisma.medicine.findMany({
+    where,
+    select: { inclusionDate: true, tradeName: true, activeIngredient: true, status: true },
+  })
+
+  let filtered = raw
+  if (filters.year) {
+    filtered = raw.filter(m => m.inclusionDate?.endsWith(filters.year!))
+  }
+
+  const total = filtered.length
+  const ativos = filtered.filter(m => m.status === 'Ativo').length
+
+  const tradeCount: Record<string, number> = {}
+  const ingredientCount: Record<string, number> = {}
+  for (const m of filtered) {
+    tradeCount[m.tradeName] = (tradeCount[m.tradeName] || 0) + 1
+    ingredientCount[m.activeIngredient] = (ingredientCount[m.activeIngredient] || 0) + 1
+  }
+
+  const topTrade = Object.entries(tradeCount)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([name, count]) => ({ name, count }))
+
+  const topIngredient = Object.entries(ingredientCount)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([name, count]) => ({ name, count }))
+
+  return { total, ativos, inativos: total - ativos, topTrade, topIngredient }
 }

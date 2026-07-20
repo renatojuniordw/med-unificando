@@ -28,7 +28,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["xlsx", "pdf-parse", "iconv-lite"],
+  serverExternalPackages: ["xlsx", "pdf-parse", "iconv-lite", "pdfmake"],
 
   async headers() {
     return [

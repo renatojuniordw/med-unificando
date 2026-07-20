@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { ClipboardButton } from '@/components/ui/clipboard-button'
+import { PdfDownloadButton } from '@/components/ui/pdf-download-button'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
@@ -83,7 +84,7 @@ export default async function MedicineDetailPage({ params }: { params: Promise<{
     { label: 'Última Importação', value: med.lastImportAt?.toLocaleString('pt-BR') ?? null },
   ]
 
-  const bulaUrl = `https://consultas.anvisa.gov.br/#/medicamento/${med.reference}/`
+  const bulaSearchUrl = 'https://consultas.anvisa.gov.br/#/medicamento/'
 
   return (
     <section className="py-12 md:py-20 bg-neon-yellow min-h-screen border-b-8 border-brutalist-black">
@@ -127,13 +128,14 @@ export default async function MedicineDetailPage({ params }: { params: Promise<{
 
         <div className="flex gap-3 mb-8 flex-wrap">
           <a
-            href={bulaUrl}
+            href={bulaSearchUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-block border-4 border-brutalist-black bg-white px-6 py-3 font-black uppercase text-xs tracking-widest hover:bg-neon-yellow transition-colors"
           >
-            📄 BULA ELETRÔNICA
+            🔍 CONSULTAR NA ANVISA
           </a>
+          <PdfDownloadButton medicineId={med.id} />
         </div>
 
         {med.referenceMedicine && (

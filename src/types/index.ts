@@ -50,6 +50,7 @@ export interface DashboardStats {
   inativoCount: number
   categories: { name: string; count: number }[]
   timeline: { year: string; count: number }[]
+  availableYears: string[]
 }
 
 export interface ImportInfo {
