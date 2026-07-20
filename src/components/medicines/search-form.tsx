@@ -41,7 +41,7 @@ export function SearchForm({ references, activeIngredients, tradeNames, categori
     setTradeName('')
     setCategory('')
     setStatus('')
-    router.push('/')
+    router.push('/buscar-avancado')
   }
 
   function handleAutocomplete(value: string, field: string, options: { value: string }[]) {
@@ -66,12 +66,18 @@ export function SearchForm({ references, activeIngredients, tradeNames, categori
   function renderAutocomplete(field: string) {
     if (suggestions.field !== field || suggestions.items.length === 0) return null
     return (
-      <div className="absolute z-10 w-full bg-white border-4 border-brutalist-black shadow-hard-md mt-1">
+      <div
+        className="absolute z-10 w-full bg-[var(--color-bg)] border border-border rounded-sm shadow-dropdown mt-1"
+        role="listbox"
+        aria-label={`Sugestões de ${field}`}
+      >
         {suggestions.items.map((item, i) => (
           <button
             key={i}
             type="button"
-            className="block w-full text-left px-4 py-3 font-medium text-sm hover:bg-neon-yellow hover:text-brutalist-black transition-colors border-b-2 border-brutalist-black last:border-b-0"
+            role="option"
+            aria-selected={false}
+            className="block w-full text-left px-4 py-2.5 text-sm text-[var(--color-text)] hover:bg-brand-yellow/10 transition-colors border-b border-border last:border-b-0"
             onMouseDown={() => selectSuggestion(item, field)}
           >
             {item}
@@ -86,7 +92,7 @@ export function SearchForm({ references, activeIngredients, tradeNames, categori
       <div className="grid md:grid-cols-4 gap-4 mb-6">
         <div className="relative">
           <Input
-            label="REFERÊNCIA"
+            label="Referência"
             placeholder="Digite o medicamento de referência..."
             value={reference}
             onChange={(e) => {
@@ -95,13 +101,14 @@ export function SearchForm({ references, activeIngredients, tradeNames, categori
             }}
             onBlur={() => setTimeout(() => setSuggestions({ field: '', items: [] }), 200)}
             onFocus={() => reference && handleAutocomplete(reference, 'reference', references)}
+            aria-autocomplete="list"
           />
           {renderAutocomplete('reference')}
         </div>
 
         <div className="relative">
           <Input
-            label="PRINCÍPIO ATIVO"
+            label="Princípio Ativo"
             placeholder="Digite o princípio ativo..."
             value={activeIngredient}
             onChange={(e) => {
@@ -110,13 +117,14 @@ export function SearchForm({ references, activeIngredients, tradeNames, categori
             }}
             onBlur={() => setTimeout(() => setSuggestions({ field: '', items: [] }), 200)}
             onFocus={() => activeIngredient && handleAutocomplete(activeIngredient, 'activeIngredient', activeIngredients)}
+            aria-autocomplete="list"
           />
           {renderAutocomplete('activeIngredient')}
         </div>
 
         <div className="relative">
           <Input
-            label="NOME COMERCIAL"
+            label="Nome Comercial"
             placeholder="Digite o nome comercial..."
             value={tradeName}
             onChange={(e) => {
@@ -125,20 +133,21 @@ export function SearchForm({ references, activeIngredients, tradeNames, categori
             }}
             onBlur={() => setTimeout(() => setSuggestions({ field: '', items: [] }), 200)}
             onFocus={() => tradeName && handleAutocomplete(tradeName, 'tradeName', tradeNames)}
+            aria-autocomplete="list"
           />
           {renderAutocomplete('tradeName')}
         </div>
 
         <div>
-          <label className="block text-[10px] font-black uppercase tracking-widest text-brutalist-black mb-2">
-            CATEGORIA
+          <label className="block text-xs font-semibold text-muted mb-1.5">
+            Categoria
           </label>
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="w-full border-4 border-brutalist-black bg-white p-3 font-bold uppercase text-sm cursor-pointer"
+            className="w-full border border-border rounded-sm p-3 text-sm text-[var(--color-text)] bg-[var(--color-bg)]"
           >
-            <option value="">TODAS</option>
+            <option value="">Todas</option>
             {categories?.map(c => (
               <option key={c.value} value={c.value}>{c.value}</option>
             ))}
@@ -147,7 +156,7 @@ export function SearchForm({ references, activeIngredients, tradeNames, categori
       </div>
 
       <div className="flex items-center gap-3 mb-6">
-        <span className="text-[10px] font-black uppercase tracking-widest text-brutalist-black">SITUAÇÃO:</span>
+        <span className="text-xs font-semibold text-muted">Situação:</span>
         {['', 'Ativo', 'Inativo'].map(s => (
           <button
             key={s}
@@ -160,23 +169,23 @@ export function SearchForm({ references, activeIngredients, tradeNames, categori
               params.set('page', '1')
               router.push(`?${params.toString()}`)
             }}
-            className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest border-4 transition-all ${
+            className={`px-3 py-1.5 text-xs font-medium rounded-sm border transition-colors ${
               status === s
-                ? 'bg-brutalist-black text-neon-yellow border-brutalist-black'
-                : 'bg-white text-brutalist-black border-brutalist-black hover:bg-neon-yellow'
+                ? 'bg-brand-black text-white border-brand-black'
+                : 'bg-[var(--color-bg)] text-muted border-border hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)]'
             }`}
           >
-            {s || 'TODOS'}
+            {s || 'Todos'}
           </button>
         ))}
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex gap-3">
         <Button type="submit" variant="primary">
-          FILTRAR
+          Filtrar
         </Button>
         <Button type="button" variant="ghost" onClick={handleReset}>
-          LIMPAR
+          Limpar
         </Button>
       </div>
     </form>

@@ -27,7 +27,7 @@ export function SimilarMedicinesList({ medicines }: SimilarMedicinesListProps) {
     <div>
       <div className="mb-6">
         <Input
-          label="FILTRAR NESTA LISTA"
+          label="Filtrar nesta lista"
           placeholder="Nome comercial, princípio ativo ou detentor..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -36,26 +36,30 @@ export function SimilarMedicinesList({ medicines }: SimilarMedicinesListProps) {
 
       <div className="space-y-3">
         {filtered.length === 0 ? (
-          <p className="font-bold uppercase text-sm">Nenhum medicamento encontrado para esse filtro.</p>
+          <p className="font-medium text-sm text-[var(--color-text)]">Nenhum medicamento encontrado para esse filtro.</p>
         ) : (
           filtered.map(med => (
             <Link
               key={med.id}
               href={`/medicamento/${med.id}`}
-              className="block border-4 border-brutalist-black bg-white p-4 hover:bg-neon-yellow hover:-translate-y-1 hover:shadow-hard-lg transition-all"
+              className="block border border-border rounded-sm bg-[var(--color-bg)] p-4 hover:bg-brand-yellow/10 hover:border-brand-yellow transition-all"
             >
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
                 <div>
-                  <span className="font-black uppercase text-sm">{med.tradeName}</span>
-                  <p className="text-xs font-mono font-bold text-slate-600 mt-1">{med.activeIngredient}</p>
+                  <span className="font-medium text-sm text-[var(--color-text)]">{med.tradeName}</span>
+                  <p className="text-xs text-muted mt-1">{med.activeIngredient}</p>
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   {med.category && <Badge variant="primary">{med.category}</Badge>}
-                  {med.status === 'Ativo' && <span className="text-[10px] font-black uppercase text-success-green bg-white border-2 border-brutalist-black px-2 py-1">ATIVO</span>}
-                  {med.status === 'Inativo' && <span className="text-[10px] font-black uppercase text-error-red bg-white border-2 border-brutalist-black px-2 py-1">INATIVO</span>}
+                  {med.status === 'Ativo' && (
+                    <span className="text-xs font-medium text-success">Ativo</span>
+                  )}
+                  {med.status === 'Inativo' && (
+                    <span className="text-xs font-medium text-error">Inativo</span>
+                  )}
                 </div>
               </div>
-              <div className="mt-2 text-[10px] font-mono text-slate-500">
+              <div className="mt-2 text-xs text-muted">
                 Ref: {med.reference} | {med.similarHolder}
               </div>
             </Link>

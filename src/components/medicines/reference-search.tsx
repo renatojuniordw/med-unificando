@@ -6,7 +6,7 @@ import { useDebouncedSearch } from '@/hooks/use-debounced-search'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 
-interface ReferenceItem {
+export interface ReferenceItem {
   name: string
   count: number
 }
@@ -25,7 +25,7 @@ export function ReferenceSearch({ initialReferences }: ReferenceSearchProps) {
     <div>
       <div className="mb-6">
         <Input
-          label="BUSCAR REFERÊNCIA"
+          label="Buscar Referência"
           placeholder="Digite o nome do medicamento de referência..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -34,9 +34,9 @@ export function ReferenceSearch({ initialReferences }: ReferenceSearchProps) {
 
       <div className="space-y-3">
         {isSearching && searching ? (
-          <p className="font-bold uppercase text-sm text-slate-500">Buscando...</p>
+          <p className="text-sm text-muted">Buscando...</p>
         ) : references.length === 0 ? (
-          <p className="font-bold uppercase text-sm">
+          <p className="text-sm text-[var(--color-text)] font-medium">
             {isSearching
               ? 'Nenhuma referência encontrada para essa busca.'
               : 'Nenhum medicamento de referência encontrado.'}
@@ -46,10 +46,10 @@ export function ReferenceSearch({ initialReferences }: ReferenceSearchProps) {
             <Link
               key={ref.name}
               href={`/referencias/${encodeURIComponent(ref.name)}`}
-              className="block border-4 border-brutalist-black bg-white p-4 hover:bg-neon-yellow hover:-translate-y-1 hover:shadow-hard-lg transition-all"
+              className="block border border-border rounded-sm bg-[var(--color-bg)] p-4 hover:bg-brand-yellow/10 hover:border-brand-yellow transition-all"
             >
               <div className="flex justify-between items-center">
-                <span className="font-black uppercase tracking-tight">{ref.name}</span>
+                <span className="font-medium text-[var(--color-text)]">{ref.name}</span>
                 <Badge variant="primary">{ref.count} similares</Badge>
               </div>
             </Link>

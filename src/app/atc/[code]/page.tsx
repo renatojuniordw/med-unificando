@@ -14,44 +14,48 @@ export default async function AtcCodePage({ params }: { params: Promise<{ code: 
   const inativos = medicines.filter(m => m.status === 'Inativo').length
 
   return (
-    <section className="py-12 md:py-20 bg-neon-yellow min-h-screen border-b-8 border-brutalist-black">
+    <section className="py-12 md:py-20 bg-[var(--color-bg)]">
       <div className="max-w-5xl mx-auto px-6 lg:px-12">
-        <Link href="/atc" className="text-xs font-mono font-bold uppercase text-brutalist-black underline hover:bg-brutalist-black hover:text-neon-yellow px-2 py-1 transition-colors">
-          ← TODOS CÓDIGOS ATC
+        <Link href="/atc" className="text-sm text-muted hover:text-[var(--color-text)] underline transition-colors">
+          ← Todos os códigos ATC
         </Link>
 
         <div className="mt-8 mb-10">
-          <Badge variant="secondary" className="mb-4">CÓDIGO ATC</Badge>
-          <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter text-brutalist-black">
+          <Badge variant="primary" className="mb-4">Código ATC</Badge>
+          <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-[var(--color-text)]">
             {decoded}
           </h1>
-          <p className="mt-4 text-sm font-mono font-bold uppercase text-brutalist-black">
+          <p className="mt-2 text-base text-muted">
             {medicines.length} medicamentos | {ativos} ativos, {inativos} inativos
           </p>
         </div>
 
-        <div className="border-4 border-brutalist-black bg-white">
+        <div className="border border-border rounded-md overflow-hidden">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-brutalist-black text-neon-yellow">
-                <th className="text-left p-3 font-black uppercase tracking-wider text-xs border-r-4 border-neon-yellow">Nome Comercial</th>
-                <th className="text-left p-3 font-black uppercase tracking-wider text-xs border-r-4 border-neon-yellow">Princípio Ativo</th>
-                <th className="text-left p-3 font-black uppercase tracking-wider text-xs border-r-4 border-neon-yellow">Detentor</th>
-                <th className="text-left p-3 font-black uppercase tracking-wider text-xs border-r-4 border-neon-yellow">Categoria</th>
-                <th className="text-center p-3 font-black uppercase tracking-wider text-xs">Situação</th>
+              <tr className="bg-[var(--color-bg-secondary)] border-b border-border">
+                <th className="text-left p-3 text-xs font-semibold text-muted">Nome Comercial</th>
+                <th className="text-left p-3 text-xs font-semibold text-muted">Princípio Ativo</th>
+                <th className="text-left p-3 text-xs font-semibold text-muted">Detentor</th>
+                <th className="text-left p-3 text-xs font-semibold text-muted">Categoria</th>
+                <th className="text-center p-3 text-xs font-semibold text-muted">Situação</th>
               </tr>
             </thead>
             <tbody>
               {medicines.map((med, i) => (
-                <tr key={med.id} className={`border-t-2 border-brutalist-black ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-neon-yellow/20 transition-colors`}>
-                  <td className="p-3 text-sm font-bold uppercase border-r-2 border-brutalist-black">
-                    <Link href={`/medicamento/${med.id}`} className="hover:underline">{med.tradeName}</Link>
+                <tr key={med.id} className={`border-b border-border ${i % 2 === 0 ? 'bg-[var(--color-bg)]' : 'bg-[var(--color-bg-secondary)]/50'} hover:bg-brand-yellow/5 transition-colors`}>
+                  <td className="p-3 text-sm font-medium">
+                    <Link href={`/medicamento/${med.id}`} className="text-[var(--color-text)] hover:underline">{med.tradeName}</Link>
                   </td>
-                  <td className="p-3 text-sm border-r-2 border-brutalist-black">{med.activeIngredient}</td>
-                  <td className="p-3 text-xs font-mono border-r-2 border-brutalist-black">{med.similarHolder}</td>
-                  <td className="p-3 text-xs font-bold uppercase border-r-2 border-brutalist-black">{med.category}</td>
-                  <td className="p-3 text-center text-xs font-black uppercase">
-                    {med.status === 'Ativo' ? <span className="text-success-green">ATIVO</span> : med.status === 'Inativo' ? <span className="text-error-red">INATIVO</span> : '-'}
+                  <td className="p-3 text-sm text-[var(--color-text)]">{med.activeIngredient}</td>
+                  <td className="p-3 text-sm text-muted">{med.similarHolder}</td>
+                  <td className="p-3 text-sm text-[var(--color-text)]">{med.category}</td>
+                  <td className="p-3 text-center text-sm font-medium">
+                    {med.status === 'Ativo' ? (
+                      <span className="text-success">Ativo</span>
+                    ) : med.status === 'Inativo' ? (
+                      <span className="text-error">Inativo</span>
+                    ) : '-'}
                   </td>
                 </tr>
               ))}

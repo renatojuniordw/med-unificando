@@ -27,6 +27,15 @@ export async function generateMedicinePdf(id: number): Promise<Buffer> {
     orderBy: { pf0Price: 'asc' },
   })
 
+  const similares = med.referenceMedicine
+    ? await prisma.medicine.findMany({
+        where: { referenceMedicine: med.referenceMedicine, id: { not: med.id } },
+        take: 10,
+        orderBy: { tradeName: 'asc' },
+        select: { tradeName: true, similarHolder: true, status: true },
+      })
+    : []
+
   const infoRows: { label: string; value: string }[] = [
     { label: 'Referência', value: med.reference },
     { label: 'Situação', value: med.status === 'Ativo' || med.status === 'Inativo' ? `Registro ${med.status}` : med.status ?? '' },
@@ -98,6 +107,19 @@ export async function generateMedicinePdf(id: number): Promise<Buffer> {
           fillColor: (rowIndex: number) => (rowIndex === 0 ? BLACK : rowIndex % 2 === 0 ? LIGHT : null),
         },
         margin: [0, 0, 0, 10],
+      },
+    ] : []),
+
+    ...(similares.length > 0 ? [
+      { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 495, y2: 0, lineWidth: 1, color: BLACK }], margin: [0, 0, 0, 10] },
+      { text: `Similares de ${med.referenceMedicine || med.reference}`, fontSize: 12, bold: true, margin: [0, 0, 0, 8] },
+      {
+        ul: similares.map(s => ({
+          text: `${s.tradeName} — ${s.similarHolder} (${s.status})`,
+          fontSize: 9,
+          margin: [0, 1, 0, 1],
+        })),
+        margin: [0, 0, 0, 14],
       },
     ] : []),
 

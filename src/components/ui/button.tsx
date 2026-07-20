@@ -10,19 +10,19 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    'bg-neon-yellow text-brutalist-black border-2 border-brutalist-black shadow-hard-md hover:bg-[#b3ff00]',
+    'bg-brand-black text-white hover:bg-primary-light focus-visible:ring-2 focus-visible:ring-brand-black focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[var(--color-bg)]',
   secondary:
-    'bg-brutalist-black text-neon-yellow border-4 border-brutalist-black shadow-hard-md hover:bg-neon-yellow hover:text-brutalist-black',
+    'bg-[var(--color-bg)] text-[var(--color-text)] border-2 border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)] focus-visible:ring-2 focus-visible:ring-brand-black focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[var(--color-bg)]',
   danger:
-    'bg-error-red text-white border-4 border-brutalist-black shadow-hard-md',
+    'bg-error text-white hover:bg-red-700 focus-visible:ring-2 focus-visible:ring-error focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[var(--color-bg)]',
   ghost:
-    'bg-transparent text-brutalist-black border-2 border-brutalist-black hover:bg-brutalist-black hover:text-white',
+    'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] focus-visible:ring-2 focus-visible:ring-brand-black focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[var(--color-bg)]',
 }
 
 const sizeStyles: Record<ButtonSize, string> = {
   sm: 'px-4 py-2 text-xs',
-  md: 'px-8 py-4 text-sm',
-  lg: 'px-10 py-5 text-base',
+  md: 'px-6 py-3 text-sm',
+  lg: 'px-8 py-4 text-base',
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -30,7 +30,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         ref={ref}
-        className={`font-black uppercase tracking-widest transition-colors ${variantStyles[variant]} ${sizeStyles[size]} disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+        className={`font-semibold rounded-sm transition-colors ${variantStyles[variant]} ${sizeStyles[size]} disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
         {...props}
       >
         {children}

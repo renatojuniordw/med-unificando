@@ -10,15 +10,15 @@ import Link from 'next/link'
 import type { MedicineResult, SearchResponse, SearchFilters } from '@/types'
 
 export const columns = [
-  { key: 'reference', label: 'REFERÊNCIA', mobile: true },
-  { key: 'activeIngredient', label: 'PRINCÍPIO ATIVO', mobile: true },
-  { key: 'tradeName', label: 'NOME COMERCIAL', mobile: true },
-  { key: 'similarHolder', label: 'DETENTOR', mobile: false },
-  { key: 'category', label: 'CATEGORIA', mobile: false },
-  { key: 'status', label: 'SITUAÇÃO', mobile: false },
-  { key: 'pharmaceuticalForm', label: 'FORMA FARMACÊUTICA', mobile: false },
-  { key: 'concentration', label: 'CONCENTRAÇÃO', mobile: true },
-  { key: 'inclusionDate', label: 'INCLUSÃO', mobile: false },
+  { key: 'reference', label: 'Referência', mobile: true },
+  { key: 'activeIngredient', label: 'Princípio Ativo', mobile: true },
+  { key: 'tradeName', label: 'Nome Comercial', mobile: true },
+  { key: 'similarHolder', label: 'Detentor', mobile: false },
+  { key: 'category', label: 'Categoria', mobile: false },
+  { key: 'status', label: 'Situação', mobile: false },
+  { key: 'pharmaceuticalForm', label: 'Forma Farmacêutica', mobile: false },
+  { key: 'concentration', label: 'Concentração', mobile: true },
+  { key: 'inclusionDate', label: 'Inclusão', mobile: false },
 ]
 
 interface MedicineTableProps {
@@ -30,7 +30,6 @@ export function MedicineTable({ initialData }: MedicineTableProps) {
   const router = useRouter()
   const [data, setData] = useState<SearchResponse>(initialData)
   const [loading, setLoading] = useState(false)
-  const [isMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
 
   const page = Number(searchParams.get('page')) || 1
@@ -78,7 +77,6 @@ export function MedicineTable({ initialData }: MedicineTableProps) {
   }
 
   const totalPages = Math.ceil(data.total / data.pageSize)
-  const visibleColumns = columns.filter(col => col.mobile || !isMobile)
 
   return (
     <div>
@@ -86,11 +84,11 @@ export function MedicineTable({ initialData }: MedicineTableProps) {
         <div className="flex items-center gap-3">
           {selectedIds.length >= 2 && (
             <Button variant="primary" size="sm" onClick={handleCompare}>
-              COMPARAR ({selectedIds.length})
+              Comparar ({selectedIds.length})
             </Button>
           )}
           {selectedIds.length > 0 && selectedIds.length < 2 && (
-            <span className="text-[10px] font-mono font-bold uppercase text-slate-500">
+            <span className="text-xs text-muted">
               Selecione ao menos 2 medicamentos
             </span>
           )}
@@ -98,33 +96,33 @@ export function MedicineTable({ initialData }: MedicineTableProps) {
         <ExportButton filters={currentFilters} />
       </div>
 
-      <div className="overflow-x-auto border-4 border-brutalist-black">
+      <div className="overflow-x-auto border border-border rounded-md">
         {loading ? (
-          <div className="p-6 space-y-4">
+          <div className="p-6 space-y-4" aria-live="polite" aria-label="Carregando dados">
             {Array.from({ length: 5 }).map((_, i) => (
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
         ) : data.data.length === 0 ? (
           <div className="p-12 text-center">
-            <p className="font-black uppercase tracking-wider text-lg text-brutalist-black">
-              NENHUM MEDICAMENTO ENCONTRADO
+            <p className="font-semibold text-lg text-[var(--color-text)]">
+              Nenhum medicamento encontrado
             </p>
-            <p className="text-sm font-mono uppercase text-slate-500 mt-2">
+            <p className="text-sm text-muted mt-1">
               Tente ajustar os filtros da busca
             </p>
           </div>
         ) : (
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-brutalist-black text-neon-yellow">
-                <th className="text-center p-4 font-black uppercase tracking-wider text-xs border-r-4 border-neon-yellow w-12">
+              <tr className="bg-[var(--color-bg-secondary)] border-b border-border">
+                <th className="text-center p-3 text-xs font-semibold text-muted w-12">
                   #
                 </th>
-                {visibleColumns.map((col) => (
+                {columns.filter(col => col.mobile).map((col) => (
                   <th
                     key={col.key}
-                    className={`text-left p-4 font-black uppercase tracking-wider text-xs border-r-4 border-neon-yellow last:border-r-0`}
+                    className="text-left p-3 text-xs font-semibold text-muted"
                   >
                     {col.label}
                   </th>
@@ -135,36 +133,28 @@ export function MedicineTable({ initialData }: MedicineTableProps) {
               {data.data.map((medicine: MedicineResult, index: number) => (
                 <tr
                   key={medicine.id}
-                  className={`border-t-4 border-brutalist-black hover:bg-neon-yellow/20 transition-colors ${
-                    index % 2 === 0 ? 'bg-white' : 'bg-slate-50'
-                  } ${selectedIds.includes(medicine.id) ? 'bg-neon-yellow/40' : ''}`}
+                  className={`border-b border-border hover:bg-brand-yellow/5 transition-colors ${
+                    selectedIds.includes(medicine.id) ? 'bg-brand-yellow/10' : ''
+                  }`}
                 >
-                  <td className="text-center p-4 border-r-4 border-brutalist-black">
-                    <button
-                      type="button"
-                      className={`w-6 h-6 border-2 border-brutalist-black flex items-center justify-center ${
-                        selectedIds.includes(medicine.id)
-                          ? 'bg-brutalist-black text-neon-yellow'
-                          : 'bg-white'
-                      }`}
-                      onClick={() => toggleSelect(medicine.id)}
-                    >
-                      {selectedIds.includes(medicine.id) && (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4">
-                          <path strokeLinecap="square" d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </button>
+                  <td className="text-center p-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(medicine.id)}
+                      onChange={() => toggleSelect(medicine.id)}
+                      className="accent-brand-yellow rounded-sm"
+                      aria-label={`Selecionar ${medicine.tradeName}`}
+                    />
                   </td>
-                  {visibleColumns.map((col) => {
+                  {columns.filter(col => col.mobile).map((col) => {
                     const value = (medicine as unknown as Record<string, string>)[col.key]
                     const display = value ?? ''
                     if (col.key === 'tradeName' || col.key === 'reference') {
                       return (
-                        <td key={col.key} className="p-4 text-sm font-bold uppercase">
+                        <td key={col.key} className="p-3 text-sm font-medium">
                           <Link
                             href={`/medicamento/${medicine.id}`}
-                            className="hover:bg-neon-yellow hover:text-brutalist-black transition-colors"
+                            className="text-[var(--color-text)] hover:text-[var(--color-text)] hover:underline"
                           >
                             {display}
                           </Link>
@@ -172,7 +162,7 @@ export function MedicineTable({ initialData }: MedicineTableProps) {
                       )
                     }
                     return (
-                      <td key={col.key} className="p-4 text-sm font-bold uppercase">
+                      <td key={col.key} className="p-3 text-sm text-[var(--color-text)]">
                         {display}
                       </td>
                     )
@@ -185,9 +175,9 @@ export function MedicineTable({ initialData }: MedicineTableProps) {
       </div>
 
       {data.total > 0 && (
-        <div className="flex items-center justify-between mt-6 pt-6 border-t-4 border-brutalist-black gap-4 flex-wrap">
+        <div className="flex items-center justify-between mt-4 pt-4 border-t border-border gap-4 flex-wrap">
           <div className="flex items-center gap-4">
-            <span className="text-xs font-mono font-bold uppercase text-slate-500">
+            <span className="text-sm text-muted">
               {data.total} medicamento{data.total !== 1 ? 's' : ''} encontrado{data.total !== 1 ? 's' : ''}
             </span>
             <select
@@ -198,7 +188,7 @@ export function MedicineTable({ initialData }: MedicineTableProps) {
                 params.set('page', '1')
                 router.push(`?${params.toString()}`)
               }}
-              className="border-2 border-brutalist-black bg-white p-1 text-[10px] font-bold uppercase"
+              className="border border-border rounded-sm bg-[var(--color-bg)] p-1.5 text-xs text-[var(--color-text)]"
             >
               <option value={10}>10/pág</option>
               <option value={25}>25/pág</option>
@@ -211,10 +201,11 @@ export function MedicineTable({ initialData }: MedicineTableProps) {
               size="sm"
               disabled={page <= 1}
               onClick={() => handlePageChange(page - 1)}
+              aria-label="Página anterior"
             >
-              ANTERIOR
+              Anterior
             </Button>
-            <span className="flex items-center px-2 text-sm font-black">
+            <span className="px-2 text-sm font-medium text-[var(--color-text)]">
               {page} / {totalPages}
             </span>
             <Button
@@ -222,8 +213,9 @@ export function MedicineTable({ initialData }: MedicineTableProps) {
               size="sm"
               disabled={page >= totalPages}
               onClick={() => handlePageChange(page + 1)}
+              aria-label="Próxima página"
             >
-              PRÓXIMA
+              Próxima
             </Button>
           </div>
         </div>

@@ -15,25 +15,25 @@ export default async function BuscaAvancadaPage() {
   ])
 
   return (
-    <section className="py-12 md:py-20 bg-neon-yellow border-b-8 border-brutalist-black">
+    <section className="py-12 md:py-20 bg-[var(--color-bg)]">
       <div className="max-w-7xl mx-auto px-6 lg:px-12">
         <div className="text-center mb-12">
-          <Badge variant="secondary" className="mb-6">
-            BUSCA AVANÇADA
+          <Badge variant="primary" className="mb-6">
+            Busca Avançada
           </Badge>
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-black uppercase tracking-tighter leading-[0.9] text-brutalist-black">
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter leading-[0.9] text-[var(--color-text)]">
             Medicamentos
             <br />
             Intercambiáveis
           </h1>
-          <p className="mt-6 text-sm font-mono font-bold uppercase text-brutalist-black max-w-2xl mx-auto">
+          <p className="mt-4 text-base text-muted max-w-2xl mx-auto">
             Filtre por referência, princípio ativo, nome comercial ou categoria
             e navegue pela base completa
           </p>
         </div>
 
-        <Suspense fallback={<div className="bg-white border-8 border-brutalist-black shadow-hard-lg p-6 md:p-10"><Skeleton className="h-12 w-full mb-4" /><Skeleton className="h-64 w-full" /></div>}>
-          <div className="bg-white border-8 border-brutalist-black shadow-hard-lg p-6 md:p-10">
+        <Suspense fallback={<div className="bg-[var(--color-bg)] border border-border rounded-md shadow-card p-6 md:p-8"><Skeleton className="h-12 w-full mb-4" /><Skeleton className="h-64 w-full" /></div>}>
+          <div className="bg-[var(--color-bg)] border border-border rounded-md shadow-card p-6 md:p-8">
             <SearchForm
               references={references}
               activeIngredients={activeIngredients}

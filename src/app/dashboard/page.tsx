@@ -32,34 +32,34 @@ async function DashboardStats() {
 function DashboardSkeleton() {
   return (
     <div className="space-y-12">
-      <div className="grid md:grid-cols-4 gap-8">
-        <Skeleton className="h-40" />
-        <Skeleton className="h-40" />
-        <Skeleton className="h-40" />
-        <Skeleton className="h-40" />
+      <div className="grid md:grid-cols-4 gap-6">
+        <Skeleton className="h-32" />
+        <Skeleton className="h-32" />
+        <Skeleton className="h-32" />
+        <Skeleton className="h-32" />
       </div>
-      <div className="grid md:grid-cols-3 gap-8">
-        <Skeleton className="h-96" />
-        <Skeleton className="h-96" />
-        <Skeleton className="h-96" />
+      <div className="grid md:grid-cols-3 gap-6">
+        <Skeleton className="h-80" />
+        <Skeleton className="h-80" />
+        <Skeleton className="h-80" />
       </div>
-      <Skeleton className="h-64" />
+      <Skeleton className="h-48" />
     </div>
   )
 }
 
 export default function DashboardPage() {
   return (
-    <section className="py-12 md:py-20 bg-neon-yellow min-h-screen border-b-8 border-brutalist-black">
+    <section className="py-12 md:py-20 bg-[var(--color-bg)]">
       <div className="max-w-7xl mx-auto px-6 lg:px-12">
         <div className="text-center mb-12">
-          <Badge variant="secondary" className="mb-6">
-            ESTATÍSTICAS
+          <Badge variant="primary" className="mb-6">
+            Estatísticas
           </Badge>
-          <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter text-brutalist-black">
+          <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-[var(--color-text)]">
             Dashboard
           </h1>
-          <p className="mt-4 text-sm font-mono font-bold uppercase text-brutalist-black">
+          <p className="mt-2 text-base text-muted">
             Dados consolidados da ANVISA
           </p>
         </div>

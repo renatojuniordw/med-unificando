@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SemanticResultsTable } from '@/components/medicines/semantic-results-table'
+import { useRecentSearches } from '@/hooks/use-recent-searches'
 import Link from 'next/link'
 import type { MedicineResult } from '@/types'
 
@@ -16,11 +17,15 @@ export function SemanticSearch() {
   const [results, setResults] = useState<{ score: number; medicine: MedicineResult }[]>([])
   const [searched, setSearched] = useState(false)
   const [view, setView] = useState<'cards' | 'table'>('cards')
+  const { recent, add: addRecent } = useRecentSearches()
 
-  async function handleSearch() {
-    if (!query.trim()) return
+  async function handleSearch(q?: string) {
+    const searchQuery = q ?? query
+    if (!searchQuery.trim()) return
     setLoading(true)
     setSearched(true)
+    setQuery(searchQuery)
+    addRecent(searchQuery)
 
     try {
       const data = await semanticSearch(query, 20)
@@ -33,10 +38,10 @@ export function SemanticSearch() {
   }
 
   return (
-    <div className="border-4 md:border-8 border-brutalist-black bg-white shadow-hard-lg p-6 md:p-10">
+    <div className="bg-[var(--color-bg)] border border-border rounded-md shadow-card p-6 md:p-8">
       <div className="flex items-center gap-2 mb-4">
-        <Badge variant="secondary">BUSCA SEMÂNTICA</Badge>
-        <span className="text-[9px] font-mono text-slate-400">
+        <Badge variant="primary">BUSCA SEMÂNTICA</Badge>
+        <span className="text-xs text-muted">
           IA local — descreva o medicamento
         </span>
       </div>
@@ -49,21 +54,43 @@ export function SemanticSearch() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            aria-describedby="search-description"
           />
         </div>
         <Button
           type="button"
           variant="primary"
-          onClick={handleSearch}
+          onClick={() => handleSearch()}
           disabled={loading || !query.trim()}
           className="self-end"
         >
-          {loading ? 'PENSANDO...' : 'BUSCAR'}
+          {loading ? 'Buscando...' : 'Buscar'}
         </Button>
       </div>
 
+      {!searched && recent.length > 0 && (
+        <div className="mt-4">
+          <p className="text-xs text-[var(--color-text-secondary)] mb-2">Buscas recentes:</p>
+          <div className="flex flex-wrap gap-2">
+            {recent.map((r, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => handleSearch(r)}
+                className="text-xs px-2.5 py-1 rounded-sm border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition-colors"
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <p id="search-description" className="sr-only">
+        Digite uma descrição do medicamento para buscar semanticamente
+      </p>
+
       {loading && (
-        <div className="mt-6 space-y-3">
+        <div className="mt-6 space-y-3" aria-live="polite" aria-label="Carregando resultados">
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-16 w-full" />
           ))}
@@ -71,9 +98,9 @@ export function SemanticSearch() {
       )}
 
       {!loading && results.length > 0 && (
-        <div className="mt-6 border-t-4 border-brutalist-black pt-4">
+        <div className="mt-6 border-t border-border pt-4">
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-            <p className="text-[10px] font-mono font-bold text-slate-500">
+            <p className="text-xs text-muted">
               Resultados por relevância semântica
             </p>
             <div className="flex gap-2">
@@ -83,7 +110,7 @@ export function SemanticSearch() {
                 size="sm"
                 onClick={() => setView('cards')}
               >
-                CARDS
+                Cards
               </Button>
               <Button
                 type="button"
@@ -91,33 +118,36 @@ export function SemanticSearch() {
                 size="sm"
                 onClick={() => setView('table')}
               >
-                TABELA
+                Tabela
               </Button>
             </div>
           </div>
 
           {view === 'cards' ? (
-            <div className="space-y-2">
+            <div className="space-y-2" aria-live="polite" role="list">
               {results.map(r => (
                 <Link
                   key={r.medicine.id}
                   href={`/medicamento/${r.medicine.id}`}
-                  className="block border-2 border-brutalist-black p-3 hover:bg-neon-yellow transition-colors"
+                  className="block border border-border rounded-sm p-3 hover:bg-brand-yellow/10 hover:border-brand-yellow transition-colors"
+                  role="listitem"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <span className="font-black uppercase text-sm">{r.medicine.tradeName}</span>
-                      <p className="text-[10px] font-mono text-slate-600 truncate">{r.medicine.activeIngredient}</p>
+                      <span className="font-semibold text-sm text-[var(--color-text)]">{r.medicine.tradeName}</span>
+                      <p className="text-xs text-muted mt-0.5 truncate">{r.medicine.activeIngredient}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       {r.medicine.category && <Badge variant="primary">{r.medicine.category}</Badge>}
-                      {r.medicine.status === 'Ativo' && <span className="text-[9px] font-black text-success-green">ATIVO</span>}
-                      <span className="text-[9px] font-mono text-slate-400">
+                      {r.medicine.status === 'Ativo' && (
+                        <span className="text-[11px] font-medium text-success">Ativo</span>
+                      )}
+                      <span className="text-xs text-muted">
                         {(r.score * 100).toFixed(0)}%
                       </span>
                     </div>
                   </div>
-                  <p className="text-[9px] font-mono text-slate-400 mt-1 truncate">{r.medicine.similarHolder}</p>
+                  <p className="text-xs text-muted mt-1 truncate">{r.medicine.similarHolder}</p>
                 </Link>
               ))}
             </div>
@@ -128,7 +158,7 @@ export function SemanticSearch() {
       )}
 
       {!loading && searched && results.length === 0 && (
-        <p className="mt-4 text-sm font-mono text-slate-500">
+        <p className="mt-4 text-sm text-muted" role="status">
           Nenhum resultado encontrado. Tente descrever de outra forma.
         </p>
       )}

@@ -7,21 +7,22 @@ interface SemanticResultsTableProps {
 }
 
 export function SemanticResultsTable({ results }: SemanticResultsTableProps) {
+  const mobileColumns = columns.filter(col => col.mobile)
   return (
-    <div className="overflow-x-auto border-4 border-brutalist-black">
+    <div className="overflow-x-auto border border-border rounded-sm">
       <table className="w-full border-collapse">
         <thead>
-          <tr className="bg-brutalist-black text-neon-yellow">
-            {columns.map((col) => (
+          <tr className="bg-[var(--color-bg-secondary)] border-b border-border">
+            {mobileColumns.map((col) => (
               <th
                 key={col.key}
-                className="text-left p-4 font-black uppercase tracking-wider text-xs border-r-4 border-neon-yellow last:border-r-0"
+                className="text-left p-3 text-xs font-semibold text-muted"
               >
                 {col.label}
               </th>
             ))}
-            <th className="text-left p-4 font-black uppercase tracking-wider text-xs w-24">
-              RELEVÂNCIA
+            <th className="text-left p-3 text-xs font-semibold text-muted w-24">
+              Relevância
             </th>
           </tr>
         </thead>
@@ -29,19 +30,19 @@ export function SemanticResultsTable({ results }: SemanticResultsTableProps) {
           {results.map(({ score, medicine }, index) => (
             <tr
               key={medicine.id}
-              className={`border-t-4 border-brutalist-black hover:bg-neon-yellow/20 transition-colors ${
-                index % 2 === 0 ? 'bg-white' : 'bg-slate-50'
+              className={`border-b border-border hover:bg-brand-yellow/5 transition-colors ${
+                index % 2 === 0 ? 'bg-[var(--color-bg)]' : 'bg-[var(--color-bg-secondary)]/50'
               }`}
             >
-              {columns.map((col) => {
+              {mobileColumns.map((col) => {
                 const value = (medicine as unknown as Record<string, string>)[col.key]
                 const display = value ?? ''
                 if (col.key === 'tradeName' || col.key === 'reference') {
                   return (
-                    <td key={col.key} className="p-4 text-sm font-bold uppercase">
+                    <td key={col.key} className="p-3 text-sm font-medium">
                       <Link
                         href={`/medicamento/${medicine.id}`}
-                        className="hover:bg-neon-yellow hover:text-brutalist-black transition-colors"
+                        className="text-[var(--color-text)] hover:underline"
                       >
                         {display}
                       </Link>
@@ -49,12 +50,12 @@ export function SemanticResultsTable({ results }: SemanticResultsTableProps) {
                   )
                 }
                 return (
-                  <td key={col.key} className="p-4 text-sm font-bold uppercase">
+                  <td key={col.key} className="p-3 text-sm text-[var(--color-text)]">
                     {display}
                   </td>
                 )
               })}
-              <td className="p-4 text-sm font-bold text-slate-500">
+              <td className="p-3 text-sm text-muted font-medium">
                 {(score * 100).toFixed(0)}%
               </td>
             </tr>

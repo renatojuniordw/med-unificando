@@ -12,12 +12,12 @@ export function Badge({
 }: BadgeProps) {
   const styles =
     variant === 'primary'
-      ? 'bg-brutalist-black text-neon-yellow shadow-hard-neon'
-      : 'bg-neon-yellow text-brutalist-black shadow-hard-sm'
+      ? 'bg-brand-yellow text-[var(--color-text)]'
+      : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] border border-[var(--color-border)]'
 
   return (
     <span
-      className={`inline-block font-black uppercase tracking-widest text-[10px] px-3 py-1 border-2 border-brutalist-black ${styles} ${className}`}
+      className={`inline-block font-semibold text-[11px] px-2.5 py-0.5 rounded-sm ${styles} ${className}`}
       {...props}
     >
       {children}

@@ -13,7 +13,7 @@ export default async function AdminProtectedLayout({
   }
 
   return (
-    <section className="py-12 bg-neon-yellow min-h-[80vh] border-b-8 border-brutalist-black">
+    <section className="py-12 bg-[var(--color-bg)] min-h-[80vh]">
       <div className="max-w-7xl mx-auto px-6 lg:px-12">{children}</div>
     </section>
   )

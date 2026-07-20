@@ -36,53 +36,55 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <section className="min-h-[80vh] flex items-center justify-center bg-white p-6">
+    <section className="min-h-[80vh] flex items-center justify-center bg-[var(--color-bg)] p-6">
       <div className="w-full max-w-md">
         <div className="text-center mb-10">
-          <Badge variant="secondary" className="mb-4">
-            ACESSO RESTRITO
+          <Badge variant="primary" className="mb-4">
+            Acesso Restrito
           </Badge>
-          <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tighter text-brutalist-black">
-            ADMIN
+          <h1 className="text-3xl md:text-4xl font-black tracking-tighter text-[var(--color-text)]">
+            Admin
           </h1>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="bg-white border-8 border-brutalist-black shadow-hard-lg p-8 space-y-6"
+          className="bg-[var(--color-bg)] border border-border rounded-md shadow-card p-8 space-y-6"
         >
           {error && (
-            <div className="bg-error-red text-white border-4 border-brutalist-black shadow-hard-md p-4 font-black uppercase text-xs tracking-widest">
+            <div className="bg-error text-white rounded-sm p-3 text-sm font-medium" role="alert">
               {error}
             </div>
           )}
 
           <Input
-            label="EMAIL"
+            label="Email"
             type="email"
             placeholder="seu@email.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            aria-invalid={error ? 'true' : 'false'}
           />
 
           <Input
-            label="SENHA"
+            label="Senha"
             type="password"
             placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            aria-invalid={error ? 'true' : 'false'}
           />
 
           <Button
             type="submit"
-            variant="secondary"
+            variant="primary"
             size="lg"
             className="w-full"
             disabled={loading}
           >
-            {loading ? 'ENTRANDO...' : 'ENTRAR'}
+            {loading ? 'Entrando...' : 'Entrar'}
           </Button>
         </form>
       </div>

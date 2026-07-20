@@ -40,26 +40,26 @@ export function AtcTree({ level1, level2, level3 }: AtcTreeProps) {
   return (
     <div className="space-y-10">
       <Input
-        label="BUSCAR CÓDIGO ATC"
+        label="Buscar Código ATC"
         placeholder="Ex: A10, C09AA, N02BE01..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
 
       <section>
-        <Badge variant="secondary" className="mb-4">NÍVEL 1 — ANATÔMICO</Badge>
+        <Badge variant="primary" className="mb-4">Nível 1 — Anatômico</Badge>
         {filteredLevel1.length === 0 ? (
-          <p className="text-xs font-mono text-slate-500">Nenhum código encontrado.</p>
+          <p className="text-sm text-muted">Nenhum código encontrado.</p>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
             {filteredLevel1.map(l => (
               <Link
                 key={l.code}
                 href={`/atc/${l.code}`}
-                className="border-4 border-brutalist-black bg-white p-4 hover:bg-neon-yellow hover:-translate-y-1 hover:shadow-hard-lg transition-all"
+                className="border border-border rounded-sm bg-[var(--color-bg)] p-4 hover:bg-brand-yellow/10 hover:border-brand-yellow transition-all"
               >
-                <span className="font-black uppercase text-lg">{l.code}</span>
-                <span className="ml-2 text-xs font-mono text-slate-500">{l.count} códigos</span>
+                <span className="font-semibold text-lg text-[var(--color-text)]">{l.code}</span>
+                <span className="ml-2 text-xs text-muted">{l.count} código{l.count !== 1 ? 's' : ''}</span>
               </Link>
             ))}
           </div>
@@ -67,49 +67,49 @@ export function AtcTree({ level1, level2, level3 }: AtcTreeProps) {
       </section>
 
       <section>
-        <Badge variant="secondary" className="mb-4">NÍVEL 2 — TERAPÊUTICO</Badge>
+        <Badge variant="primary" className="mb-4">Nível 2 — Terapêutico</Badge>
         {visibleLevel2.length === 0 ? (
-          <p className="text-xs font-mono text-slate-500">Nenhum código encontrado.</p>
+          <p className="text-sm text-muted">Nenhum código encontrado.</p>
         ) : (
           <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-2">
             {visibleLevel2.map(l => (
               <Link
                 key={l.code}
                 href={`/atc/${l.code}`}
-                className="border-2 border-brutalist-black bg-white p-3 hover:bg-neon-yellow transition-all text-xs font-bold uppercase"
+                className="border border-border rounded-sm bg-[var(--color-bg)] p-3 hover:bg-brand-yellow/10 hover:border-brand-yellow transition-all text-sm font-medium text-[var(--color-text)]"
               >
-                {l.code} <span className="text-slate-500 ml-1">({l.count})</span>
+                {l.code} <span className="text-muted ml-1">({l.count})</span>
               </Link>
             ))}
           </div>
         )}
         {!isSearching && filteredLevel2.length > 40 && (
-          <p className="text-xs font-mono text-slate-500 col-span-full mt-2">
-            + {filteredLevel2.length - 40} códigos de nível 2 — use a busca para encontrar
+          <p className="text-xs text-muted mt-2">
+            + {filteredLevel2.length - 40} código{filteredLevel2.length - 40 !== 1 ? 's' : ''} de nível 2 — use a busca para encontrar
           </p>
         )}
       </section>
 
       <section>
-        <Badge variant="secondary" className="mb-4">NÍVEL 3 — QUÍMICO</Badge>
+        <Badge variant="primary" className="mb-4">Nível 3 — Químico</Badge>
         {visibleLevel3.length === 0 ? (
-          <p className="text-xs font-mono text-slate-500">Nenhum código encontrado.</p>
+          <p className="text-sm text-muted">Nenhum código encontrado.</p>
         ) : (
           <div className="grid md:grid-cols-4 lg:grid-cols-5 gap-2">
             {visibleLevel3.map(l => (
               <Link
                 key={l.code}
                 href={`/atc/${l.code}`}
-                className="border-2 border-brutalist-black bg-white p-2 hover:bg-neon-yellow transition-all text-[10px] font-bold uppercase"
+                className="border border-border rounded-sm bg-[var(--color-bg)] p-2 hover:bg-brand-yellow/10 hover:border-brand-yellow transition-all text-xs font-medium text-[var(--color-text)]"
               >
-                {l.code} <span className="text-slate-500">({l.count})</span>
+                {l.code} <span className="text-muted">({l.count})</span>
               </Link>
             ))}
           </div>
         )}
         {!isSearching && filteredLevel3.length > 40 && (
-          <p className="text-xs font-mono text-slate-500 col-span-full mt-2">
-            + {filteredLevel3.length - 40} códigos de nível 3 — use a busca para encontrar
+          <p className="text-xs text-muted mt-2">
+            + {filteredLevel3.length - 40} código{filteredLevel3.length - 40 !== 1 ? 's' : ''} de nível 3 — use a busca para encontrar
           </p>
         )}
       </section>

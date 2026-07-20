@@ -9,22 +9,22 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 
 const FIELDS: { key: keyof UpdateMedicineData; label: string; type?: 'number' }[] = [
-  { key: 'tradeName', label: 'NOME COMERCIAL' },
-  { key: 'reference', label: 'REFERÊNCIA' },
-  { key: 'activeIngredient', label: 'PRINCÍPIO ATIVO' },
-  { key: 'similarHolder', label: 'DETENTOR DO REGISTRO' },
-  { key: 'category', label: 'CATEGORIA' },
-  { key: 'referenceMedicine', label: 'MEDICAMENTO REFERÊNCIA' },
-  { key: 'pharmaceuticalForm', label: 'FORMA FARMACÊUTICA' },
-  { key: 'concentration', label: 'CONCENTRAÇÃO' },
-  { key: 'atcCode', label: 'CÓDIGO ATC' },
-  { key: 'prescriptionType', label: 'TARJA' },
-  { key: 'status', label: 'SITUAÇÃO' },
-  { key: 'authorization', label: 'AUTORIZAÇÃO' },
-  { key: 'presentationCount', label: 'APRESENTAÇÕES', type: 'number' },
-  { key: 'inclusionDate', label: 'DATA DE INCLUSÃO' },
-  { key: 'synonyms', label: 'SINÔNIMOS' },
-  { key: 'indications', label: 'INDICAÇÕES' },
+  { key: 'tradeName', label: 'Nome Comercial' },
+  { key: 'reference', label: 'Referência' },
+  { key: 'activeIngredient', label: 'Princípio Ativo' },
+  { key: 'similarHolder', label: 'Detentor do Registro' },
+  { key: 'category', label: 'Categoria' },
+  { key: 'referenceMedicine', label: 'Medicamento Referência' },
+  { key: 'pharmaceuticalForm', label: 'Forma Farmacêutica' },
+  { key: 'concentration', label: 'Concentração' },
+  { key: 'atcCode', label: 'Código ATC' },
+  { key: 'prescriptionType', label: 'Tarja' },
+  { key: 'status', label: 'Situação' },
+  { key: 'authorization', label: 'Autorização' },
+  { key: 'presentationCount', label: 'Apresentações', type: 'number' },
+  { key: 'inclusionDate', label: 'Data de Inclusão' },
+  { key: 'synonyms', label: 'Sinônimos' },
+  { key: 'indications', label: 'Indicações' },
 ]
 
 export default function AdminMedicineEditPage() {
@@ -85,18 +85,18 @@ export default function AdminMedicineEditPage() {
   }
 
   if (Number.isNaN(id)) {
-    return <p className="max-w-2xl mx-auto font-mono text-sm">ID inválido.</p>
+    return <p className="max-w-2xl mx-auto text-sm text-muted">ID inválido.</p>
   }
 
   if (loading) {
-    return <p className="max-w-2xl mx-auto font-mono text-sm">Carregando...</p>
+    return <p className="max-w-2xl mx-auto text-sm text-muted">Carregando...</p>
   }
 
   if (notFound || !form) {
     return (
       <div className="max-w-2xl mx-auto">
-        <p className="font-mono text-sm mb-4">Medicamento não encontrado.</p>
-        <Button variant="ghost" size="sm" onClick={() => router.push('/admin/medicamentos')}>← VOLTAR À BUSCA</Button>
+        <p className="text-sm text-muted mb-4">Medicamento não encontrado.</p>
+        <Button variant="ghost" size="sm" onClick={() => router.push('/admin/medicamentos')}>← Voltar</Button>
       </div>
     )
   }
@@ -105,17 +105,17 @@ export default function AdminMedicineEditPage() {
     <div className="max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <Badge variant="primary" className="mb-3">ADMIN</Badge>
-          <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tighter text-brutalist-black">
+          <Badge variant="primary" className="mb-3">Admin</Badge>
+          <h1 className="text-2xl md:text-3xl font-black tracking-tighter text-[var(--color-text)]">
             Editar {form.tradeName}
           </h1>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => router.push('/admin/medicamentos')}>← VOLTAR</Button>
+        <Button variant="ghost" size="sm" onClick={() => router.push('/admin/medicamentos')}>← Voltar</Button>
       </div>
 
-      <Card className="mb-6 bg-neon-yellow">
-        <p className="text-xs font-mono font-bold uppercase text-brutalist-black">
-          ⚠ Edições manuais podem ser perdidas na próxima sincronização com a ANVISA.
+      <Card variant="highlight" className="mb-6">
+        <p className="text-xs text-muted">
+          Edições manuais podem ser perdidas na próxima sincronização com a ANVISA.
         </p>
       </Card>
 
@@ -127,7 +127,7 @@ export default function AdminMedicineEditPage() {
                 key={field.key}
                 label={field.label}
                 type={field.type ?? 'text'}
-                value={form[field.key]}
+                value={String(form[field.key] ?? '')}
                 onChange={(e) => updateField(field.key, e.target.value)}
               />
             ))}
@@ -137,17 +137,17 @@ export default function AdminMedicineEditPage() {
         {result && (
           <Card
             variant={result.success ? 'active' : 'inactive'}
-            className={`mb-6 ${result.success ? 'bg-success-green' : 'bg-error-red text-white'}`}
+            className={`mb-6 ${result.success ? 'border-l-4 border-l-success' : 'border-l-4 border-l-error'}`}
           >
-            <p className="font-black uppercase tracking-wider">
-              {result.success ? '✅ SALVO COM SUCESSO' : '❌ ERRO'}
+            <p className="font-medium text-[var(--color-text)]">
+              {result.success ? 'Salvo com sucesso' : 'Erro'}
             </p>
-            {result.error && <p className="text-sm font-bold mt-2">{result.error}</p>}
+            {result.error && <p className="text-sm text-muted mt-1">{result.error}</p>}
           </Card>
         )}
 
-        <Button type="submit" variant="secondary" size="lg" className="w-full" disabled={saving}>
-          {saving ? 'SALVANDO...' : 'SALVAR ALTERAÇÕES'}
+        <Button type="submit" variant="primary" size="lg" className="w-full" disabled={saving}>
+          {saving ? 'Salvando...' : 'Salvar Alterações'}
         </Button>
       </form>
     </div>

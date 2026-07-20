@@ -16,17 +16,17 @@ export default function AdminMedicinesSearchPage() {
     <div className="max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <Badge variant="primary" className="mb-3">ADMIN</Badge>
-          <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tighter text-brutalist-black">
+          <Badge variant="primary" className="mb-3">Admin</Badge>
+          <h1 className="text-3xl md:text-4xl font-black tracking-tighter text-[var(--color-text)]">
             Editar Medicamento
           </h1>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => router.push('/admin/import')}>← VOLTAR</Button>
+        <Button variant="ghost" size="sm" onClick={() => router.push('/admin/import')}>← Voltar</Button>
       </div>
 
       <div className="mb-6">
         <Input
-          label="BUSCAR MEDICAMENTO"
+          label="Buscar medicamento"
           placeholder="Referência, princípio ativo ou nome comercial..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -35,25 +35,25 @@ export default function AdminMedicinesSearchPage() {
 
       <div className="space-y-2">
         {query.length >= 2 && searching && (
-          <p className="font-mono text-sm text-slate-500">Buscando...</p>
+          <p className="text-sm text-muted">Buscando...</p>
         )}
         {query.length >= 2 && !searching && results.length === 0 && (
-          <p className="font-mono text-sm text-slate-500">Nenhum medicamento encontrado.</p>
+          <p className="text-sm text-muted">Nenhum medicamento encontrado.</p>
         )}
         {results.map(med => (
           <Link
             key={med.id}
             href={`/admin/medicamentos/${med.id}`}
-            className="block border-4 border-brutalist-black bg-white p-4 hover:bg-neon-yellow hover:-translate-y-1 hover:shadow-hard-lg transition-all"
+            className="block border border-border rounded-sm bg-[var(--color-bg)] p-4 hover:bg-brand-yellow/10 hover:border-brand-yellow transition-all"
           >
             <div className="flex justify-between items-center gap-3">
               <div className="min-w-0">
-                <span className="font-black uppercase text-sm">{med.tradeName}</span>
-                <p className="text-xs font-mono text-slate-600 truncate">{med.activeIngredient}</p>
+                <span className="font-medium text-sm text-[var(--color-text)]">{med.tradeName}</span>
+                <p className="text-xs text-muted truncate">{med.activeIngredient}</p>
               </div>
               {med.status && <Badge variant="primary">{med.status}</Badge>}
             </div>
-            <p className="text-[10px] font-mono text-slate-400 mt-1">Ref: {med.reference}</p>
+            <p className="text-xs text-muted mt-1">Ref: {med.reference}</p>
           </Link>
         ))}
       </div>

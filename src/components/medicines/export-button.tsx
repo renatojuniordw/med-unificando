@@ -10,10 +10,10 @@ interface ExportButtonProps {
 }
 
 export function ExportButton({ filters }: ExportButtonProps) {
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState<'xlsx' | 'csv' | null>(null)
 
   async function handleExport(format: 'xlsx' | 'csv') {
-    setLoading(true)
+    setLoading(format)
     try {
       if (format === 'xlsx') {
         const result = await exportToExcel(filters)
@@ -29,26 +29,26 @@ export function ExportButton({ filters }: ExportButtonProps) {
     } catch (error) {
       console.error('Export failed:', error)
     }
-    setLoading(false)
+    setLoading(null)
   }
 
   return (
     <div className="flex gap-2">
       <Button
-        variant="ghost"
+        variant="secondary"
         size="sm"
-        disabled={loading}
+        disabled={loading !== null}
         onClick={() => handleExport('xlsx')}
       >
-        {loading ? 'EXPORTANDO...' : 'EXCEL'}
+        {loading === 'xlsx' ? 'Exportando...' : 'Excel'}
       </Button>
       <Button
-        variant="ghost"
+        variant="secondary"
         size="sm"
-        disabled={loading}
+        disabled={loading !== null}
         onClick={() => handleExport('csv')}
       >
-        CSV
+        {loading === 'csv' ? 'Exportando...' : 'CSV'}
       </Button>
     </div>
   )

@@ -4,7 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 export default function ComparePage() {
   return (
-    <section className="py-12 md:py-20 bg-neon-yellow min-h-screen border-b-8 border-brutalist-black">
+    <section className="py-12 md:py-20 bg-[var(--color-bg)] min-h-screen">
       <Suspense
         fallback={
           <div className="max-w-7xl mx-auto px-6 lg:px-12">

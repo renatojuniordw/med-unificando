@@ -7,26 +7,27 @@ import { useDebouncedSearch } from '@/hooks/use-debounced-search'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import type { MedicineResult } from '@/types'
 
 const detailFields = [
-  { key: 'reference', label: 'REFERÊNCIA' },
-  { key: 'activeIngredient', label: 'PRINCÍPIO ATIVO' },
-  { key: 'tradeName', label: 'NOME COMERCIAL' },
-  { key: 'similarHolder', label: 'DETENTOR DO REGISTRO' },
-  { key: 'category', label: 'CATEGORIA' },
-  { key: 'referenceMedicine', label: 'MEDICAMENTO REFERÊNCIA' },
-  { key: 'pharmaceuticalForm', label: 'FORMA FARMACÊUTICA' },
-  { key: 'concentration', label: 'CONCENTRAÇÃO' },
-  { key: 'atcCode', label: 'CÓDIGO ATC' },
-  { key: 'prescriptionType', label: 'TARJA' },
-  { key: 'status', label: 'SITUAÇÃO' },
-  { key: 'authorization', label: 'AUTORIZAÇÃO' },
-  { key: 'presentationCount', label: 'APRESENTAÇÕES' },
-  { key: 'synonyms', label: 'SINÔNIMOS' },
-  { key: 'indications', label: 'INDICAÇÕES' },
-  { key: 'inclusionDate', label: 'DATA DE INCLUSÃO' },
+  { key: 'reference', label: 'Referência' },
+  { key: 'activeIngredient', label: 'Princípio Ativo' },
+  { key: 'tradeName', label: 'Nome Comercial' },
+  { key: 'similarHolder', label: 'Detentor do Registro' },
+  { key: 'category', label: 'Categoria' },
+  { key: 'referenceMedicine', label: 'Medicamento Referência' },
+  { key: 'pharmaceuticalForm', label: 'Forma Farmacêutica' },
+  { key: 'concentration', label: 'Concentração' },
+  { key: 'atcCode', label: 'Código ATC' },
+  { key: 'prescriptionType', label: 'Tarja' },
+  { key: 'status', label: 'Situação' },
+  { key: 'authorization', label: 'Autorização' },
+  { key: 'presentationCount', label: 'Apresentações' },
+  { key: 'synonyms', label: 'Sinônimos' },
+  { key: 'indications', label: 'Indicações' },
+  { key: 'inclusionDate', label: 'Data de Inclusão' },
 ]
 
 export function CompareView() {
@@ -36,7 +37,7 @@ export function CompareView() {
   const [medicines, setMedicines] = useState<MedicineResult[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedIds, setSelectedIds] = useState<number[]>(ids)
-  const { query: searchQuery, setQuery: setSearchQuery, results: searchResults } =
+  const { query: searchQuery, setQuery: setSearchQuery, results: searchResults, searching } =
     useDebouncedSearch(searchMedicinesForCompare)
 
   useEffect(() => {
@@ -66,37 +67,47 @@ export function CompareView() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-6 lg:px-12">
+    <div className="max-w-7xl mx-auto px-6 lg:px-12 py-12">
       <div className="mb-10">
-        <Badge variant="secondary" className="mb-4">
-          COMPARAÇÃO
+        <Badge variant="primary" className="mb-4">
+          Comparação
         </Badge>
-        <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter text-brutalist-black mb-4">
+        <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-[var(--color-text)] mb-4">
           Comparar Medicamentos
         </h1>
         <Link
-          href="/"
-          className="text-xs font-mono font-bold uppercase text-brutalist-black underline hover:bg-brutalist-black hover:text-neon-yellow px-2 py-1 transition-colors"
+          href="/buscar-avancado"
+          className="text-sm text-muted hover:text-[var(--color-text)] underline transition-colors"
         >
-          ← VOLTAR PARA BUSCA
+          ← Voltar para busca
         </Link>
       </div>
 
       <Card className="mb-10">
         <div className="relative">
           <Input
-            label="ADICIONAR MEDICAMENTO PARA COMPARAÇÃO"
+            label="Adicionar medicamento para comparação"
             placeholder="Digite referência, princípio ativo ou nome comercial..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          {searchResults.length > 0 && (
-            <div className="absolute z-10 w-full bg-white border-4 border-brutalist-black shadow-hard-md mt-1">
+          {searching && (
+            <div className="absolute z-10 w-full bg-[var(--color-bg)] border border-border rounded-sm shadow-dropdown mt-1 p-3">
+              <p className="text-sm text-muted">Buscando...</p>
+            </div>
+          )}
+          {!searching && searchResults.length > 0 && (
+            <div
+              className="absolute z-10 w-full bg-[var(--color-bg)] border border-border rounded-sm shadow-dropdown mt-1"
+              role="listbox"
+              aria-label="Resultados da busca"
+            >
               {searchResults.map((item) => (
                 <button
                   key={item.id}
                   type="button"
-                  className="block w-full text-left px-4 py-3 font-medium text-sm hover:bg-neon-yellow hover:text-brutalist-black transition-colors border-b-2 border-brutalist-black last:border-b-0"
+                  role="option"
+                  className="block w-full text-left px-4 py-2.5 text-sm text-[var(--color-text)] hover:bg-brand-yellow/10 transition-colors border-b border-border last:border-b-0"
                   onClick={() => addMedicine(item.id)}
                 >
                   {item.label}
@@ -113,12 +124,13 @@ export function CompareView() {
               return (
                 <span
                   key={id}
-                  className="inline-flex items-center gap-2 bg-brutalist-black text-neon-yellow font-black uppercase text-[10px] tracking-widest px-3 py-1 border-2 border-brutalist-black"
+                  className="inline-flex items-center gap-2 bg-brand-yellow text-[var(--color-text)] font-medium text-xs px-2.5 py-1 rounded-sm"
                 >
                   {med?.tradeName || `ID ${id}`}
                   <button
                     onClick={() => removeMedicine(id)}
-                    className="text-white hover:text-error-red ml-1"
+                    className="text-[var(--color-text)]/60 hover:text-error ml-0.5"
+                    aria-label={`Remover ${med?.tradeName || id}`}
                   >
                     ✕
                   </button>
@@ -131,31 +143,31 @@ export function CompareView() {
 
       {loading ? (
         <div className="text-center py-12">
-          <p className="font-black uppercase tracking-wider text-lg text-brutalist-black animate-pulse">
-            CARREGANDO...
+          <p className="font-semibold text-lg text-[var(--color-text)] animate-pulse">
+            Carregando...
           </p>
         </div>
       ) : medicines.length === 0 ? (
-        <div className="text-center py-12 bg-white border-8 border-brutalist-black shadow-hard-lg">
-          <p className="font-black uppercase tracking-wider text-lg text-brutalist-black">
-            NENHUM MEDICAMENTO SELECIONADO
+        <div className="text-center py-12 bg-[var(--color-bg)] border border-border rounded-md shadow-card">
+          <p className="font-semibold text-lg text-[var(--color-text)]">
+            Nenhum medicamento selecionado
           </p>
-          <p className="text-sm font-mono uppercase text-slate-500 mt-2">
+          <p className="text-sm text-muted mt-2">
             Use a busca acima para adicionar medicamentos à comparação
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto border-8 border-brutalist-black bg-white shadow-hard-lg">
+        <div className="overflow-x-auto border border-border rounded-md bg-[var(--color-bg)] shadow-card">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-brutalist-black text-neon-yellow">
-                <th className="text-left p-4 font-black uppercase tracking-wider text-xs border-r-4 border-neon-yellow w-48">
-                  CAMPO
+              <tr className="bg-[var(--color-bg-secondary)] border-b border-border">
+                <th className="text-left p-3 text-xs font-semibold text-muted w-48">
+                  Campo
                 </th>
                 {medicines.map((med) => (
                   <th
                     key={med.id}
-                    className="text-left p-4 font-black uppercase tracking-wider text-xs border-r-4 border-neon-yellow last:border-r-0"
+                    className="text-left p-3 text-xs font-semibold text-muted border-l border-border"
                   >
                     {med.tradeName}
                   </th>
@@ -171,23 +183,23 @@ export function CompareView() {
                 return (
                   <tr
                     key={field.key}
-                    className={`border-t-4 border-brutalist-black ${
-                      rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50'
+                    className={`border-b border-border ${
+                      rowIndex % 2 === 0 ? 'bg-[var(--color-bg)]' : 'bg-[var(--color-bg-secondary)]/50'
                     }`}
                   >
-                    <td className="p-4 text-sm font-black uppercase border-r-4 border-brutalist-black bg-slate-100">
+                    <td className="p-3 text-sm font-medium text-muted bg-[var(--color-bg-secondary)] border-r border-border">
                       {field.label}
                     </td>
                     {medicines.map((med) => (
                       <td
                         key={`${med.id}-${field.key}`}
-                        className={`p-4 text-sm font-bold uppercase border-r-4 border-brutalist-black last:border-r-0 ${
-                          isDifferent ? 'bg-neon-yellow/30' : ''
+                        className={`p-3 text-sm text-[var(--color-text)] border-l border-border ${
+                          isDifferent ? 'bg-brand-yellow/10' : ''
                         }`}
                       >
                         {(med as unknown as Record<string, string>)[field.key]}
                         {isDifferent && (
-                          <span className="ml-2 text-[9px] font-black text-brutalist-black bg-neon-yellow px-1">
+                          <span className="ml-2 text-[10px] font-semibold text-[var(--color-text)] bg-brand-yellow px-1 rounded-sm">
                             DIFERENTE
                           </span>
                         )}
