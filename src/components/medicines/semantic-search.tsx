@@ -48,8 +48,8 @@ export function SemanticSearch() {
         </span>
       </div>
 
-      <div className="flex gap-3">
-        <div className="flex-1">
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex-1 min-w-0">
           <Input
             label=""
             placeholder='Ex: "anti-inflamatório para articulação" ou "remédio para pressão"'
@@ -64,7 +64,7 @@ export function SemanticSearch() {
           variant="primary"
           onClick={() => handleSearch()}
           disabled={loading || !query.trim()}
-          className="self-end"
+          className="self-stretch sm:self-end min-h-[44px]"
         >
           {loading ? 'Buscando...' : 'Buscar'}
         </Button>
