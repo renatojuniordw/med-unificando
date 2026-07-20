@@ -68,8 +68,9 @@ src/
 │   ├── admin/
 │   └── api/
 ├── components/
+│   ├── dashboard/   # DashboardFilters (filtros interativos)
 │   ├── layout/      # Header, Footer
-│   ├── ui/          # Button, Badge, Card, Input, Skeleton, Breadcrumbs, ScrollToTop, ClipboardButton
+│   ├── ui/          # Button, Badge, Card, Input, Skeleton, Breadcrumbs, ScrollToTop, ClipboardButton, PdfDownloadButton
 │   └── medicines/   # SearchForm, MedicineTable, SemanticSearch, CompareView, ExportButton
 ├── lib/
 │   ├── actions/     # Server Actions
@@ -112,6 +113,23 @@ npx prisma generate
 ```
 
 Nunca edite migrations já aplicadas — sempre crie novas.
+
+## Geração de PDF
+
+O PDF é gerado server-side com `pdfmake`. A action `generateMedicinePdf()` em
+`src/lib/actions/pdf-report.ts` cria um documento com cabeçalho, grid de informações,
+tabela de preços e rodapé.
+
+O `pdfmake` está em `serverExternalPackages` no `next.config.ts` porque usa
+módulos nativos do Node.js (pdfkit internamente).
+
+```typescript
+import PdfPrinter from 'pdfmake'
+const printer = new PdfPrinter(fonts)
+const doc = printer.createPdfKitDocument(docDefinition)
+doc.pipe(res)
+doc.end()
+```
 
 Após importar novos dados, regenerar embeddings:
 

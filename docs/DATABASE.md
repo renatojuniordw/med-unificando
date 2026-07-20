@@ -10,12 +10,12 @@ Total: 7 migrations (em `prisma/migrations/`):
 
 | Migration | Descrição |
 |-----------|-----------|
-| `init` | Criação inicial da tabela `medicines` |
-| `add_users` | Adiciona modelo `User` para autenticação |
-| `enrich_medicine_model` | Adiciona campos: category, atcCode, status, etc. |
-| `add_prices` | Adiciona modelo `Price` para preços CMED |
-| `add_synonyms_indications` | Adiciona campos `synonyms` e `indications` |
-| `add_sync_log` | Adiciona modelo `SyncLog` para log de sincronizações |
+| `init` | Tabela `medicines` inicial |
+| `add_users` | Modelo `User` para autenticação |
+| `enrich_medicine_model` | Campos: category, atcCode, status, etc. |
+| `add_prices` | Modelo `Price` para preços CMED |
+| `add_synonyms_indications` | Campos `synonyms` e `indications` |
+| `add_sync_log` | Modelo `SyncLog` para log de sincronizações |
 
 ## Modelos
 

@@ -11,11 +11,12 @@ Consulta inteligente de medicamentos intercambiáveis da ANVISA com busca semân
 - 🔬 **Navegação ATC** — explore por classificação Anatômica/Terapêutica/Química (tree view + drill-down)
 - 💰 **Preços CMED** — visualize preços máximos ao consumidor com gráfico de barras
 - 🏢 **Página do detentor** — todos os medicamentos de uma empresa
-- 📈 **Dashboard** com estatísticas, distribuição por categoria e timeline por ano
+- 📈 **Dashboard** com filtros interativos (ano, categoria, situação) e timeline
 - 🔄 **Sincronização automática** com dados abertos ANVISA (com detecção de mudanças via Last-Modified)
 - 📥 **Exportação** em CSV e Excel
 - 📋 **Copiar registro** com um clique
-- 📄 **Link para bula eletrônica** ANVISA
+- 📄 **Relatório PDF** do medicamento com identidade visual
+- 🔍 **Consultar na ANVISA** — link direto para o sistema de consulta
 - 🧭 **Breadcrumbs** de navegação
 - 📱 **PWA** — instalável como app no celular
 - 🔗 **JSON-LD** + meta tags dinâmicas para SEO
@@ -32,6 +33,7 @@ Consulta inteligente de medicamentos intercambiáveis da ANVISA com busca semân
 | Autenticação | NextAuth v5 |
 | IA (embeddings) | Xenova Transformers (ONNX local) |
 | IA (busca) | all-MiniLM-L6-v2 (384d) |
+| PDF | pdfmake (server-side) |
 | Infra | Docker Compose + multi-stage build |
 
 ## Quick Start
@@ -136,7 +138,7 @@ curl http://localhost:11006/api/health
 | `/atc` | Navegação por árvore ATC |
 | `/atc/[code]` | Medicamentos por código ATC |
 | `/detentor/[cnpj]` | Todos medicamentos de um detentor |
-| `/dashboard` | Estatísticas + timeline |
+| `/dashboard` | Estatísticas com filtros interativos (ano, categoria, ativo/inativo) |
 | `/compare` | Comparação lado a lado |
 | `/admin/import` | Sincronização ANVISA + Preços |
 | `/api/medicines` | API REST pública |

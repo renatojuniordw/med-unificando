@@ -13,6 +13,9 @@ const fonts = {
 }
 
 const printer = new PdfPrinter(fonts)
+const GRAY = '#444444'
+const LIGHT = '#f5f5f5'
+const BLACK = '#222222'
 
 export async function generateMedicinePdf(id: number): Promise<Buffer> {
   const med = await prisma.medicine.findUnique({ where: { id } })
@@ -24,26 +27,82 @@ export async function generateMedicinePdf(id: number): Promise<Buffer> {
     orderBy: { pf0Price: 'asc' },
   })
 
-  const body = [
-    ['Referência', med.reference],
-    ['Situação', med.status === 'Ativo' || med.status === 'Inativo' ? `Registro ${med.status}` : med.status],
+  const infoRows: { label: string; value: string }[] = [
+    { label: 'Referência', value: med.reference },
+    { label: 'Situação', value: med.status === 'Ativo' || med.status === 'Inativo' ? `Registro ${med.status}` : med.status ?? '' },
   ]
-  if (med.atcCode) body.push(['Código ATC', med.atcCode])
-  if (med.prescriptionType) body.push(['Tarja', med.prescriptionType])
-  if (med.pharmaceuticalForm) body.push(['Forma Farmacêutica', med.pharmaceuticalForm])
-  if (med.concentration) body.push(['Concentração', med.concentration])
-  if (med.similarHolder) body.push(['Detentor', med.similarHolder])
-  if (med.presentationCount) body.push(['Apresentações', med.presentationCount.toString()])
-  if (med.category) body.push(['Categoria', med.category])
-  if (med.authorization) body.push(['Autorização', med.authorization])
-  if (med.synonyms) body.push(['Sinônimos', med.synonyms])
-  if (med.indications) body.push(['Indicações', med.indications])
+  if (med.atcCode) infoRows.push({ label: 'Código ATC', value: med.atcCode })
+  if (med.prescriptionType) infoRows.push({ label: 'Tarja', value: med.prescriptionType })
+  if (med.pharmaceuticalForm) infoRows.push({ label: 'Forma Farmacêutica', value: med.pharmaceuticalForm })
+  if (med.concentration) infoRows.push({ label: 'Concentração', value: med.concentration })
+  if (med.similarHolder) infoRows.push({ label: 'Detentor', value: med.similarHolder })
+  if (med.presentationCount) infoRows.push({ label: 'Apresentações', value: med.presentationCount.toString() })
+  if (med.category) infoRows.push({ label: 'Categoria', value: med.category })
+  if (med.authorization) infoRows.push({ label: 'Autorização', value: med.authorization })
+  if (med.inclusionDate) infoRows.push({ label: 'Inclusão', value: med.inclusionDate })
+  if (med.synonyms) infoRows.push({ label: 'Sinônimos', value: med.synonyms })
+  if (med.indications) infoRows.push({ label: 'Indicações', value: med.indications })
 
-  const priceRows = prices.map(p => [
+  const infoTableBody = infoRows.map(r => [
+    { text: r.label, style: 'infoLabel' },
+    { text: r.value, style: 'infoValue' },
+  ])
+
+  const priceHeader = [
+    { text: 'Apresentação', style: 'tableHeader' },
+    { text: 'PF0', style: 'tableHeader', alignment: 'right' as const },
+    { text: 'PF18', style: 'tableHeader', alignment: 'right' as const },
+  ]
+
+  const priceBody = prices.map(p => [
     { text: p.presentation, style: 'cell' },
     { text: p.pf0Price ? `R$ ${p.pf0Price.toFixed(2)}` : '-', style: 'cell', alignment: 'right' as const },
     { text: p.pf18Price ? `R$ ${p.pf18Price.toFixed(2)}` : '-', style: 'cell', alignment: 'right' as const },
   ])
+
+  const content: unknown[] = [
+    { text: med.tradeName, fontSize: 22, bold: true, margin: [0, 0, 0, 4] },
+    { text: med.activeIngredient, fontSize: 11, color: GRAY, margin: [0, 0, 0, 4] },
+    med.category ? { text: med.category, fontSize: 9, color: GRAY, italics: true, margin: [0, 0, 0, 14] } : null,
+
+    { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 495, y2: 0, lineWidth: 1, color: BLACK }], margin: [0, 0, 0, 12] },
+
+    { text: 'Informações do Medicamento', fontSize: 12, bold: true, margin: [0, 0, 0, 8] },
+
+    {
+      table: { widths: ['30%', '70%'], body: infoTableBody },
+      layout: {
+        hLineWidth: () => 0,
+        vLineWidth: () => 0,
+        fillColor: (rowIndex: number) => (rowIndex % 2 === 0 ? LIGHT : null),
+      },
+      margin: [0, 0, 0, 14],
+    },
+
+    ...(med.referenceMedicine ? [
+      { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 495, y2: 0, lineWidth: 1, color: BLACK }], margin: [0, 0, 0, 10] },
+      { text: 'Medicamento de Referência', fontSize: 12, bold: true, margin: [0, 0, 0, 6] },
+      { text: med.referenceMedicine, fontSize: 11, margin: [0, 0, 0, 14] },
+    ] : []),
+
+    ...(prices.length > 0 ? [
+      { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 495, y2: 0, lineWidth: 1, color: BLACK }], margin: [0, 0, 0, 10] },
+      { text: 'Preços CMED', fontSize: 12, bold: true, margin: [0, 0, 0, 8] },
+      {
+        table: { widths: ['*', 60, 60], headerRows: 1, body: [priceHeader, ...priceBody] },
+        layout: {
+          hLineWidth: (i: number) => (i === 0 || i === 1 ? 1 : 0.5),
+          vLineWidth: () => 0.5,
+          hLineColor: () => BLACK,
+          vLineColor: () => BLACK,
+          fillColor: (rowIndex: number) => (rowIndex === 0 ? BLACK : rowIndex % 2 === 0 ? LIGHT : null),
+        },
+        margin: [0, 0, 0, 10],
+      },
+    ] : []),
+
+    { text: `Fonte: Dados Abertos ANVISA — dados.anvisa.gov.br`, fontSize: 7, color: GRAY, margin: [0, 30, 0, 0] },
+  ]
 
   const docDefinition = {
     pageSize: 'A4',
@@ -56,94 +115,49 @@ export async function generateMedicinePdf(id: number): Promise<Buffer> {
     header: () => ({
       margin: [50, 15, 50, 0],
       columns: [
-        { text: 'U', color: '#ccff00', fontSize: 22, bold: true, width: 30 },
-        { text: 'UNIFICANDO MED', color: '#ffffff', fontSize: 14, bold: true, width: 200 },
-        { text: 'RELATÓRIO DE MEDICAMENTO', color: '#ccff00', fontSize: 7, alignment: 'right', width: '*', margin: [0, 6, 0, 0] },
+        { text: 'UNIFICANDO MED', fontSize: 12, bold: true, width: '*', color: BLACK },
+        { text: 'Relatório de Medicamento', fontSize: 7, color: GRAY, alignment: 'right', width: 'auto', margin: [0, 4, 0, 0] },
       ],
-      background: () => ({ canvas: [{ type: 'rect', x: 0, y: 0, w: 595, h: 50, color: '#020617' }] }),
+      columnGap: 10,
     }),
     footer: (currentPage: number, pageCount: number) => ({
       margin: [50, 10, 50, 10],
       columns: [
-        { text: `Relatório gerado em ${new Date().toLocaleString('pt-BR')}`, fontSize: 7, color: '#64748b', width: '*', alignment: 'left' },
-        { text: `Página ${currentPage} de ${pageCount}`, fontSize: 7, color: '#64748b', alignment: 'right' },
+        { text: `Gerado em ${new Date().toLocaleString('pt-BR')}`, fontSize: 7, color: GRAY, alignment: 'left' },
+        { text: `Página ${currentPage} de ${pageCount}`, fontSize: 7, color: GRAY, alignment: 'right' },
       ],
     }),
-    content: [
-      { text: med.tradeName, fontSize: 20, bold: true, margin: [0, 20, 0, 4] },
-      { text: med.activeIngredient, fontSize: 11, color: '#64748b', margin: [0, 0, 0, 6] },
-      med.category ? { text: med.category.toUpperCase(), color: '#ccff00', background: '#020617', fontSize: 8, bold: true, margin: [0, 0, 0, 10], fillColor: '#020617' } : null,
-
-      { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 495, y2: 0, lineWidth: 2 }] },
-
-      { text: 'INFORMAÇÕES DO MEDICAMENTO', margin: [0, 14, 0, 8], fontSize: 9, bold: true, color: '#ccff00', background: '#020617', fillColor: '#020617' },
-
-      {
-        table: {
-          widths: ['25%', '25%', '25%', '25%'],
-          body: body.map(row => [
-            { text: (row[0] as string).toUpperCase(), fontSize: 7, color: '#64748b', bold: true },
-            { text: row[1] as string, fontSize: 10, bold: true },
-            { text: '', fontSize: 7 },
-            { text: '', fontSize: 7 },
-          ]),
-        },
-        layout: 'noBorders',
-        margin: [0, 0, 0, 10],
-      },
-
-      ...(med.referenceMedicine ? [
-        { text: 'MEDICAMENTO DE REFERÊNCIA', margin: [0, 10, 0, 6], fontSize: 9, bold: true, color: '#ccff00', background: '#020617', fillColor: '#020617' },
-        { text: med.referenceMedicine, fontSize: 11, bold: true, margin: [0, 0, 0, 10] },
-      ] : []),
-
-      ...(prices.length > 0 ? [
-        { text: 'PREÇOS CMED', margin: [0, 10, 0, 6], fontSize: 9, bold: true, color: '#ccff00', background: '#020617', fillColor: '#020617' },
-        {
-          table: {
-            widths: ['*', 'auto', 'auto'],
-            headerRows: 1,
-            body: [
-              [
-                { text: 'APRESENTAÇÃO', style: 'tableHeader' },
-                { text: 'PF0', style: 'tableHeader', alignment: 'right' },
-                { text: 'PF18', style: 'tableHeader', alignment: 'right' },
-              ],
-              ...priceRows,
-            ],
-          },
-          layout: {
-            hLineWidth: () => 1,
-            vLineWidth: () => 1,
-            hLineColor: () => '#020617',
-            vLineColor: () => '#020617',
-          },
-          margin: [0, 0, 0, 10],
-        },
-      ] : []),
-
-      { text: 'Fonte: Dados Abertos ANVISA — dados.anvisa.gov.br', fontSize: 7, color: '#64748b', margin: [0, 20, 0, 0] },
-    ],
+    content,
     styles: {
       tableHeader: {
-        fontSize: 7,
+        fontSize: 8,
         bold: true,
-        color: '#ccff00',
-        fillColor: '#020617',
+        color: '#ffffff',
+        fillColor: BLACK,
         margin: [4, 4, 4, 4],
       },
       cell: {
         fontSize: 8,
         margin: [4, 4, 4, 4],
       },
+      infoLabel: {
+        fontSize: 8,
+        bold: true,
+        color: GRAY,
+        margin: [4, 4, 4, 4],
+      },
+      infoValue: {
+        fontSize: 10,
+        margin: [4, 4, 4, 4],
+      },
     },
     defaultStyle: {
       font: 'Helvetica',
+      color: BLACK,
     },
   }
 
-  const options = {}
-  const pdfDoc = printer.createPdfKitDocument(docDefinition, options)
+  const pdfDoc = printer.createPdfKitDocument(docDefinition, {})
 
   return new Promise<Buffer>((resolve, reject) => {
     const chunks: Buffer[] = []

@@ -52,7 +52,7 @@ A CMED define preços máximos por apresentação:
 - **PF0**: Preço Fábrica sem ICMS
 - **PF18**: Preço Fábrica com ICMS 18%
 - Os preços são por apresentação (dosagem + embalagem)
-- Exibidos em gráfico de barras na página de detalhes
+- Exibidos em gráfico de barras na página de detalhes e em PDF exportável
 
 ## 6. Busca Semântica
 
@@ -76,7 +76,27 @@ Processamento 100% server-side (modelo cacheado em memória). Zero custo de API.
 - Preços CMED importados separadamente
 - Cada sincronização é registrada em `SyncLog` (type, count, status, timestamp)
 
-## 8. SEO
+## 8. Dashboard Interativo
+
+O dashboard permite filtrar os dados por:
+- **Ano**: filtra registros por ano de publicação
+- **Categoria**: filtra por Similar, Genérico, Novo, etc.
+- **Situação**: filtra por Ativo ou Inativo
+
+Os filtros recalculam totais, top 10 medicamentos e top 10 princípios ativos em tempo real.
+
+## 9. Relatório PDF
+
+Cada medicamento possui um botão "Baixar PDF" que gera um relatório server-side com:
+- Cabeçalho com a marca (Unificando Med)
+- Informações completas do medicamento em grid 2 colunas
+- Medicamento de referência (se houver)
+- Tabela de preços CMED
+- Rodapé com data de geração e fonte dos dados
+
+Tecnologia: pdfmake (PdfPrinter API).
+
+## 10. SEO
 
 - Cada página de medicamento possui meta tags dinâmicas (title, description, OG)
 - JSON-LD estruturado (Schema.org/MedicalDrug) para buscadores

@@ -71,7 +71,8 @@
 - Breadcrumbs de navegação
 - 17 campos informativos (referência, princípio ativo, ATC, tarja, preços, etc.)
 - Botão "Copiar" ao lado do número de registro
-- Link para bula eletrônica ANVISA
+- Botão "Baixar PDF" que gera relatório formatado
+- Link para consulta no sistema ANVISA
 - Card com medicamento de referência (se houver)
 - Lista de similares (se for referência)
 - Gráfico de barras com preços CMED
@@ -90,19 +91,22 @@
 - Contagem total, ativos e categorias
 - Filtro por situação
 
-## US-08: Dashboard com Estatísticas
+## US-08: Dashboard com Estatísticas e Filtros
 
-**Como** administrador  
-**Quero** ver estatísticas consolidadas  
-**Para** monitorar a base de dados
+**Como** administrador ou usuário  
+**Quero** filtrar as estatísticas por ano, categoria e situação  
+**Para** analisar segmentos específicos da base de dados
 
 **Critérios de Aceitação:**
-- Total de medicamentos e distintos
-- Contagem de ativos vs inativos
-- Top 10 medicamentos mais frequentes
-- Top 10 princípios ativos
+- Dropdown de ano com os anos disponíveis
+- Dropdown de categoria (Similar, Genérico, Novo, etc.)
+- Pills de situação (Todos, Ativo, Inativo)
+- Botão "Filtrar" que recalcula totais e rankings
+- Botão "Limpar" que volta ao dashboard completo
+- Total de medicamentos, distintos, ativos e inativos
+- Top 10 medicamentos e princípios ativos
 - Distribuição por categoria
-- Timeline de registros por ano (gráfico de barras)
+- Timeline de registros por ano
 
 ## US-09: Sincronizar Base com ANVISA
 

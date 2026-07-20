@@ -55,6 +55,7 @@ medicamentos/
 │   ├── components/
 │   │   ├── layout/         # Header, Footer
 │   │   ├── ui/             # Button, Badge, Card, Input, Skeleton, Breadcrumbs, ScrollToTop, ClipboardButton
+│   │   ├── dashboard/      # DashboardFilters (interativo)
 │   │   └── medicines/      # SearchForm, MedicineTable, SemanticSearch, CompareView, ExportButton
 │   ├── lib/
 │   │   ├── actions/
@@ -65,7 +66,8 @@ medicamentos/
 │   │   │   ├── references.ts
 │   │   │   ├── atc.ts
 │   │   │   ├── prices.ts        # syncPrices (com SyncLog)
-│   │   │   └── semantic-search.ts  # IA local server-side
+│   │   │   ├── semantic-search.ts  # IA local server-side
+│   │   │   └── pdf-report.ts       # Geração de PDF (pdfmake)
 │   │   ├── pdf-parser.ts
 │   │   └── prisma.ts
 │   ├── types/              # Interfaces TypeScript
@@ -73,6 +75,7 @@ medicamentos/
 ├── Dockerfile              # Multi-stage (node:22-alpine, non-root)
 ├── docker-compose.yml      # App + PostgreSQL (com healthcheck, limites, segurança)
 ├── .env.example
+├── src/types/pdfmake.d.ts  # Declarações de tipo para pdfmake
 └── docs/
     ├── ARCHITECTURE.md
     ├── BUSINESS_RULES.md
@@ -98,6 +101,12 @@ medicamentos/
 3. Usuário digita → query embedded → cosine similarity → top 20
 4. Texto do embedding inclui: nome, princípio ativo, categoria, sinônimos, indicações
 
+### Geração de PDF
+1. Botão "📥 BAIXAR PDF" na página de detalhes do medicamento
+2. Server action `generateMedicinePdf()` usa pdfmake para gerar PDF server-side
+3. PDF inclui: cabeçalho com marca, informações do medicamento, medicamento de referência, tabela de preços CMED, rodapé com data e fonte
+4. `pdfmake` + `pdfkit` como engine de renderização (serverExternalPackages)
+
 ### Otimizações de SEO
 1. `generateMetadata()` em cada página de detalhe → title + description + Open Graph
 2. JSON-LD (Schema.org/MedicalDrug) no detalhe
@@ -120,6 +129,7 @@ medicamentos/
 | CSS | styled-components | Tailwind v4 | Build time, sem runtime |
 | Auth | NextAuth v5 | Credentials provider | Simples para admin único |
 | Porta | 3000 (padrão) | 11006 | Evita conflito com outras apps |
+| PDF | jspdf/pdfkit | pdfmake | PdfPrinter API, layout declarativo |
 
 ## Segurança
 
