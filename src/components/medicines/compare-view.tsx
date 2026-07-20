@@ -1,7 +1,7 @@
 'use client'
 
-import { useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { useEffect, useState, useCallback } from 'react'
 import { getMedicinesByIds, searchMedicinesForCompare } from '@/lib/actions/compare'
 import { useDebouncedSearch } from '@/hooks/use-debounced-search'
 import { Badge } from '@/components/ui/badge'
@@ -32,11 +32,18 @@ const detailFields = [
 
 export function CompareView() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const ids = searchParams.get('ids')?.split(',').map(Number).filter(Boolean) || []
 
   const [medicines, setMedicines] = useState<MedicineResult[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedIds, setSelectedIds] = useState<number[]>(ids)
+
+  const syncUrl = useCallback((newIds: number[]) => {
+    const params = new URLSearchParams()
+    if (newIds.length > 0) params.set('ids', newIds.join(','))
+    router.replace(`/compare?${params.toString()}`, { scroll: false })
+  }, [router])
   const { query: searchQuery, setQuery: setSearchQuery, results: searchResults, searching } =
     useDebouncedSearch(searchMedicinesForCompare)
 
@@ -57,13 +64,17 @@ export function CompareView() {
 
   function addMedicine(id: number) {
     if (!selectedIds.includes(id)) {
-      setSelectedIds((prev) => [...prev, id])
+      const next = [...selectedIds, id]
+      setSelectedIds(next)
+      syncUrl(next)
       setSearchQuery('')
     }
   }
 
   function removeMedicine(id: number) {
-    setSelectedIds((prev) => prev.filter((i) => i !== id))
+    const next = selectedIds.filter((i) => i !== id)
+    setSelectedIds(next)
+    syncUrl(next)
   }
 
   return (

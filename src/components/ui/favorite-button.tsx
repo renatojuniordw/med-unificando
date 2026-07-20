@@ -1,15 +1,25 @@
 'use client'
 
 import { useFavorites } from '@/hooks/use-favorites'
+import { useToast } from '@/components/ui/toast'
 
 export function FavoriteButton({ medicineId }: { medicineId: number }) {
   const { isFavorite, toggle } = useFavorites()
+  const { toast } = useToast()
   const active = isFavorite(medicineId)
+
+  function handleClick() {
+    toggle(medicineId)
+    toast(
+      active ? 'Removido dos favoritos' : 'Adicionado aos favoritos',
+      'success'
+    )
+  }
 
   return (
     <button
       type="button"
-      onClick={() => toggle(medicineId)}
+      onClick={handleClick}
       className={`inline-flex items-center gap-2 border rounded-sm px-4 py-2.5 text-sm font-medium transition-colors ${
         active
           ? 'bg-brand-yellow text-brand-black border-brand-yellow'

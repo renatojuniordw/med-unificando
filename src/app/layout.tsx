@@ -6,6 +6,7 @@ import { Footer } from "@/components/layout/footer";
 import { ScrollToTop } from "@/components/ui/scroll-to-top";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { ToastProvider } from "@/components/ui/toast";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -44,6 +45,7 @@ export default function RootLayout({
       </head>
       <body className="antialiased min-h-screen flex flex-col">
         <ThemeProvider>
+          <ToastProvider>
           <a
             href="#main-content"
             className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:bg-brand-yellow focus:text-brand-black focus:px-4 focus:py-2 focus:rounded-sm focus:font-semibold focus:shadow-card"
@@ -58,6 +60,7 @@ export default function RootLayout({
           </main>
           <Footer />
           <ScrollToTop />
+          </ToastProvider>
         </ThemeProvider>
       </body>
     </html>
