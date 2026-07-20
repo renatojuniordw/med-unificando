@@ -6,6 +6,7 @@ import { STORAGE_KEYS } from '@/lib/constants'
 const MAX_ITEMS = 5
 
 function loadRecent(): string[] {
+  if (typeof window === 'undefined') return []
   try {
     const stored = localStorage.getItem(STORAGE_KEYS.RECENT_SEARCHES)
     if (stored) return JSON.parse(stored)

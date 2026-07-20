@@ -211,7 +211,7 @@ function buildDocDefinition(
   }
 }
 
-export async function generateMedicinePdf(id: number): Promise<Buffer> {
+export async function generateMedicinePdf(id: number): Promise<number[]> {
   const med = await prisma.medicine.findUnique({ where: { id } })
   if (!med) throw new Error('Medicamento não encontrado')
 
@@ -233,11 +233,13 @@ export async function generateMedicinePdf(id: number): Promise<Buffer> {
   const docDefinition = buildDocDefinition(med, prices, similares)
   const pdfDoc = printer.createPdfKitDocument(docDefinition, {})
 
-  return new Promise<Buffer>((resolve, reject) => {
+  const buffer = await new Promise<Buffer>((resolve, reject) => {
     const chunks: Buffer[] = []
     pdfDoc.on('data', (chunk: Buffer) => chunks.push(chunk))
     pdfDoc.on('end', () => resolve(Buffer.concat(chunks)))
     pdfDoc.on('error', reject)
     pdfDoc.end()
   })
+
+  return Array.from(buffer)
 }

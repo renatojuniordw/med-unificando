@@ -3,9 +3,36 @@
 import { prisma } from "@/lib/prisma"
 import { buildWhere } from "@/lib/build-where"
 import * as XLSX from 'xlsx'
-import type { SearchFilters } from "@/types"
+import type { SearchFilters, MedicineResult } from "@/types"
 
-export async function exportToExcel(filters?: SearchFilters): Promise<{ filename: string; buffer: Buffer }> {
+function escapeCsvCell(value: unknown): string {
+  const str = value?.toString() ?? ''
+  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+    return `"${str.replace(/"/g, '""')}"`
+  }
+  return str
+}
+
+function mapMedicine(medicine: MedicineResult) {
+  return {
+    Referência: medicine.reference,
+    'Princípio Ativo': medicine.activeIngredient,
+    'Nome Comercial': medicine.tradeName,
+    'Detentor do Registro': medicine.similarHolder,
+    'Forma Farmacêutica': medicine.pharmaceuticalForm,
+    Concentração: medicine.concentration,
+    'Data de Inclusão': medicine.inclusionDate,
+    Categoria: medicine.category ?? '',
+    'Medicamento Referência': medicine.referenceMedicine ?? '',
+    'Código ATC': medicine.atcCode ?? '',
+    Tarja: medicine.prescriptionType ?? '',
+    Situação: medicine.status ?? '',
+    Autorização: medicine.authorization ?? '',
+    Apresentações: medicine.presentationCount?.toString() ?? '',
+  }
+}
+
+export async function exportToExcel(filters?: SearchFilters): Promise<{ filename: string; buffer: number[] }> {
   const where = buildWhere(filters)
   const data = await prisma.medicine.findMany({
     where,
@@ -13,22 +40,7 @@ export async function exportToExcel(filters?: SearchFilters): Promise<{ filename
   })
 
   const worksheet = XLSX.utils.json_to_sheet(
-    data.map((medicine: Record<string, unknown>) => ({
-      Referência: medicine.reference,
-      'Princípio Ativo': medicine.activeIngredient,
-      'Nome Comercial': medicine.tradeName,
-      'Detentor do Registro': medicine.similarHolder,
-      'Forma Farmacêutica': medicine.pharmaceuticalForm,
-      Concentração: medicine.concentration,
-      'Data de Inclusão': medicine.inclusionDate,
-      Categoria: medicine.category,
-      'Medicamento Referência': medicine.referenceMedicine,
-      'Código ATC': medicine.atcCode,
-      Tarja: medicine.prescriptionType,
-      Situação: medicine.status,
-      Autorização: medicine.authorization,
-      Apresentações: medicine.presentationCount,
-    }))
+    (data as unknown as MedicineResult[]).map(mapMedicine)
   )
 
   const workbook = XLSX.utils.book_new()
@@ -38,7 +50,7 @@ export async function exportToExcel(filters?: SearchFilters): Promise<{ filename
 
   return {
     filename: `medicamentos-${new Date().toISOString().split('T')[0]}.xlsx`,
-    buffer,
+    buffer: Array.from(buffer),
   }
 }
 
@@ -50,7 +62,7 @@ export async function exportToCsv(filters?: SearchFilters): Promise<{ filename: 
   })
 
   const headers = ['Referência', 'Princípio Ativo', 'Nome Comercial', 'Detentor', 'Forma Farmacêutica', 'Concentração', 'Inclusão', 'Categoria', 'Medicamento Referência', 'Código ATC', 'Tarja', 'Situação', 'Autorização', 'Apresentações']
-  const rows = data.map((medicine: Record<string, unknown>) => [
+  const rows = (data as unknown as MedicineResult[]).map(medicine => [
     medicine.reference,
     medicine.activeIngredient,
     medicine.tradeName,
@@ -58,18 +70,18 @@ export async function exportToCsv(filters?: SearchFilters): Promise<{ filename: 
     medicine.pharmaceuticalForm,
     medicine.concentration,
     medicine.inclusionDate,
-    medicine.category,
-    medicine.referenceMedicine,
-    medicine.atcCode,
-    medicine.prescriptionType,
-    medicine.status,
-    medicine.authorization,
-    medicine.presentationCount,
+    medicine.category ?? '',
+    medicine.referenceMedicine ?? '',
+    medicine.atcCode ?? '',
+    medicine.prescriptionType ?? '',
+    medicine.status ?? '',
+    medicine.authorization ?? '',
+    medicine.presentationCount?.toString() ?? '',
   ])
 
   const csv = [
     headers.join(','),
-    ...rows.map((row) => row.map((cell) => `"${cell}"`).join(',')),
+    ...rows.map(row => row.map(escapeCsvCell).join(',')),
   ].join('\n')
 
   return {

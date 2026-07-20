@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import { STORAGE_KEYS } from '@/lib/constants'
 
 function loadFavorites(): number[] {
+  if (typeof window === 'undefined') return []
   try {
     const stored = localStorage.getItem(STORAGE_KEYS.FAVORITES)
     if (stored) return JSON.parse(stored)
