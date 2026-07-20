@@ -34,7 +34,7 @@ export function Header() {
         <div className="flex items-center justify-between h-16">
           <Link href="/" className="flex items-center gap-3" aria-label="Página inicial">
             <div className="bg-brand-yellow rounded-sm px-2 py-1">
-              <span className="text-[var(--color-text)] font-black tracking-tighter text-base">
+              <span className="text-brand-black font-black tracking-tighter text-base">
                 MED
               </span>
             </div>

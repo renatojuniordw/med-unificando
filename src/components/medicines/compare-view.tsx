@@ -124,7 +124,7 @@ export function CompareView() {
               return (
                 <span
                   key={id}
-                  className="inline-flex items-center gap-2 bg-brand-yellow text-[var(--color-text)] font-medium text-xs px-2.5 py-1 rounded-sm"
+                  className="inline-flex items-center gap-2 bg-brand-yellow text-brand-black font-medium text-xs px-2.5 py-1 rounded-sm"
                 >
                   {med?.tradeName || `ID ${id}`}
                   <button
@@ -199,7 +199,7 @@ export function CompareView() {
                       >
                         {(med as unknown as Record<string, string>)[field.key]}
                         {isDifferent && (
-                          <span className="ml-2 text-[10px] font-semibold text-[var(--color-text)] bg-brand-yellow px-1 rounded-sm">
+                          <span className="ml-2 text-[10px] font-semibold text-brand-black bg-brand-yellow px-1 rounded-sm">
                             DIFERENTE
                           </span>
                         )}

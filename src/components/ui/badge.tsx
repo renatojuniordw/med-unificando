@@ -12,7 +12,7 @@ export function Badge({
 }: BadgeProps) {
   const styles =
     variant === 'primary'
-      ? 'bg-brand-yellow text-[var(--color-text)]'
+      ? 'bg-brand-yellow text-brand-black'
       : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] border border-[var(--color-border)]'
 
   return (
