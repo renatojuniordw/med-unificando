@@ -23,8 +23,8 @@ export function useFavorites() {
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
-    setFavorites(loadFavorites()) // eslint-disable-line react-hooks/set-state-in-effect
-    setLoaded(true) // eslint-disable-line react-hooks/set-state-in-effect
+    setFavorites(loadFavorites())
+    setLoaded(true)
   }, [])
 
   const toggle = useCallback((id: number) => {

@@ -81,7 +81,7 @@ export async function exportToCsv(filters?: SearchFilters): Promise<{ filename: 
 
   const csv = [
     headers.join(','),
-    ...rows.map(row => row.map(escapeCsvCell).join(',')),
+    ...rows.map((row) => row.map(escapeCsvCell).join(',')),
   ].join('\n')
 
   return {

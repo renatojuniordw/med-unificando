@@ -17,4 +17,12 @@ export const authConfig = {
     },
   },
   providers: [],
+  session: {
+    strategy: "jwt",
+    maxAge: 24 * 60 * 60, // 24 hours
+  },
+  jwt: {
+    maxAge: 24 * 60 * 60,
+  },
+  useSecureCookies: process.env.NODE_ENV === "production",
 } satisfies NextAuthConfig

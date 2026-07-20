@@ -5,10 +5,10 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin123
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-vwVIP79mcuFmrw17}
       POSTGRES_DB: medicamentos
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks:
@@ -30,9 +30,6 @@ services:
       - ALL
     cap_add:
       - CHOWN
-      - DAC_OVERRIDE
-      - SETUID
-      - SETGID
     read_only: true
     tmpfs:
       - /tmp
@@ -45,12 +42,12 @@ services:
     container_name: medicamentos-app
     restart: unless-stopped
     ports:
-      - "11006:11006"
+      - "127.0.0.1:11006:11006"
     environment:
-      DATABASE_URL: "postgresql://admin:admin123@db:5432/medicamentos"
-      AUTH_SECRET: "${AUTH_SECRET:-4EscTdx3YoQfMAErUxtmH2xyxsMGMR249oNCF+LiY3k=}"
+      DATABASE_URL: "postgresql://admin:${DB_PASSWORD:-vwVIP79mcuFmrw17}@db:5432/medicamentos"
+      AUTH_SECRET: "${AUTH_SECRET:-88kv2M3bv2IC33Kwj84tASwB9y6NL4j1dbqLSaR8xcI=}"
       ADMIN_EMAIL: "${ADMIN_EMAIL:-admin@unificando.com.br}"
-      ADMIN_PASSWORD: "${ADMIN_PASSWORD:-admin123}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:-Mudar@123!}"
       NODE_ENV: production
       PORT: 11006
       NEXT_TELEMETRY_DISABLED: "1"

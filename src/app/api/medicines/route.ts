@@ -32,13 +32,14 @@ export async function GET(request: NextRequest) {
       'referencia', 'principio_ativo', 'nome_comercial', 'detentor',
       'forma_farmaceutica', 'concentracao', 'categoria', 'codigo_atc', 'tarja', 'situacao',
     ]
+    const escapeCsv = (val: unknown) => `"${String(val ?? '').replace(/"/g, '""')}"`
     const rows = data.map((m) => [
       m.reference, m.activeIngredient, m.tradeName, m.similarHolder,
       m.pharmaceuticalForm, m.concentration, m.category, m.atcCode, m.prescriptionType, m.status,
     ])
     const csv = [
       headers.join(','),
-      ...rows.map(r => r.map(c => `"${c}"`).join(',')),
+      ...rows.map(r => r.map(escapeCsv).join(',')),
     ].join('\n')
 
     return new NextResponse(csv, {
