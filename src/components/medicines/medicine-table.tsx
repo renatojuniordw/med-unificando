@@ -83,7 +83,7 @@ function MedicineCard({ medicine, selected, onToggle }: {
               <span className="text-[10px] font-medium text-error">Inativo</span>
             ) : null}
             {medicine.farmaciaPopular && (
-              <span className="text-[10px] font-semibold text-success bg-success/20 border border-success/30 px-1.5 py-0.5 rounded-sm">
+              <span className="text-[10px] font-semibold text-success bg-success/20 border border-success/30 px-1.5 py-0.5 rounded-sm" title="Farmácia Popular">
                 FP
               </span>
             )}
@@ -149,7 +149,7 @@ function MedicineTableContent({ data, selectedIds, toggleSelect }: {
                   {col.label}
                 </th>
               ))}
-              <th className="text-center p-3 text-xs font-semibold text-muted w-16">FP</th>
+              <th className="text-center p-3 text-xs font-semibold text-muted w-16" title="Farmácia Popular">FP</th>
             </tr>
           </thead>
           <tbody>
@@ -188,7 +188,7 @@ function MedicineTableContent({ data, selectedIds, toggleSelect }: {
                 })}
                 <td className="p-3 text-center">
                   {medicine.farmaciaPopular && (
-                    <Badge variant="success">FP</Badge>
+                    <Badge variant="success" title="Farmácia Popular">FP</Badge>
                   )}
                 </td>
               </tr>

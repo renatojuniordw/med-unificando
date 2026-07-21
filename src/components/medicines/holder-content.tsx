@@ -128,7 +128,7 @@ export function HolderContent({ holder, initialData, totalMedicines, ativos, cat
               <th className="text-left p-3 text-xs font-semibold text-muted">Nome Comercial</th>
               <th className="text-left p-3 text-xs font-semibold text-muted">Princípio Ativo</th>
               <th className="text-left p-3 text-xs font-semibold text-muted">Categoria</th>
-              <th className="text-center p-3 text-xs font-semibold text-muted w-16">FP</th>
+              <th className="text-center p-3 text-xs font-semibold text-muted w-16" title="Farmácia Popular">FP</th>
               <th className="text-center p-3 text-xs font-semibold text-muted">Situação</th>
             </tr>
           </thead>
@@ -159,7 +159,7 @@ export function HolderContent({ holder, initialData, totalMedicines, ativos, cat
                   <td className="p-3 text-sm text-[var(--color-text)]">{med.activeIngredient}</td>
                   <td className="p-3 text-sm text-[var(--color-text)]">{med.category}</td>
                   <td className="p-3 text-center">
-                    {med.farmaciaPopular && <Badge variant="success">FP</Badge>}
+                    {med.farmaciaPopular && <Badge variant="success" title="Farmácia Popular">FP</Badge>}
                   </td>
                   <td className="p-3 text-center text-sm font-medium">
                     {med.status ? <StatusPill status={med.status} /> : '-'}
