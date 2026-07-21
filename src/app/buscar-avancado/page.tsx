@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Metadata } from 'next'
 
+export const dynamic = "force-dynamic"
+
 export const metadata: Metadata = {
   title: "Busca Avançada",
   description: "Filtre por referência, princípio ativo, nome comercial ou categoria e navegue pela base completa de medicamentos ANVISA.",

@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 
+export const dynamic = "force-dynamic"
+
 export async function generateMetadata({ params }: { params: Promise<{ cnpj: string }> }): Promise<Metadata> {
   const { cnpj } = await params
   const decoded = decodeURIComponent(cnpj)

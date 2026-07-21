@@ -5,6 +5,8 @@ import { DashboardFilters } from '@/components/dashboard/dashboard-filters'
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
 
+export const dynamic = "force-dynamic"
+
 export const metadata: Metadata = {
   title: "Dashboard",
   description: "Estatísticas consolidadas da base de medicamentos ANVISA. Filtros por ano, categoria e situação.",

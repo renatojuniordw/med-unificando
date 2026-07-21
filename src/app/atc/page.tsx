@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Metadata } from 'next'
 
+export const dynamic = "force-dynamic"
+
 export const metadata: Metadata = {
   title: "Classificação ATC",
   description: "Explore medicamentos por classificação Anatômica, Terapêutica e Química (ATC). Navegue pela árvore de códigos ATC.",

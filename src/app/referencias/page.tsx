@@ -6,6 +6,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import type { ReferenceItem } from '@/components/medicines/reference-search'
 import type { Metadata } from 'next'
 
+export const dynamic = "force-dynamic"
+
 export const metadata: Metadata = {
   title: "Medicamentos de Referência",
   description: "Consulte todos os medicamentos de referência e seus similares conforme lista ANVISA.",
