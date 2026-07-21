@@ -7,17 +7,14 @@ vi.mock('@/lib/prisma', () => ({
       findMany: vi.fn(),
     },
     syncLog: { create: vi.fn() },
+    $executeRawUnsafe: vi.fn(),
   },
 }))
 
 vi.mock('@/auth', () => ({ auth: vi.fn() }))
 
 vi.mock('@/lib/embeddings-generator', () => ({
-  generateEmbeddings: vi.fn().mockResolvedValue({ count: 100, binSizeBytes: 52428800 }),
-}))
-
-vi.mock('@/lib/actions/semantic-search', () => ({
-  clearEmbeddingsCache: vi.fn(),
+  generateEmbeddings: vi.fn().mockResolvedValue({ count: 100 }),
 }))
 
 import { prisma } from '@/lib/prisma'

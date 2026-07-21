@@ -2,11 +2,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
-import path from 'path'
 import { generateEmbeddings } from '@/lib/embeddings-generator'
-import { clearEmbeddingsCache } from '@/lib/actions/semantic-search'
-
-const OUTPUT_DIR = path.join(process.cwd(), 'public', 'embeddings')
 
 export async function regenerateEmbeddings() {
   const session = await auth()
@@ -28,8 +24,7 @@ export async function regenerateEmbeddings() {
       return { success: false, error: 'Nenhum medicamento encontrado para gerar embeddings' }
     }
 
-    const result = await generateEmbeddings(medicines, OUTPUT_DIR)
-    await clearEmbeddingsCache()
+    const result = await generateEmbeddings(medicines, '')
 
     await prisma.syncLog.create({
       data: { type: 'embeddings', count: result.count, status: 'success' },
@@ -38,7 +33,7 @@ export async function regenerateEmbeddings() {
     return {
       success: true,
       count: result.count,
-      message: `${result.count} embeddings gerados (${(result.binSizeBytes / 1024 / 1024).toFixed(1)} MB)`,
+      message: `${result.count} embeddings gerados no banco de dados`,
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'erro desconhecido'
