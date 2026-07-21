@@ -167,6 +167,30 @@ function fetchAndParseCSV(url: string) {
   })
 }
 
+async function fetchTherapeuticClassWithRetry(url: string, retries = 2): Promise<Record<string, string>[]> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fetchAndParseCSV(url)
+    } catch (err) {
+      if (attempt < retries) {
+        console.warn(`[sync] Therapeutic class CSV fetch attempt ${attempt + 1} failed, retrying...`)
+        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)))
+      } else {
+        console.error(`[sync] Therapeutic class CSV fetch failed after ${retries + 1} attempts:`, err)
+        await prisma.syncLog.create({
+          data: {
+            type: 'therapeutic_class',
+            count: 0,
+            status: 'error',
+            message: `CSV fetch failed after ${retries + 1} attempts: ${err instanceof Error ? err.message : 'unknown error'}`,
+          },
+        })
+      }
+    }
+  }
+  return []
+}
+
 export async function syncWithAnvisa() {
   const session = await auth()
   if (!session?.user) {
@@ -198,7 +222,7 @@ export async function syncWithAnvisa() {
 
     const [rows, therapeuticClassRows] = await Promise.all([
       fetchAndParseCSV(CSV_URL),
-      fetchAndParseCSV(ANVISA.THERAPEUTIC_CLASS_URL).catch(() => []),
+      fetchTherapeuticClassWithRetry(ANVISA.THERAPEUTIC_CLASS_URL),
     ])
     const therapeuticClassByReference = buildTherapeuticClassMap(therapeuticClassRows)
     const now = new Date()
