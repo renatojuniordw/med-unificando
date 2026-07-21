@@ -18,7 +18,8 @@ async function main() {
       id: true, reference: true, tradeName: true, activeIngredient: true,
       category: true, similarHolder: true, pharmaceuticalForm: true,
       concentration: true, status: true, synonyms: true, indications: true,
-      therapeuticClass: true,
+      therapeuticClass: true, atcCode: true, prescriptionType: true,
+      farmaciaPopular: true,
     },
   })
   console.log(`Total: ${medicines.length} medicamentos`)

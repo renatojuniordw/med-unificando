@@ -1,20 +1,26 @@
 import fs from 'fs'
 import path from 'path'
 import { EMBEDDING } from '@/lib/config'
+import { getPharmaceuticalFormName } from '@/lib/dictionaries/pharmaceutical-forms'
+import { getAtcDescription } from '@/lib/dictionaries/atc-codes'
+import { getPrescriptionTypeName } from '@/lib/dictionaries/prescription-types'
 
 export interface EmbeddingSourceMedicine {
   id: number
   tradeName: string
   activeIngredient: string
-  category: string | null
-  similarHolder: string
   pharmaceuticalForm: string
+  therapeuticClass: string | null
   concentration: string
-  status: string | null
   synonyms: string | null
   indications: string | null
-  therapeuticClass: string | null
+  category: string | null
+  similarHolder: string
+  status: string | null
   reference: string
+  atcCode: string | null
+  prescriptionType: string | null
+  farmaciaPopular: boolean
 }
 
 export interface GenerateEmbeddingsResult {
@@ -41,12 +47,26 @@ export async function generateEmbeddings(
   env.cacheDir = '/tmp/.transformers-cache'
   const extractor = await pipeline('feature-extraction', EMBEDDING.MODEL)
 
-  const texts = medicines.map(m =>
-    [m.tradeName, m.activeIngredient, m.category, m.similarHolder,
-     m.therapeuticClass, m.concentration, m.synonyms, m.indications,
-     m.status === 'Ativo' ? 'ativo' : 'inativo', m.reference]
-      .filter(Boolean).join(' | ')
-  )
+  const texts = medicines.map(m => {
+    const pharmFormName = getPharmaceuticalFormName(m.pharmaceuticalForm)
+    const atcDesc = getAtcDescription(m.atcCode)
+    const prescTypeName = getPrescriptionTypeName(m.prescriptionType)
+    return [
+      m.tradeName,
+      m.activeIngredient,
+      pharmFormName,
+      m.therapeuticClass,
+      atcDesc,
+      m.indications,
+      m.synonyms,
+      m.concentration,
+      m.category,
+      prescTypeName,
+      m.similarHolder,
+      m.status === 'Ativo' ? 'ativo' : 'inativo',
+      m.farmaciaPopular ? 'farmacia popular' : null,
+    ].filter(Boolean).join(' | ')
+  })
 
   const embeddingValues: number[] = []
 

@@ -9,7 +9,7 @@ export const ANVISA = {
 } as const
 
 export const EMBEDDING = {
-  MODEL: process.env.EMBEDDING_MODEL ?? 'Xenova/all-MiniLM-L6-v2',
+  MODEL: process.env.EMBEDDING_MODEL ?? 'Xenova/paraphrase-multilingual-MiniLM-L12-v2',
 } as const
 
 export const SITE = {
