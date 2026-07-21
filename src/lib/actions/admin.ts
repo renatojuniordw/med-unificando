@@ -239,5 +239,7 @@ export async function getImportInfo(): Promise<ImportInfo | null> {
     total,
     lastImport: lastMedicine?.lastImportAt ?? null,
     anvisaFileDate: lastMedicine?.anvisaFileDate ?? null,
+    medicinesUrl: ANVISA.MEDICINES_URL,
+    pricesUrl: ANVISA.PRICES_URL,
   }
 }

@@ -57,4 +57,6 @@ export interface ImportInfo {
   total: number
   lastImport: Date | null
   anvisaFileDate: Date | null
+  medicinesUrl: string
+  pricesUrl: string
 }

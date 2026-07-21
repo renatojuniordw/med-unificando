@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
+import { ANVISA } from '@/lib/config'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -96,7 +97,7 @@ export default function AboutPage() {
                   <p className="font-medium text-sm">Medicamentos</p>
                   <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
                     Dados abertos da ANVISA — Consulta de Medicamentos
-                    (<span className="text-xs break-all">dados.anvisa.gov.br/dados/CONSULTAS/PRODUTOS/TA_CONSULTA_MEDICAMENTOS.CSV</span>)
+                    (<span className="text-xs break-all">{ANVISA.MEDICINES_URL}</span>)
                   </p>
                 </div>
                 <div className="border-b border-[var(--color-border)] pb-3">

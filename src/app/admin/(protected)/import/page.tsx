@@ -173,8 +173,8 @@ export default function AdminImportPage() {
 
       <div className="bg-[var(--color-bg)] border border-border rounded-sm p-4 text-xs text-muted space-y-1">
         <p><strong className="text-[var(--color-text)]">Fontes:</strong></p>
-        <p>Medicamentos: dados.anvisa.gov.br/dados/CONSULTAS/PRODUTOS/TA_CONSULTA_MEDICAMENTOS.CSV</p>
-        <p>Preços: dados.anvisa.gov.br/dados/TA_PRECOS_MEDICAMENTOS.csv</p>
+        <p>Medicamentos: {importInfo?.medicinesUrl}</p>
+        <p>Preços: {importInfo?.pricesUrl}</p>
       </div>
 
       <ConfirmModal
