@@ -1,8 +1,8 @@
-import { prisma } from '@/lib/prisma'
 import { Badge } from '@/components/ui/badge'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
-import { StatusPill } from '@/components/ui/status-pill'
-import Link from 'next/link'
+import { HolderContent } from '@/components/medicines/holder-content'
+import { getHolderMedicines } from '@/lib/actions/search'
+import { MEDICINE_LIMITS } from '@/lib/constants'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 
@@ -25,21 +25,18 @@ export default async function HolderPage({ params }: { params: Promise<{ cnpj: s
   const { cnpj } = await params
   const decoded = decodeURIComponent(cnpj)
 
-  const medicines = await prisma.medicine.findMany({
-    where: {
-      OR: [
-        { similarHolder: { contains: decoded, mode: 'insensitive' } },
-      ],
-    },
-    orderBy: { tradeName: 'asc' },
-    take: 200,
-  })
+  const all = await getHolderMedicines(decoded, 1, MEDICINE_LIMITS.MAX_HOLDER_RESULTS)
 
-  if (medicines.length === 0) notFound()
+  if (all.data.length === 0) notFound()
 
-  const holderName = medicines[0].similarHolder
-  const ativos = medicines.filter(m => m.status === 'Ativo').length
-  const categorias = [...new Set(medicines.map(m => m.category).filter(Boolean))]
+  const holderName = all.data[0].similarHolder
+  const totalAtivos = all.data.filter(m => m.status === 'Ativo').length
+  const totalCategorias = new Set(all.data.map(m => m.category).filter(Boolean)).size
+
+  const initialData = {
+    ...all,
+    data: all.data.slice(0, MEDICINE_LIMITS.HOLDER_PAGE_SIZE),
+  }
 
   return (
     <section className="py-12 md:py-20 bg-[var(--color-bg)]">
@@ -54,36 +51,13 @@ export default async function HolderPage({ params }: { params: Promise<{ cnpj: s
           <h1 className="text-3xl md:text-4xl font-black tracking-tighter text-[var(--color-text)]">
             {holderName}
           </h1>
-          <p className="mt-2 text-base text-muted">
-            {medicines.length} medicamentos | {ativos} ativos | {categorias.length} categorias
-          </p>
-        </div>
-
-        <div className="border border-border rounded-md overflow-hidden">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-[var(--color-bg-secondary)] border-b border-border">
-                <th className="text-left p-3 text-xs font-semibold text-muted">Nome Comercial</th>
-                <th className="text-left p-3 text-xs font-semibold text-muted">Princípio Ativo</th>
-                <th className="text-left p-3 text-xs font-semibold text-muted">Categoria</th>
-                <th className="text-center p-3 text-xs font-semibold text-muted">Situação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {medicines.map((med, i) => (
-                <tr key={med.id} className={`border-b border-border ${i % 2 === 0 ? 'bg-[var(--color-bg)]' : 'bg-[var(--color-bg-secondary)]/50'} hover:bg-brand-yellow/5 transition-colors`}>
-                  <td className="p-3 text-sm font-medium">
-                    <Link href={`/medicamento/${med.id}`} className="text-[var(--color-text)] hover:underline">{med.tradeName}</Link>
-                  </td>
-                  <td className="p-3 text-sm text-[var(--color-text)]">{med.activeIngredient}</td>
-                  <td className="p-3 text-sm text-[var(--color-text)]">{med.category}</td>
-                  <td className="p-3 text-center text-sm font-medium">
-                    {med.status ? <StatusPill status={med.status} /> : '-'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <HolderContent
+            holder={decoded}
+            initialData={initialData}
+            totalMedicines={all.total}
+            ativos={totalAtivos}
+            categoriasCount={totalCategorias}
+          />
         </div>
       </div>
     </section>

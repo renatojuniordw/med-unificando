@@ -28,6 +28,39 @@ export async function searchMedicines(
   return { data: data as Medicine[], total, page, pageSize }
 }
 
+export async function getHolderMedicines(
+  holder: string,
+  page: number = 1,
+  pageSize: number = 20,
+  search?: string,
+  status?: string
+): Promise<SearchResponse> {
+  const where: Record<string, unknown> = {
+    similarHolder: { contains: holder, mode: 'insensitive' },
+  }
+  if (search) {
+    where.OR = [
+      { tradeName: { contains: search, mode: 'insensitive' } },
+      { activeIngredient: { contains: search, mode: 'insensitive' } },
+    ]
+  }
+  if (status) where.status = { contains: status, mode: 'insensitive' }
+
+  const skip = (page - 1) * pageSize
+
+  const [data, total] = await Promise.all([
+    prisma.medicine.findMany({
+      where,
+      skip,
+      take: pageSize,
+      orderBy: { tradeName: 'asc' },
+    }),
+    prisma.medicine.count({ where }),
+  ])
+
+  return { data: data as Medicine[], total, page, pageSize }
+}
+
 export async function getDistinctValues(field: string): Promise<DistinctValue[]> {
   const fieldToPrismaEnum: Record<string, Prisma.MedicineScalarFieldEnum> = {
     reference: Prisma.MedicineScalarFieldEnum.reference,

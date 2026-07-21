@@ -17,7 +17,10 @@ export function MedicineInfoCard({ fields }: { fields: Field[] }) {
             <span className="text-xs font-semibold text-muted">{f.label}</span>
             <div className="font-medium text-[var(--color-text)] mt-0.5 flex items-center gap-2">
               {f.link ? (
-                <Link href={f.link} className="hover:underline">{f.value ?? ''}</Link>
+                <Link href={f.link} className="hover:underline inline-flex items-center gap-1 group">
+                  {f.value ?? ''}
+                  <span className="text-muted transition-transform group-hover:translate-x-0.5">→</span>
+                </Link>
               ) : f.label === 'Situação' ? (
                 <span className={`inline-flex items-center gap-1.5 ${f.value === 'Ativo' ? 'text-success' : 'text-error'}`}>
                   <span className={`w-2 h-2 rounded-full inline-block ${f.value === 'Ativo' ? 'bg-success' : 'bg-error'}`} />

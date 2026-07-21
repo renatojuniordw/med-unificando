@@ -19,6 +19,7 @@ export const MEDICINE_LIMITS = {
   ATC_DISPLAY_LIMIT: 40,
   MAX_SUGGESTIONS: 8,
   MAX_PAGE_SIZE: 100,
+  HOLDER_PAGE_SIZE: 20,
 } as const
 
 export const BATCH = {
