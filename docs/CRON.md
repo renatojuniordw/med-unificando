@@ -1,54 +1,38 @@
-# Sincronização Automática ANVISA (Cron)
+# Sincronização Automática (Cron)
 
-## Adicionar ao crontab da VPS
+## Na inicialização do Docker (automático)
+
+O `docker-entrypoint.sh` já executa automaticamente ao subir o container:
+
+```bash
+1. npx prisma migrate deploy        # Migrations
+2. npx tsx prisma/seed.ts           # ANVISA + Admin
+3. npx tsx scripts/sync-farmacia-popular.ts  # Farmácia Popular
+```
+
+Toda vez que o container for reiniciado (`docker compose restart` ou deploy), as sincronizações rodam automaticamente — sem precisar de Node instalado na VPS.
+
+## Rotina semanal via crontab da VPS
+
+Para manter os dados atualizados sem reiniciar o container, adicione no crontab da VPS:
 
 ```bash
 crontab -e
 ```
 
-Adicione (executa todo domingo às 3h):
-
 ```cron
-0 3 * * 0 cd /caminho/para/med-unificando && curl -X POST http://localhost:11006/api/cron/sync >> /var/log/anvisa-cron.log 2>&1
+# ANVISA — todo domingo às 3h
+0 3 * * 0 docker exec medicamentos-app sh -c "NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx prisma/seed.ts" >> /var/log/sync.log 2>&1
+
+# Farmácia Popular — todo domingo às 3h30 (após ANVISA)
+30 3 * * 0 docker exec medicamentos-app npx tsx scripts/sync-farmacia-popular.ts >> /var/log/sync.log 2>&1
 ```
 
-## Endpoint de Sincronização
+> ⚠️ O container `medicamentos-app` precisa estar rodando para o `docker exec` funcionar.
 
-A API REST `/api/medicines` permite consulta programática.
+## URLs dos dados
 
-Para sync automático, você pode criar uma API Route em `src/app/api/cron/sync/route.ts` que chame `syncWithAnvisa()` internamente, mas como a action requer autenticação, o método mais prático é:
-
-1. **Cron com token**: Crie um endpoint com `secret` que dispare o sync
-2. **Ou manual**: Use o painel admin em `/admin/import` e clique em "Sincronizar"
-
-Para a opção 1, crie `src/app/api/cron/sync/route.ts`:
-
-```typescript
-import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import * as XLSX from 'xlsx'
-import https from 'https'
-
-const SECRET = process.env.CRON_SECRET || ''
-
-export async function POST(request: NextRequest) {
-  const auth = request.headers.get('authorization')
-  if (auth !== `Bearer ${SECRET}`) {
-    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
-  }
-
-  // ... lógica de sync (cópia de syncWithAnvisa sem auth check)
-}
-```
-
-Adicione `CRON_SECRET=sua-chave-aqui` no `.env` e no crontab:
-
-```cron
-0 3 * * 0 curl -X POST -H "Authorization: Bearer sua-chave-aqui" http://localhost:11006/api/cron/sync
-```
-
-## URLs dos dados abertos ANVISA
-
-- Medicamentos: `https://dados.anvisa.gov.br/dados/CONSULTAS/PRODUTOS/TA_CONSULTA_MEDICAMENTOS.CSV`
-- Preços: `https://dados.anvisa.gov.br/dados/TA_PRECOS_MEDICAMENTOS.csv`
-- Portal: `https://dados.anvisa.gov.br/dados/`
+- Medicamentos ANVISA: `https://dados.anvisa.gov.br/dados/CONSULTAS/PRODUTOS/TA_CONSULTA_MEDICAMENTOS.CSV`
+- Preços CMED: `https://dados.anvisa.gov.br/dados/TA_PRECOS_MEDICAMENTOS.csv`
+- Farmácia Popular (MS): `https://www.gov.br/saude/pt-br/composicao/sectics/farmacia-popular/arquivos/elenco-de-medicamentos-e-insumos-pfpb.pdf`
+- Portal dados abertos: `https://dados.anvisa.gov.br/dados/`

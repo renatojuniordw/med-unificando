@@ -11,7 +11,7 @@ let header: { count: number; dim: number; ids: number[] } | null = null
 async function getModel() {
   if (!extractor) {
     const { pipeline, env } = await import("@xenova/transformers")
-    env.cacheDir = "/app/.transformers-cache"
+    env.cacheDir = "/tmp/.transformers-cache"
     extractor = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2")
   }
   return extractor
@@ -87,4 +87,9 @@ export async function semanticSearch(
       medicine: medMap.get(h.ids[s.index]) as unknown as MedicineResult,
     }))
     .filter(r => r.medicine)
+    .sort((a, b) => {
+      const aActive = a.medicine.status === 'Ativo' ? 0 : 1
+      const bActive = b.medicine.status === 'Ativo' ? 0 : 1
+      return aActive - bActive || b.score - a.score
+    })
 }

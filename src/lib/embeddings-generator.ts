@@ -38,7 +38,7 @@ export async function generateEmbeddings(
   onProgress?: (done: number, total: number) => void
 ): Promise<GenerateEmbeddingsResult> {
   const { pipeline, env } = await import('@xenova/transformers')
-  env.cacheDir = '/app/.transformers-cache'
+  env.cacheDir = '/tmp/.transformers-cache'
   const extractor = await pipeline('feature-extraction', EMBEDDING.MODEL)
 
   const texts = medicines.map(m =>

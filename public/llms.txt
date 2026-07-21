@@ -1,19 +1,19 @@
 # Med Unificando
 
-Consulta inteligente de medicamentos intercambiaveis da ANVISA com busca semantica por IA local (all-MiniLM-L6-v2).
+Consulta inteligente de medicamentos intercambiaveis da ANVISA com busca por descricao.
 
 Projeto ofertado por Unificando (unificando.com.br) e desenvolvido por Renato Bezerra (renatobezerra.com.br).
 
 ## Sobre
 
-Med Unificando e uma plataforma para consultar medicamentos similares e de referencia conforme a lista de medicamentos intercambiaveis da ANVISA (Agencia Nacional de Vigilancia Sanitaria). Oferece busca semantica por IA local, precos CMED, classificacao ATC, comparacao lado a lado e exportacao para PDF/CSV/Excel.
+Med Unificando e uma plataforma para consultar medicamentos similares e de referencia conforme a lista de medicamentos intercambiaveis da ANVISA (Agencia Nacional de Vigilancia Sanitaria). Oferece busca por descricao, indicacao de Farmacia Popular, precos CMED, classificacao ATC, comparacao lado a lado e exportacao para PDF/CSV/Excel.
 
 Tech stack: Next.js 16, TypeScript, Tailwind CSS v4, Prisma 7, PostgreSQL, NextAuth v5, Xenova Transformers, Vercel.
 
 ## Paginas
 
-- / — Home com busca semantica
-- /buscar-avancado — Busca com filtros (referencia, principio ativo, nome comercial, categoria)
+- / — Home com busca por descricao
+- /buscar-avancado — Busca com filtros (referencia, principio ativo, nome comercial, categoria, Farmacia Popular)
 - /referencias — Lista de medicamentos de referencia
 - /referencias/[name] — Similares de um medicamento de referencia
 - /atc — Arvore de classificacao ATC
@@ -21,9 +21,10 @@ Tech stack: Next.js 16, TypeScript, Tailwind CSS v4, Prisma 7, PostgreSQL, NextA
 - /dashboard — Estatisticas consolidadas
 - /compare — Comparacao lado a lado
 - /sobre — Sobre o projeto e fontes de dados
-- /medicamento/[id] — Detalhes de um medicamento
+- /medicamento/[id] — Detalhes de um medicamento (inclui badge Farmacia Popular)
 - /detentor/[cnpj] — Medicamentos por detentor de registro
-- /auth/login, /auth/cadastrar — Autenticacao
+- /admin/login — Login do administrador
+- /admin/import — Sincronizacao ANVISA + Farmacia Popular
 
 ## API
 

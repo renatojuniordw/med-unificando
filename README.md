@@ -10,13 +10,14 @@ Consulta inteligente de medicamentos intercambiáveis da ANVISA com busca semân
 ## Funcionalidades
 
 - **Busca textual** por referência, princípio ativo, nome comercial e categoria
-- **Busca semântica** com IA local — descreva o medicamento em linguagem natural
+- **Busca por descrição** — descreva o medicamento em linguagem natural
+- **Farmácia Popular** — badge e filtro para medicamentos do programa
 - **Comparação** lado a lado com destaque visual de diferenças
 - **Explorar por referência** — veja todos os similares de um medicamento de referência
 - **Navegação ATC** — explore por classificação Anatômica/Terapêutica/Química
 - **Preços CMED** — visualize preços máximos ao consumidor com gráfico de barras
 - **Página do detentor** — todos os medicamentos de uma empresa
-- **Dashboard** com filtros interativos (ano, categoria, situação) e timeline
+- **Estatísticas** com filtros interativos (ano, categoria, situação) e timeline
 - **Exportação** em CSV e Excel (corretamente escaped)
 - **Relatório PDF** do medicamento com identidade visual
 - **Favoritos** — salve medicamentos de interesse
@@ -114,6 +115,7 @@ npm run dev
 | `npm run lint` | ESLint |
 | `npm run seed` | Importar dados ANVISA |
 | `npm run embeddings` | Gerar embeddings de busca semântica |
+| `npm run farmacia-popular` | Sincronizar lista Farmácia Popular |
 | `npm run migrate` | Aplicar migrations do Prisma |
 | `npm run generate` | Gerar cliente Prisma |
 | `npm run docker:up` | Docker Compose up |
@@ -137,7 +139,7 @@ npm run dev
 | `/dashboard` | Estatísticas com filtros interativos |
 | `/sobre` | Sobre o projeto e fontes de dados |
 | `/admin/login` | Login do administrador |
-| `/admin/import` | Sincronização ANVISA + Preços |
+| `/admin/import` | Sincronização ANVISA + Preços + Farmácia Popular |
 
 ---
 

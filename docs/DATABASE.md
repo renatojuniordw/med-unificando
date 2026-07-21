@@ -16,6 +16,7 @@ Total: 7 migrations (em `prisma/migrations/`):
 | `add_prices` | Modelo `Price` para preços CMED |
 | `add_synonyms_indications` | Campos `synonyms` e `indications` |
 | `add_sync_log` | Modelo `SyncLog` para log de sincronizações |
+| `add_farmacia_popular` | Campo `farmaciaPopular` no modelo Medicine |
 
 ## Modelos
 
@@ -40,6 +41,7 @@ model Medicine {
   presentationCount    Int?     // Quantidade de apresentações registradas
   synonyms             String?  // Sinônimos do produto (quando disponível)
   indications          String?  // Indicações terapêuticas (quando disponível)
+  farmaciaPopular      Boolean  @default(false) @map("farmacia_popular") // Farmácia Popular (MS)
   anvisaFileDate       DateTime? // Data do arquivo ANVISA (Last-Modified do CSV)
   lastImportAt         DateTime? // Data da última importação
   createdAt            DateTime @default(now())
@@ -51,6 +53,7 @@ model Medicine {
   @@index([similarHolder])
   @@index([category])
   @@index([status])
+  @@index([farmaciaPopular])
   @@map("medicines")
 }
 ```
@@ -104,7 +107,7 @@ Cardinalidade: 1 usuário admin por instalação.
 ```prisma
 model SyncLog {
   id        Int      @id @default(autoincrement())
-  type      String   // 'medicines' | 'prices'
+  type      String   // 'medicines' | 'prices' | 'embeddings' | 'farmacia-popular'
   count     Int      // Quantidade de registros importados
   status    String   // 'success' | 'error'
   message   String?  // Mensagem de erro (se houver)
@@ -118,7 +121,7 @@ model SyncLog {
 
 | Tabela | Índices | Queries beneficiadas |
 |--------|---------|----------------------|
-| medicines | reference, activeIngredient, tradeName, similarHolder, category, status | Busca textual, autocomplete, filtros por categoria/situação |
+| medicines | reference, activeIngredient, tradeName, similarHolder, category, status, farmaciaPopular | Busca textual, autocomplete, filtros por categoria/situação/Farmácia Popular |
 | prices | reference, cnpj | Join com medicines por registro, filtro por empresa |
 
 ## Embeddings

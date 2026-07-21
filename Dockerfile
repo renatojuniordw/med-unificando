@@ -35,9 +35,10 @@ COPY --from=builder /app/src/generated/prisma ./src/generated/prisma
 COPY --from=builder /app/next.config.ts ./next.config.ts
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
+COPY --from=builder /app/scripts ./scripts
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 
-RUN mkdir -p /tmp /app/.transformers-cache && chmod +x ./docker-entrypoint.sh && chown -R nextjs:nodejs /app
+RUN mkdir -p /tmp/.transformers-cache && chmod +x ./docker-entrypoint.sh && chown -R nextjs:nodejs /app
 
 USER nextjs
 

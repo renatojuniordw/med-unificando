@@ -61,7 +61,7 @@ services:
         condition: service_healthy
     volumes:
       - embeddings_data:/app/public/embeddings
-      - transformers_cache:/app/.transformers-cache
+      - transformers_cache:/tmp/.transformers-cache
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:11006/api/health"]
       interval: 30s

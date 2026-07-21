@@ -54,29 +54,37 @@ A CMED define preços máximos por apresentação:
 - Os preços são por apresentação (dosagem + embalagem)
 - Exibidos em gráfico de barras na página de detalhes e em PDF exportável
 
-## 6. Busca Semântica
+## 6. Busca por Descrição
 
-A busca semântica utiliza IA local (Xenova Transformers) para encontrar medicamentos pela **intenção** da busca, não por correspondência textual exata.
+A busca por descrição utiliza um modelo de IA local para encontrar medicamentos pela **intenção** da busca, não por correspondência textual exata.
 
-**Modelo**: `all-MiniLM-L6-v2` — 384 dimensões, ~23MB
-**Texto usado para embedding**: nome + princípio ativo + categoria + detentor + forma farmacêutica + concentração + sinônimos + indicações + situação + registro
+**Modelo**: all-MiniLM-L6-v2 — 384 dimensões, ~23MB (processamento 100% local, zero custo de API)
+**Texto usado para indexação**: nome + princípio ativo + categoria + detentor + forma farmacêutica + concentração + sinônimos + indicações + situação + registro
 
-**Exemplos:**
-- "anti-inflamatório para articulação" → ibuprofeno, naproxeno, diclofenaco
-- "remédio para dormir" → benzodiazepínicos, zolpidem
-- "antibiótico para infecção urinária" → nitrofurantoína, norfloxacino
+## 7. Farmácia Popular
 
-Processamento 100% server-side (modelo cacheado em memória). Zero custo de API.
+### Definição
+O programa Farmácia Popular do Ministério da Saúde disponibiliza medicamentos gratuitos para 12 indicações (hipertensão, diabetes, asma, osteoporose, dislipidemia, rinite, Parkinson, glaucoma, anticoncepção, diabetes mellitus + doença cardiovascular, incontinência urinária e dignidade menstrual).
 
-## 7. Sincronização com ANVISA
+### Regras
+- Cada medicamento no banco pode ter a flag `farmaciaPopular = true` se seu princípio ativo estiver na lista oficial
+- A lista é obtida do PDF oficial "Elenco de Medicamentos e Insumos PFPB" do Ministério da Saúde
+- O matching é feito por **princípio ativo** (campo `activeIngredient`)
+- A sincronização é manual via painel admin (`/admin/import`, card "5. Farmácia Popular")
+- A lista contempla ~40 princípios ativos, cobrindo ~2.400 medicamentos da base ANVISA
+- Cada sincronização é registrada em `SyncLog` (type: `farmacia-popular`)
+- O campo é exibido como badge verde "Farmácia Popular" na página de detalhe e "FP" nos resultados
+
+## 8. Sincronização com ANVISA
 
 - Base atualizada via CSV dos Dados Abertos ANVISA
 - Verificação do header `Last-Modified` antes de baixar (evita downloads desnecessários)
 - Importação substitui **todos** os registros existentes
 - Preços CMED importados separadamente
+- Farmácia Popular sincronizado separadamente (lista do Ministério da Saúde)
 - Cada sincronização é registrada em `SyncLog` (type, count, status, timestamp)
 
-## 8. Dashboard Interativo
+## 9. Estatísticas (Dashboard)
 
 O dashboard permite filtrar os dados por:
 - **Ano**: filtra registros por ano de publicação
@@ -85,7 +93,7 @@ O dashboard permite filtrar os dados por:
 
 Os filtros recalculam totais, top 10 medicamentos e top 10 princípios ativos em tempo real.
 
-## 9. Relatório PDF
+## 10. Relatório PDF
 
 Cada medicamento possui um botão "Baixar PDF" que gera um relatório server-side com:
 - Cabeçalho com a marca (Med Unificando)
@@ -96,18 +104,18 @@ Cada medicamento possui um botão "Baixar PDF" que gera um relatório server-sid
 
 Tecnologia: pdfmake (PdfPrinter API).
 
-## 10. SEO
+## 11. SEO
 
 - Cada página de medicamento possui meta tags dinâmicas (title, description, OG)
 - JSON-LD estruturado (Schema.org/MedicalDrug) para buscadores
 - Sitemap com 32.585+ URLs para indexação completa
 - Robots.txt bloqueia áreas administrativas
 
-## 9. PWA
+## 12. PWA
 
 Aplicativo instalável via navegador com `manifest.json`. Ideal para acesso mobile.
 
-## 10. Segurança
+## 13. Segurança
 
 - Rate limit de 60 requisições/minuto nas rotas `/api/*`
 - Security headers: X-Frame-Options: DENY, X-Content-Type-Options: nosniff, X-XSS-Protection, Referrer-Policy, Permissions-Policy

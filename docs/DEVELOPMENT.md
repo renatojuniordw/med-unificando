@@ -33,7 +33,21 @@ NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx prisma/seed.ts
 # 7. Embeddings para busca semântica
 npx tsx scripts/generate-embeddings.ts
 
-# 8. Dev server
+# 8. Sincronizar Farmácia Popular
+NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx -e "
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+const ativos = ['BROMETO DE IPRATROPIO','DIPROPIONATO DE BECLOMETASONA','SULFATO DE SALBUTAMOL','CLORIDRATO DE METFORMINA','METFORMINA','GLIBENCLAMIDA','INSULINA HUMANA','ATENOLOL','BESILATO DE ANLODIPINO','ANLODIPINO','CAPTOPRIL','CLORIDRATO DE PROPRANOLOL','PROPRANOLOL','HIDROCLOROTIAZIDA','LOSARTANA POTASSICA','LOSARTANA','MALEATO DE ENALAPRIL','ENALAPRIL','ESPIRONOLACTONA','FUROSEMIDA','SUCCINATO DE METOPROLOL','METOPROLOL','ACETATO DE MEDROXIPROGESTERONA','MEDROXIPROGESTERONA','ETINILESTRADIOL','LEVONORGESTREL','NORETISTERONA','VALERATO DE ESTRADIOL','ENANTATO DE NORETISTERONA','ALENDRONATO DE SODIO','ALENDRONATO','SINVASTATINA','CARBIDOPA','LEVODOPA','CLORIDRATO DE BENSERAZIDA','MALEATO DE TIMOLOL','TIMOLOL','BUDESONIDA','DAPAGLIFLOZINA'];
+(async () => {
+  await prisma.medicine.updateMany({ where: { farmaciaPopular: true }, data: { farmaciaPopular: false } });
+  const conditions = ativos.map(a => ({ activeIngredient: { contains: a, mode: 'insensitive' } }));
+  const r = await prisma.medicine.updateMany({ where: { OR: conditions }, data: { farmaciaPopular: true } });
+  console.log(\`\${r.count} medicamentos marcados\`);
+  await prisma.\$disconnect();
+})();
+"
+
+# 9. Dev server
 npm run dev
 ```
 
@@ -47,6 +61,7 @@ npm run dev
 | `npm run lint` | ESLint |
 | `npm run seed` | Importar dados ANVISA |
 | `npm run embeddings` | Gerar embeddings IA |
+| `npm run farmacia-popular` | Sincronizar Farmácia Popular |
 | `npm run migrate` | Aplicar migrations Prisma |
 | `npm run generate` | Gerar cliente Prisma |
 | `npm run docker:up` | `docker compose up -d` |

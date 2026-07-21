@@ -7,4 +7,7 @@ npx prisma migrate deploy
 echo "Rodando seed (admin + import inicial, idempotente)..."
 NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx prisma/seed.ts
 
+echo "Sincronizando Farmácia Popular..."
+NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx scripts/sync-farmacia-popular.ts
+
 exec "$@"
