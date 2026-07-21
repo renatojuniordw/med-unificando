@@ -1,10 +1,12 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
+  provider   = "postgresql"
+  extensions = [vector]
 }
 
 model User {
@@ -44,6 +46,8 @@ model Medicine {
   anvisaFileDate                       DateTime?
   lastImportAt                         DateTime?
   farmaciaPopular                      Boolean  @default(false) @map("farmacia_popular")
+  embedding                            Unsupported("vector(384)")?
+  searchDocument                       Unsupported("tsvector")?   @map("search_document")
   createdAt                            DateTime @default(now())
   updatedAt                            DateTime @updatedAt
 

@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     container_name: medicamentos-db
     restart: unless-stopped
     environment:
@@ -60,7 +60,6 @@ services:
       db:
         condition: service_healthy
     volumes:
-      - embeddings_data:/app/public/embeddings
       - transformers_cache:/tmp/.transformers-cache
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:11006/api/health"]
@@ -92,8 +91,6 @@ networks:
 
 volumes:
   pgdata:
-    driver: local
-  embeddings_data:
     driver: local
   transformers_cache:
     driver: local
