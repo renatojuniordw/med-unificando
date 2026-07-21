@@ -8,7 +8,6 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY prisma ./prisma
-COPY src/generated/prisma ./src/generated/prisma
 COPY tsconfig.json next.config.ts postcss.config.mjs prisma.config.ts ./
 RUN npx prisma generate
 
