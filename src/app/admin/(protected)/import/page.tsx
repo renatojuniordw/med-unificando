@@ -147,12 +147,13 @@ export default function AdminImportPage() {
         loading={loading === 'embeddings'}
         onAction={() => setConfirmAction({
           type: 'embeddings',
-          title: 'Atualizar Busca',
-          description: 'Esta ação regenerará o índice de busca por descrição. Pode levar vários minutos.'
+          title: 'Atualizar Índice de Busca',
+          description: 'Regenera os embeddings de busca semântica diretamente no banco de dados (pgvector). Pode levar alguns minutos dependendo do modelo.'
         })}
       >
         <p className="text-xs text-muted">
-          Atualiza o índice de busca por descrição a partir dos medicamentos atuais no banco. Pode levar alguns minutos.
+          Regenera os embeddings de busca semântica diretamente no banco de dados (pgvector).
+          Atualização automática ao sincronizar medicamentos.
         </p>
       </SyncCard>
 

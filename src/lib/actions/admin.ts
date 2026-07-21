@@ -243,9 +243,14 @@ export async function syncWithAnvisa() {
       data: { type: 'medicines', count: medicines.length, status: 'success' },
     })
 
+    const { regenerateEmbeddings } = await import('@/lib/actions/embeddings')
+    regenerateEmbeddings().catch(err =>
+      console.error('[sync] Background embedding regeneration failed:', err)
+    )
+
     return {
       success: true,
-      message: `${medicines.length} medicamentos sincronizados com a ANVISA!`,
+      message: `${medicines.length} medicamentos sincronizados. Índice de busca sendo atualizado em segundo plano.`,
       count: medicines.length,
     }
   } catch (error) {
