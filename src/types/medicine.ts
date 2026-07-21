@@ -1,11 +1,11 @@
-import type { MedicineResult, SearchFilters } from '@/types'
+import type { MedicineResult } from '@/types'
 
 export type MedicineField = keyof Pick<
   MedicineResult,
   'reference' | 'activeIngredient' | 'tradeName' | 'similarHolder' | 'pharmaceuticalForm' | 'concentration'
 >
 
-export const MEDICINE_FIELDS: Record<keyof SearchFilters, string> = {
+export const MEDICINE_FIELDS: Record<string, string> = {
   reference: 'reference',
   activeIngredient: 'activeIngredient',
   tradeName: 'tradeName',
@@ -13,6 +13,7 @@ export const MEDICINE_FIELDS: Record<keyof SearchFilters, string> = {
   pharmaceuticalForm: 'pharmaceuticalForm',
   category: 'category',
   status: 'status',
+  farmaciaPopular: 'farmaciaPopular',
 }
 
 export interface TableColumn {

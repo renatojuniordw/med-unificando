@@ -43,6 +43,7 @@ model Medicine {
   therapeuticClass                     String?
   anvisaFileDate                       DateTime?
   lastImportAt                         DateTime?
+  farmaciaPopular                      Boolean  @default(false) @map("farmacia_popular")
   createdAt                            DateTime @default(now())
   updatedAt                            DateTime @updatedAt
 
@@ -52,6 +53,7 @@ model Medicine {
   @@index([similarHolder])
   @@index([category])
   @@index([status])
+  @@index([farmaciaPopular])
   @@map("medicines")
 }
 

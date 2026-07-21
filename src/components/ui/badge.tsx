@@ -1,7 +1,7 @@
 import { HTMLAttributes } from 'react'
 
 interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
-  variant?: 'primary' | 'secondary'
+  variant?: 'primary' | 'secondary' | 'success'
 }
 
 export function Badge({
@@ -13,7 +13,9 @@ export function Badge({
   const styles =
     variant === 'primary'
       ? 'bg-brand-yellow text-brand-black'
-      : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] border border-[var(--color-border)]'
+      : variant === 'success'
+        ? 'bg-success/20 text-success border border-success/30'
+        : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] border border-[var(--color-border)]'
 
   return (
     <span

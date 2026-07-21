@@ -8,6 +8,7 @@ const TYPE_LABELS: Record<string, string> = {
   medicines: 'Medicamentos',
   prices: 'Preços',
   embeddings: 'Busca',
+  'farmacia-popular': 'Farmácia Popular',
 }
 
 export function SyncLogList({ logs }: SyncLogListProps) {

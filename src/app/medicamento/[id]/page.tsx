@@ -100,9 +100,14 @@ export default async function MedicineDetailPage({ params }: { params: Promise<{
         ]} />
 
         <div className="mt-8 mb-10">
-          <Badge variant="primary" className="mb-4">
-            {med.category || 'MEDICAMENTO'}
-          </Badge>
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <Badge variant="primary">
+              {med.category || 'MEDICAMENTO'}
+            </Badge>
+            {med.farmaciaPopular && (
+              <Badge variant="success">Farmácia Popular</Badge>
+            )}
+          </div>
           <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-[var(--color-text)]">
             {med.tradeName}
           </h1>

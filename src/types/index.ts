@@ -6,6 +6,7 @@ export interface SearchFilters {
   pharmaceuticalForm?: string
   category?: string
   status?: string
+  farmaciaPopular?: boolean
 }
 
 export interface MedicineResult {
@@ -29,6 +30,7 @@ export interface MedicineResult {
   therapeuticClass: string | null
   anvisaFileDate: Date | null
   lastImportAt: Date | null
+  farmaciaPopular: boolean
 }
 
 export interface SearchResponse {

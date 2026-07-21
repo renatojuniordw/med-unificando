@@ -7,6 +7,7 @@ import { signOut } from 'next-auth/react'
 import { syncWithAnvisa, getImportInfo, getSyncLogs } from '@/lib/actions/admin'
 import { syncPrices, getPriceStats } from '@/lib/actions/prices'
 import { regenerateEmbeddings } from '@/lib/actions/embeddings'
+import { syncFarmaciaPopular } from '@/lib/actions/farmacia-popular'
 import { SyncLogList } from '@/components/admin/sync-log-list'
 import { SyncCard } from '@/components/admin/sync-card'
 import { ConfirmModal } from '@/components/admin/confirm-modal'
@@ -20,18 +21,18 @@ import type { SyncLog } from '@/generated/prisma/client'
 
 export default function AdminImportPage() {
   const router = useRouter()
-  const [loading, setLoading] = useState<'medicines' | 'prices' | 'embeddings' | null>(null)
+  const [loading, setLoading] = useState<'medicines' | 'prices' | 'embeddings' | 'farmacia-popular' | null>(null)
   const [importInfo, setImportInfo] = useState<ImportInfo | null>(null)
   const [priceInfo, setPriceInfo] = useState<{ total: number; withPrice: number } | null>(null)
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>([])
   const [infoLoaded, setInfoLoaded] = useState(false)
   const [confirmAction, setConfirmAction] = useState<{
-    type: 'medicines' | 'prices' | 'embeddings'
+    type: 'medicines' | 'prices' | 'embeddings' | 'farmacia-popular'
     title: string
     description: string
   } | null>(null)
   const [result, setResult] = useState<{
-    type: 'medicines' | 'prices' | 'embeddings'
+    type: 'medicines' | 'prices' | 'embeddings' | 'farmacia-popular'
     success: boolean
     message?: string
     error?: string
@@ -53,7 +54,7 @@ export default function AdminImportPage() {
     setSyncLogs(logs)
   }
 
-  const executeAction = useCallback(async (type: 'medicines' | 'prices' | 'embeddings') => {
+  const executeAction = useCallback(async (type: 'medicines' | 'prices' | 'embeddings' | 'farmacia-popular') => {
     setLoading(type)
     setResult(null)
     setConfirmAction(null)
@@ -61,7 +62,8 @@ export default function AdminImportPage() {
     let response
     if (type === 'medicines') response = await syncWithAnvisa()
     else if (type === 'prices') response = await syncPrices()
-    else response = await regenerateEmbeddings()
+    else if (type === 'embeddings') response = await regenerateEmbeddings()
+    else response = await syncFarmaciaPopular()
 
     setResult({ type, ...response })
     setLoading(null)
@@ -151,6 +153,21 @@ export default function AdminImportPage() {
       >
         <p className="text-xs text-muted">
           Atualiza o índice de busca por descrição a partir dos medicamentos atuais no banco. Pode levar alguns minutos.
+        </p>
+      </SyncCard>
+
+      <SyncCard
+        title="5. Farmácia Popular"
+        action={loading === 'farmacia-popular' ? 'Sincronizando...' : 'Sincronizar Lista'}
+        loading={loading === 'farmacia-popular'}
+        onAction={() => setConfirmAction({
+          type: 'farmacia-popular',
+          title: 'Sincronizar Farmácia Popular',
+          description: 'Esta ação marcará os medicamentos disponíveis no programa Farmácia Popular conforme a lista oficial do Ministério da Saúde.'
+        })}
+      >
+        <p className="text-xs text-muted">
+          Marca os medicamentos que fazem parte do programa Farmácia Popular com base na lista oficial de princípios ativos do Ministério da Saúde.
         </p>
       </SyncCard>
 

@@ -24,6 +24,7 @@ export function SearchResultsCards({ results }: SearchResultsCardsProps) {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {r.medicine.category && <Badge variant="primary">{r.medicine.category}</Badge>}
+              {r.medicine.farmaciaPopular && <Badge variant="success">FP</Badge>}
               {r.medicine.status && <StatusPill status={r.medicine.status} />}
               <span className="text-xs text-muted">
                 {(r.score * 100).toFixed(0)}%

@@ -22,6 +22,7 @@ export function SearchForm({ references, activeIngredients, tradeNames, categori
   const [tradeName, setTradeName] = useState(searchParams.get('tradeName') || '')
   const [category, setCategory] = useState(searchParams.get('category') || '')
   const [status, setStatus] = useState(searchParams.get('status') || '')
+  const [farmaciaPopular, setFarmaciaPopular] = useState(searchParams.get('farmaciaPopular') === 'true')
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -31,6 +32,7 @@ export function SearchForm({ references, activeIngredients, tradeNames, categori
     if (tradeName) params.set('tradeName', tradeName)
     if (category) params.set('category', category)
     if (status) params.set('status', status)
+    if (farmaciaPopular) params.set('farmaciaPopular', 'true')
     params.set('page', '1')
     router.push(`?${params.toString()}`)
   }
@@ -41,6 +43,7 @@ export function SearchForm({ references, activeIngredients, tradeNames, categori
     setTradeName('')
     setCategory('')
     setStatus('')
+    setFarmaciaPopular(false)
     router.push('/buscar-avancado')
   }
 
@@ -104,6 +107,25 @@ export function SearchForm({ references, activeIngredients, tradeNames, categori
       </div>
 
       <StatusFilter value={status} onChange={handleStatusChange} />
+
+      <label className="flex items-center gap-2 mb-6 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={farmaciaPopular}
+          onChange={(e) => {
+            setFarmaciaPopular(e.target.checked)
+            const params = new URLSearchParams(searchParams.toString())
+            if (e.target.checked) params.set('farmaciaPopular', 'true')
+            else params.delete('farmaciaPopular')
+            params.set('page', '1')
+            router.push(`?${params.toString()}`)
+          }}
+          className="w-4 h-4 rounded border-border accent-brand-yellow"
+        />
+        <span className="text-sm font-medium text-[var(--color-text)]">
+          Disponível na Farmácia Popular
+        </span>
+      </label>
 
       <div className="flex gap-3">
         <Button type="submit" variant="primary">

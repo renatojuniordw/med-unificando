@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Badge } from '@/components/ui/badge'
 import { columns } from '@/components/medicines/medicine-table'
 import type { MedicineResult } from '@/types'
 
@@ -21,8 +22,11 @@ export function SemanticResultsTable({ results }: SemanticResultsTableProps) {
                 {col.label}
               </th>
             ))}
-            <th className="text-left p-3 text-xs font-semibold text-muted w-24">
+            <th className="text-left p-3 text-xs font-semibold text-muted w-20">
               Relevância
+            </th>
+            <th className="text-left p-3 text-xs font-semibold text-muted w-24">
+              FP
             </th>
           </tr>
         </thead>
@@ -57,6 +61,11 @@ export function SemanticResultsTable({ results }: SemanticResultsTableProps) {
               })}
               <td className="p-3 text-sm text-muted font-medium">
                 {(score * 100).toFixed(0)}%
+              </td>
+              <td className="p-3 text-sm">
+                {medicine.farmaciaPopular && (
+                  <Badge variant="success">FP</Badge>
+                )}
               </td>
             </tr>
           ))}
