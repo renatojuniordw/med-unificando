@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     template: "%s | Med Unificando",
   },
   description:
-    "Consulte medicamentos similares e seus respectivos medicamentos de referência conforme lista ANVISA. Busca semântica com IA local, preços CMED, classificação ATC e comparação lado a lado.",
+    "Consulte medicamentos similares e seus respectivos medicamentos de referência conforme lista ANVISA. Busca por descrição, preços CMED, classificação ATC e comparação lado a lado.",
   keywords: [
     "medicamentos", "ANVISA", "intercambiáveis", "similares", "referência",
     "princípio ativo", "preços CMED", "classificação ATC", "medicamento similar",
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Med Unificando — Medicamentos Intercambiáveis",
     description:
-      "Consulte medicamentos similares e seus respectivos medicamentos de referência conforme dados abertos ANVISA. Busca semântica com IA, preços CMED e comparação.",
+      "Consulte medicamentos similares e seus respectivos medicamentos de referência conforme dados abertos ANVISA. Busca por descrição, preços CMED e comparação.",
     type: "website",
     locale: "pt_BR",
     siteName: "Med Unificando",
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Med Unificando — Medicamentos Intercambiáveis",
     description:
-      "Consulte medicamentos similares conforme dados abertos ANVISA. Busca semântica com IA local.",
+      "Consulte medicamentos similares conforme dados abertos ANVISA. Busca por descrição.",
   },
   robots: {
     index: true,
@@ -92,7 +92,7 @@ export default function RootLayout({
               name: "Med Unificando",
               alternateName: "Med Unificando",
               url: "https://medicamentos.unificando.com.br",
-              description: "Consulta de medicamentos intercambiáveis ANVISA com busca semântica por IA local",
+              description: "Consulta de medicamentos intercambiáveis ANVISA com busca por descrição",
               publisher: {
                 "@type": "Organization",
                 name: "Unificando",

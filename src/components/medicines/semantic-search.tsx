@@ -42,9 +42,9 @@ export function SemanticSearch() {
   return (
     <div className="bg-[var(--color-bg)] border border-border rounded-md shadow-card p-6 md:p-8">
       <div className="flex items-center gap-2 mb-4">
-        <Badge variant="primary">BUSCA SEMÂNTICA</Badge>
+        <Badge variant="primary">BUSCA POR DESCRIÇÃO</Badge>
         <span className="text-xs text-muted">
-          IA local — descreva o medicamento
+          descreva o medicamento
         </span>
       </div>
 
@@ -73,7 +73,7 @@ export function SemanticSearch() {
       {!searched && <RecentSearches searches={recent} onSelect={handleSearch} />}
 
       <p id="search-description" className="sr-only">
-        Digite uma descrição do medicamento para buscar semanticamente
+        Digite uma descrição do medicamento para buscar
       </p>
 
       {loading && (
@@ -88,7 +88,7 @@ export function SemanticSearch() {
         <div className="mt-6 border-t border-border pt-4">
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
             <p className="text-xs text-muted">
-              Resultados por relevância semântica
+              Resultados por relevância
             </p>
             <ViewToggle view={view} onChange={setView} />
           </div>

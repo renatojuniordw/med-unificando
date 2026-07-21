@@ -7,7 +7,7 @@ interface SyncLogListProps {
 const TYPE_LABELS: Record<string, string> = {
   medicines: 'Medicamentos',
   prices: 'Preços',
-  embeddings: 'Embeddings',
+  embeddings: 'Busca',
 }
 
 export function SyncLogList({ logs }: SyncLogListProps) {

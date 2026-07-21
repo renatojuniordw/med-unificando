@@ -6,10 +6,10 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Sobre',
-  description: 'Informações sobre o Med Unificando, fontes de dados oficiais ANVISA, metodologia de intercambialidade e busca semântica com IA.',
+  description: 'Informações sobre o Med Unificando, fontes de dados oficiais ANVISA, metodologia de intercambialidade e busca por descrição.',
   openGraph: {
     title: 'Sobre — Med Unificando',
-    description: 'Plataforma de consulta de medicamentos intercambiáveis ANVISA com IA local.',
+    description: 'Plataforma de consulta de medicamentos intercambiáveis ANVISA.',
   },
 }
 
@@ -35,10 +35,10 @@ const faqSchema = {
     },
     {
       '@type': 'Question',
-      name: 'Como funciona a busca semântica?',
+      name: 'Como funciona a busca por descrição?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'A busca semântica utiliza um modelo de IA local (all-MiniLM-L6-v2 via Xenova Transformers) para converter seu texto em embeddings e encontrar medicamentos com descrições mais similares na base ANVISA. Tudo processado localmente, sem envio de dados para servidores externos.',
+        text: 'Você descreve o medicamento que procura em linguagem natural (sintomas, indicações, tipo de remédio) e o sistema encontra os registros mais relevantes na base ANVISA. Tudo processado localmente, sem envio de dados para servidores externos.',
       },
     },
     {
@@ -70,7 +70,7 @@ export default function AboutPage() {
             </h1>
             <p className="mt-4 text-sm text-[var(--color-text-secondary)] leading-relaxed max-w-2xl">
               Plataforma open-source de consulta de medicamentos intercambiáveis ANVISA com
-              busca semântica por IA local. Projeto do <strong>Unificando Lab</strong>,
+              busca por descrição. Projeto do <strong>Unificando Lab</strong>,
               desenvolvido por <strong>Renato Bezerra</strong>.
             </p>
           </div>
@@ -120,7 +120,7 @@ export default function AboutPage() {
               <ul className="space-y-2 text-sm text-[var(--color-text-secondary)]">
                 <li className="flex items-start gap-2">
                   <span className="text-brand-yellow mt-0.5">▸</span>
-                  <span><strong className="text-[var(--color-text)]">Busca Semântica:</strong> encontre medicamentos descrevendo sintomas ou usos</span>
+                  <span><strong className="text-[var(--color-text)]">Busca por Descrição:</strong> encontre medicamentos descrevendo sintomas ou usos</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-brand-yellow mt-0.5">▸</span>
@@ -136,7 +136,7 @@ export default function AboutPage() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-brand-yellow mt-0.5">▸</span>
-                  <span><strong className="text-[var(--color-text)]">Dashboard:</strong> estatísticas consolidadas da base ANVISA</span>
+                  <span><strong className="text-[var(--color-text)]">Estatísticas:</strong> dados consolidados da base ANVISA</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-brand-yellow mt-0.5">▸</span>
@@ -145,36 +145,6 @@ export default function AboutPage() {
                 <li className="flex items-start gap-2">
                   <span className="text-brand-yellow mt-0.5">▸</span>
                   <span><strong className="text-[var(--color-text)]">Relatório PDF:</strong> gere PDF completo de cada medicamento</span>
-                </li>
-              </ul>
-            </Card>
-
-            <Card>
-              <h2 className="font-semibold text-lg mb-3">Stack Tecnológico</h2>
-              <ul className="space-y-1.5 text-sm text-[var(--color-text-secondary)]">
-                <li className="flex items-start gap-2">
-                  <span className="text-brand-yellow mt-0.5">▸</span>
-                  <span><strong className="text-[var(--color-text)]">Frontend:</strong> Next.js 16, TypeScript, Tailwind CSS v4</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-brand-yellow mt-0.5">▸</span>
-                  <span><strong className="text-[var(--color-text)]">Backend:</strong> Next.js API Routes + Server Actions</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-brand-yellow mt-0.5">▸</span>
-                  <span><strong className="text-[var(--color-text)]">Banco:</strong> PostgreSQL com Prisma 7</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-brand-yellow mt-0.5">▸</span>
-                  <span><strong className="text-[var(--color-text)]">IA:</strong> all-MiniLM-L6-v2 (Xenova Transformers) — processamento 100% local</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-brand-yellow mt-0.5">▸</span>
-                  <span><strong className="text-[var(--color-text)]">Auth:</strong> NextAuth v5 com JWT</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-brand-yellow mt-0.5">▸</span>
-                  <span><strong className="text-[var(--color-text)]">Deploy:</strong> Vercel</span>
                 </li>
               </ul>
             </Card>

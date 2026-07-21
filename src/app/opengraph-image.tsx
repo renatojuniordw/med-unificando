@@ -71,7 +71,7 @@ export default function Image() {
             textAlign: 'center',
           }}
         >
-          busca semântica · preços CMED · comparação · classificação ATC
+          busca por descrição · preços CMED · comparação · classificação ATC
         </div>
       </div>
     ),

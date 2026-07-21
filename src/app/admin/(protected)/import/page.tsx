@@ -141,16 +141,16 @@ export default function AdminImportPage() {
 
       <SyncCard
         title="4. Busca Semântica"
-        action={loading === 'embeddings' ? 'Gerando embeddings...' : 'Gerar Embeddings'}
+        action={loading === 'embeddings' ? 'Atualizando...' : 'Atualizar Busca'}
         loading={loading === 'embeddings'}
         onAction={() => setConfirmAction({
           type: 'embeddings',
-          title: 'Gerar Embeddings',
-          description: 'Esta ação regenerará todos os embeddings de busca semântica. Pode levar vários minutos.'
+          title: 'Atualizar Busca',
+          description: 'Esta ação regenerará o índice de busca por descrição. Pode levar vários minutos.'
         })}
       >
         <p className="text-xs text-muted">
-          Regenera os embeddings usados pela busca por IA a partir dos medicamentos atuais no banco. Pode levar alguns minutos.
+          Atualiza o índice de busca por descrição a partir dos medicamentos atuais no banco. Pode levar alguns minutos.
         </p>
       </SyncCard>
 

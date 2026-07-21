@@ -8,10 +8,10 @@ import type { Metadata } from 'next'
 export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
-  title: "Dashboard",
+  title: "Estatísticas",
   description: "Estatísticas consolidadas da base de medicamentos ANVISA. Filtros por ano, categoria e situação.",
   openGraph: {
-    title: "Dashboard — Med Unificando",
+    title: "Estatísticas — Med Unificando",
     description: "Estatísticas consolidadas da base de medicamentos ANVISA.",
   },
 }
@@ -68,7 +68,7 @@ export default function DashboardPage() {
             Estatísticas
           </Badge>
           <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-[var(--color-text)]">
-            Dashboard
+            Estatísticas
           </h1>
           <p className="mt-2 text-base text-muted">
             Dados consolidados da ANVISA
