@@ -25,4 +25,5 @@ export const authConfig = {
     maxAge: 24 * 60 * 60,
   },
   useSecureCookies: process.env.NODE_ENV === "production",
+  trustHost: true,
 } satisfies NextAuthConfig
