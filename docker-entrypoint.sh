@@ -5,6 +5,6 @@ echo "Aplicando migrations..."
 npx prisma migrate deploy
 
 echo "Rodando seed (admin + import inicial, idempotente)..."
-npx tsx prisma/seed.ts
+NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx prisma/seed.ts
 
 exec "$@"
