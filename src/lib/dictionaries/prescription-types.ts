@@ -13,7 +13,6 @@ export function getPrescriptionTypeName(code: string | null | undefined): string
   if (trimmed.includes(',')) {
     const parts = trimmed.split(',').map(p => p.trim()).filter(Boolean)
     const resolved = parts.map(p => PRESCRIPTION_TYPE_NAMES[p] ?? p)
-    if (resolved.some((r, i) => r === parts[i])) return trimmed
     return resolved.join(', ')
   }
 

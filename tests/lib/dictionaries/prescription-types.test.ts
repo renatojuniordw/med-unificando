@@ -31,9 +31,8 @@ describe('prescriptionTypes', () => {
     expect(result).toBe('TARJA VERMELHA, VENDA SOB PRESCRIÇÃO MÉDICA')
   })
 
-  it('falls back to raw code if any part is unknown', () => {
-    // '2, 99' — 99 is unknown, so return raw code
+  it('partially resolves multi-code with unknown parts', () => {
     const result = getPrescriptionTypeName('2, 99')
-    expect(result).toBe('2, 99')
+    expect(result).toBe('TARJA VERMELHA, 99')
   })
 })

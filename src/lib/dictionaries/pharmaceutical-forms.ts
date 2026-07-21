@@ -230,7 +230,6 @@ export function getPharmaceuticalFormName(code: string | null | undefined): stri
   if (trimmed.includes(',')) {
     const parts = trimmed.split(',').map(p => p.trim()).filter(Boolean)
     const resolved = parts.map(p => PHARMACEUTICAL_FORM_NAMES[p] ?? p)
-    if (resolved.some((r, i) => r === parts[i])) return trimmed
     return resolved.join(', ')
   }
 

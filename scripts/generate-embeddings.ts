@@ -2,6 +2,7 @@ import "dotenv/config"
 import { PrismaClient } from "../src/generated/prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
 import path from "path"
+import { EMBEDDING } from "../src/lib/config"
 import { generateEmbeddings } from "../src/lib/embeddings-generator"
 
 const prisma = new PrismaClient({
@@ -24,7 +25,7 @@ async function main() {
   })
   console.log(`Total: ${medicines.length} medicamentos`)
 
-  console.log("Carregando modelo de embedding (all-MiniLM-L6-v2) e gerando embeddings...")
+  console.log(`Carregando modelo de embedding (${EMBEDDING.MODEL}) e gerando embeddings...`)
   const result = await generateEmbeddings(medicines, OUTPUT_DIR, (done, total) => {
     if (done % 1000 === 0 || done >= total) {
       console.log(`${done}/${total} embeddings gerados`)

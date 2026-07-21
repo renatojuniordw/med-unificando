@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma"
 import { keywordSearch } from '@/lib/actions/keyword-search'
+import { EMBEDDING } from '@/lib/config'
 import type { MedicineResult } from "@/types"
 import type { FeatureExtractionPipeline } from "@xenova/transformers"
 
@@ -13,7 +14,7 @@ async function getModel() {
   if (!extractor) {
     const { pipeline, env } = await import("@xenova/transformers")
     env.cacheDir = "/tmp/.transformers-cache"
-    extractor = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2")
+    extractor = await pipeline("feature-extraction", EMBEDDING.MODEL)
   }
   return extractor
 }
