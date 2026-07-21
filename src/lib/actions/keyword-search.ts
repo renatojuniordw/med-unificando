@@ -3,21 +3,35 @@
 import { prisma } from '@/lib/prisma'
 import { parseQuery } from '@/lib/query-parser'
 
-const FIELD_WEIGHTS: Record<string, number> = {
-  pharmaceuticalForm: 2.0,
-  therapeuticClass: 1.5,
-  activeIngredient: 1.0,
-  tradeName: 1.0,
-  indications: 1.0,
+const SYNONYM_MAP: Record<string, string[]> = {
+  pressao:     ['pressao', 'pressão', 'hipertensao', 'hipertensão', 'anti-hipertensivo', 'anti-hipertensão'],
+  alergia:     ['alergia', 'alergico', 'alérgico', 'antialergico', 'antialérgico', 'anti-histaminico', 'anti-histamínico'],
+  dor:         ['dor', 'analgesico', 'analgésico', 'anti-inflamatorio', 'anti-inflamatório'],
+  diabetes:    ['diabetes', 'antidiabetico', 'antidiabético', 'metformina', 'insulina'],
+  febre:       ['febre', 'antitermico', 'antitérmico', 'antipiretico', 'antipirético'],
+  inflamacao:  ['inflamacao', 'inflamação', 'anti-inflamatorio', 'anti-inflamatório', 'antiinflamatorio'],
+  infeccao:    ['infeccao', 'infecção', 'antibiotico', 'antibiótico', 'antimicrobiano'],
+  colesterol:  ['colesterol', 'antilipemico', 'antilipêmico', 'sinvastatina', 'estatina'],
+  ansiedade:   ['ansiedade', 'ansiolitico', 'ansiolítico', 'calmante', 'benzodiazepinico'],
+  depressao:   ['depressao', 'depressão', 'antidepressivo'],
+  tosse:       ['tosse', 'antitussigeno', 'antitussígeno', 'expectorante'],
+  estomago:    ['estomago', 'estômago', 'gastrico', 'gástrico', 'antiacido', 'antiácido'],
+  uc:          ['uc', 'ulcera', 'úlcera', 'gastrico', 'gástrico', 'protonico', 'protetor gástrico'],
+  asma:        ['asma', 'broncodilatador', 'bronquite'],
+  insulina:    ['insulina', 'antidiabetico', 'antidiabético', 'diabetes'],
+  'dor-de-cabeca': ['dor-de-cabeca', 'dor de cabeça', 'cefaleia', 'migrânea', 'migranea'],
 }
 
-const SEARCH_FIELDS = [
-  'pharmaceuticalForm',
-  'therapeuticClass',
-  'activeIngredient',
-  'tradeName',
-  'indications',
-] as const
+function expandWithSynonyms(terms: string[]): string[] {
+  const expanded = new Set(terms)
+  for (const term of terms) {
+    const synonyms = SYNONYM_MAP[term]
+    if (synonyms) {
+      for (const syn of synonyms) expanded.add(syn)
+    }
+  }
+  return [...expanded]
+}
 
 export async function keywordSearch(
   query: string,
@@ -27,36 +41,29 @@ export async function keywordSearch(
 
   const parsed = parseQuery(query)
   const allTerms = [
-    ...parsed.pharmaceuticalForms.map(t => ({ term: t, boost: 2.0 })),
-    ...parsed.therapeuticClasses.map(t => ({ term: t, boost: 1.5 })),
-    ...parsed.otherTerms.map(t => ({ term: t, boost: 1.0 })),
+    ...parsed.pharmaceuticalForms,
+    ...parsed.therapeuticClasses,
+    ...parsed.otherTerms,
   ]
 
   if (allTerms.length === 0) return []
 
-  const conditions = allTerms.flatMap(({ term, boost }) =>
-    SEARCH_FIELDS.map(field => ({
-      field,
-      term,
-      weight: FIELD_WEIGHTS[field] * boost,
-    }))
-  )
-
-  const scoreParts = conditions.map(
-    (c, i) => `COALESCE(similarity(m.${c.field}::text, ${'$' + (i + 1)}::text), 0) * ${c.weight}`
-  )
+  const expandedTerms = expandWithSynonyms(allTerms)
+  const searchQuery = expandedTerms.join(' ')
 
   const sql = `
-    SELECT m.id, (${scoreParts.join(' + ')}) / ${conditions.reduce((s, c) => s + c.weight, 0)} AS keyword_score
-    FROM medicines m
-    WHERE ${conditions.map((c, i) => `m.${c.field}::text % ${'$' + (i + 1)}::text`).join(' OR ')}
+    SELECT id, ts_rank("search_document", plainto_tsquery('portuguese', $1::text)) AS keyword_score
+    FROM medicines
+    WHERE "search_document" @@ plainto_tsquery('portuguese', $1::text)
     ORDER BY keyword_score DESC
-    LIMIT ${topK}
+    LIMIT $2
   `
 
-  const params = conditions.flatMap(c => [c.term])
-
-  const rows = await prisma.$queryRawUnsafe<{ id: number; keyword_score: number }[]>(sql, ...params)
+  const rows = await prisma.$queryRawUnsafe<{ id: number; keyword_score: number }[]>(
+    sql,
+    searchQuery,
+    topK,
+  )
 
   return rows.map(r => ({
     medicineId: r.id,
