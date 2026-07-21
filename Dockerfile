@@ -37,7 +37,7 @@ COPY --from=builder /app/tsconfig.json ./tsconfig.json
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 
-RUN mkdir -p /tmp && chmod +x ./docker-entrypoint.sh && chown -R nextjs:nodejs /app
+RUN mkdir -p /tmp /app/.transformers-cache && chmod +x ./docker-entrypoint.sh && chown -R nextjs:nodejs /app
 
 USER nextjs
 

@@ -11,7 +11,7 @@ let header: { count: number; dim: number; ids: number[] } | null = null
 async function getModel() {
   if (!extractor) {
     const { pipeline, env } = await import("@xenova/transformers")
-    env.cacheDir = "/tmp/transformers-cache"
+    env.cacheDir = "/app/.transformers-cache"
     extractor = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2")
   }
   return extractor
