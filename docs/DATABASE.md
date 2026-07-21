@@ -126,12 +126,14 @@ model SyncLog {
 
 ## Embeddings
 
-Os embeddings **não** ficam no banco de dados. São armazenados como arquivos binários:
+Os embeddings são armazenados diretamente no banco de dados PostgreSQL usando a extensão **pgvector**:
 
-- `public/embeddings-header.json`: metadados (`{ count: 32585, dim: 384, ids: [...] }`)
-- `public/embeddings.bin`: Float32Array raw (~47MB)
+- `medicines.embedding`: coluna `vector(384)` com os embeddings gerados por `multilingual-e5-small`
+- `medicines.search_document`: coluna `tsvector` (GENERATED ALWAYS AS) com texto concatenado para busca keyword
 
-Motivo: são carregados em memória pelo runtime ONNX (Xenova Transformers) para busca semântica. Não faz sentido armazená-los em linhas do banco.
+**Índices:**
+- `idx_medicines_embedding`: IVFFlat (lists=180) para busca vetorial O(log n)
+- `idx_medicines_search_document`: GIN para busca tsvector O(log n)
 
 ## Comandos
 

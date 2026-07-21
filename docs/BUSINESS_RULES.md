@@ -56,9 +56,14 @@ A CMED define preços máximos por apresentação:
 
 ## 6. Busca por Descrição
 
-A busca por descrição utiliza um modelo de IA local para encontrar medicamentos pela **intenção** da busca, não por correspondência textual exata.
+A busca por descrição combina **tsvector** (busca keyword com stemming e sinônimos) e **pgvector** (busca semântica vetorial) para encontrar medicamentos pela **intenção** da busca.
 
-**Modelo**: all-MiniLM-L6-v2 — 384 dimensões, ~23MB (processamento 100% local, zero custo de API)
+**Arquitetura híbrida:**
+- tsvector GIN index: busca textual rápida com stemming português + mapa de sinônimos
+- pgvector IVFFlat: busca vetorial O(log n) com modelo multilingual-e5-small
+- RRF combina os dois rankings para melhores resultados
+
+**Modelo de embedding**: multilingual-e5-small — 384 dimensões, ~118MB (processamento 100% local, zero custo de API)
 **Texto usado para indexação**: nome + princípio ativo + categoria + detentor + forma farmacêutica + concentração + sinônimos + indicações + situação + registro
 
 ## 7. Farmácia Popular

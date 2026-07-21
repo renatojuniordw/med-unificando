@@ -34,10 +34,8 @@ med-unificando/
 │   ├── seed.ts            # Importa CSV ANVISA (medicamentos)
 │   └── import-prices.ts   # Importa CSV CMED (preços)
 ├── scripts/
-│   └── generate-embeddings.ts  # Gera embeddings 384d com all-MiniLM-L6-v2
+│   └── generate-search-index.ts  # Gera embeddings pgvector 384d (multilingual-e5-small)
 ├── public/
-│   ├── embeddings.bin     # Float32Array raw (32585 × 384 = ~47MB)
-│   ├── embeddings-header.json
 │   └── manifest.json      # PWA manifest
 ├── src/
 │   ├── app/
@@ -98,10 +96,11 @@ med-unificando/
 5. Preços CMED: mesmo fluxo via `TA_PRECOS_MEDICAMENTOS.csv`
 
 ### Busca Semântica
-1. One-time: `scripts/generate-embeddings.ts` → all-MiniLM-L6-v2 → 384d → 32.585 embeddings
-2. Server action `semanticSearch()` carrega modelo + embeddings em memória
-3. Usuário digita → query embedded → cosine similarity → top 20
-4. Texto do embedding inclui: nome, princípio ativo, categoria, sinônimos, indicações
+1. `npm run search-index` → multilingual-e5-small → 384d → embeddings no PostgreSQL (pgvector)
+2. tsvector GIN index para busca keyword rápida com stemming pt-br + sinônimos
+3. pgvector IVFFlat index para busca semântica O(log n) via cosine distance
+4. RRF (Reciprocal Rank Fusion) combina os dois rankings
+5. Texto do embedding inclui: nome, princípio ativo, categoria, sinônimos, indicações
 
 ### Geração de PDF
 1. Botão "📥 BAIXAR PDF" na página de detalhes do medicamento

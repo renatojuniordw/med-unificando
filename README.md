@@ -41,7 +41,7 @@ Consulta inteligente de medicamentos intercambiáveis da ANVISA com busca semân
 | Estilo | Tailwind CSS v4 |
 | Autenticação | NextAuth v5 (beta) |
 | IA (embeddings) | Xenova Transformers (ONNX local) |
-| IA (busca) | all-MiniLM-L6-v2 (384d) |
+| IA (busca) | multilingual-e5-small (384d) + pgvector + tsvector |
 | PDF | pdfmake (server-side) |
 | Infra | Docker Compose + multi-stage build |
 
@@ -82,7 +82,7 @@ npx prisma migrate deploy
 NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx prisma/seed.ts
 
 # 5. Gerar embeddings (busca semântica)
-npx tsx scripts/generate-embeddings.ts
+npm run search-index
 
 # 6. Dev server
 npm run dev
@@ -101,7 +101,7 @@ npm run dev
 | `BASE_URL` | URL base do site (para sitemap/robots) | Não |
 | `ANVISA_MEDICINES_URL` | URL do CSV de medicamentos ANVISA | Não |
 | `ANVISA_PRICES_URL` | URL do CSV de preços CMED | Não |
-| `EMBEDDING_MODEL` | Modelo de embeddings (default: Xenova/all-MiniLM-L6-v2) | Não |
+| `EMBEDDING_MODEL` | Modelo de embeddings (default: Xenova/multilingual-e5-small) | Não |
 
 ---
 

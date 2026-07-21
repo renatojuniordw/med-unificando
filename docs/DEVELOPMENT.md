@@ -149,22 +149,22 @@ doc.end()
 Após importar novos dados, regenerar embeddings:
 
 ```bash
-npm run embeddings
+npm run search-index
 ```
 
-Isso atualiza `public/embeddings.bin` com os embeddings de todos os medicamentos
-(incluindo sinônimos e indicações no texto de busca).
+Isso atualiza os embeddings no banco de dados PostgreSQL (pgvector) com os medicamentos que ainda não possuem embedding.
 
 ## Busca Semântica
 
-Usa `@xenova/transformers` com o modelo `all-MiniLM-L6-v2` (384 dimensões).
+Usa `@xenova/transformers` com o modelo `multilingual-e5-small` (384 dimensões).
 
-O modelo é baixado automaticamente na primeira execução e cacheado em `~/.cache/xenova/`.
+O modelo é baixado automaticamente na primeira execução e cacheado em `/tmp/.transformers-cache`.
 
 O fluxo:
-1. `scripts/generate-embeddings.ts` → gera `public/embeddings.bin` (one-time)
-2. Server action `semanticSearch()` → carrega modelo + embeddings
-3. Query do usuário → embedded → cosine similarity → top 20 resultados
+1. `npm run search-index` → gera embeddings no banco pgvector
+2. Busca keyword: tsvector + GIN index (stemming pt-br + sinônimos)
+3. Busca semântica: pgvector IVFFlat index (cosine distance O(log n))
+4. RRF combina os dois rankings
 
 O texto usado para gerar cada embedding inclui:
 `nome | princípio ativo | categoria | detentor | forma farmacêutica | concentração | sinônimos | indicações | situação | registro`
