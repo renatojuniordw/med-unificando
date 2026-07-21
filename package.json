@@ -13,7 +13,6 @@
     "seed": "tsx prisma/seed.ts",
     "migrate": "prisma migrate deploy",
     "generate": "prisma generate",
-    "embeddings": "tsx scripts/generate-embeddings.ts",
     "search-index": "tsx scripts/generate-search-index.ts",
     "farmacia-popular": "tsx scripts/sync-farmacia-popular.ts",
     "docker:up": "docker compose up -d",
