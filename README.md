@@ -3,6 +3,7 @@
 Consulta inteligente de medicamentos intercambiáveis da ANVISA com busca semântica por IA local.
 
 > Projeto ofertado por [Unificando](https://unificando.com.br) | Desenvolvido por [Renato Bezerra](https://renatobezerra.com.br)
+> **Acesse:** [https://med.unificando.com.br](https://med.unificando.com.br)
 
 ---
 
@@ -49,8 +50,8 @@ Consulta inteligente de medicamentos intercambiáveis da ANVISA com busca semân
 
 ```bash
 # 1. Clone
-git clone https://github.com/unificando/medicine.git
-cd medicine/medicamentos
+git clone git@github.com:renatojuniordw/med-unificando.git
+cd med-unificando
 
 # 2. Configure
 cp .env.example .env
@@ -161,7 +162,7 @@ curl http://localhost:11006/api/health
 ## Arquitetura
 
 ```
-medicamentos/src/
+src/
 ├── app/                  # Páginas (App Router)
 │   ├── buscar-avancado/  # Busca avançada
 │   ├── medicamento/      # Detalhe do medicamento
@@ -201,7 +202,7 @@ medicamentos/src/
 
 O projeto usa identidade visual **Healthcare Moderno** — amarelo neon (#ccff00) como acento de marca, preto como primary, branco como fundo. Dark mode via CSS variables.
 
-Veja o detalhamento completo em [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md).
+Veja o detalhamento completo em [DESIGN_SYSTEM.md](./docs/DESIGN_SYSTEM.md).
 
 ---
 

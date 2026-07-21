@@ -9,7 +9,7 @@ crontab -e
 Adicione (executa todo domingo às 3h):
 
 ```cron
-0 3 * * 0 cd /caminho/para/medicamentos && curl -X POST http://localhost:3000/api/cron/sync >> /var/log/anvisa-cron.log 2>&1
+0 3 * * 0 cd /caminho/para/med-unificando && curl -X POST http://localhost:11006/api/cron/sync >> /var/log/anvisa-cron.log 2>&1
 ```
 
 ## Endpoint de Sincronização
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
 Adicione `CRON_SECRET=sua-chave-aqui` no `.env` e no crontab:
 
 ```cron
-0 3 * * 0 curl -X POST -H "Authorization: Bearer sua-chave-aqui" http://localhost:3000/api/cron/sync
+0 3 * * 0 curl -X POST -H "Authorization: Bearer sua-chave-aqui" http://localhost:11006/api/cron/sync
 ```
 
 ## URLs dos dados abertos ANVISA

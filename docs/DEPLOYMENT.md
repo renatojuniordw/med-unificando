@@ -10,8 +10,8 @@
 
 ```bash
 # 1. Clone
-git clone https://github.com/seu-usuario/unificando-med.git
-cd unificando-med/medicamentos
+git clone git@github.com:renatojuniordw/med-unificando.git
+cd med-unificando
 
 # 2. Configure
 cp .env.example .env
@@ -78,7 +78,7 @@ sudo usermod -aG docker $USER
 ```nginx
 server {
     listen 443 ssl;
-    server_name medicamentos.seudominio.com;
+    server_name med-unificando.seudominio.com;
 
     ssl_certificate /etc/letsencrypt/live/.../fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/.../privkey.pem;
@@ -109,7 +109,7 @@ Ver `CRON.md` para instruções detalhadas.
 crontab -e
 
 # Adicionar (todo domingo 3h)
-0 3 * * 0 cd /caminho/para/medicamentos && \
+0 3 * * 0 cd /caminho/para/med-unificando && \
   docker compose exec app npm run seed >> /var/log/anvisa-sync.log 2>&1
 ```
 

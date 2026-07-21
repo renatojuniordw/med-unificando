@@ -11,8 +11,8 @@
 
 ```bash
 # 1. Clone
-git clone https://github.com/seu-usuario/unificando-med.git
-cd unificando-med/medicamentos
+git clone git@github.com:renatojuniordw/med-unificando.git
+cd med-unificando
 
 # 2. Configure
 cp .env.example .env

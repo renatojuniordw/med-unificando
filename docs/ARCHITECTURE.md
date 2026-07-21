@@ -27,7 +27,7 @@ Med Unificando é uma aplicação Next.js 16 (App Router) com PostgreSQL que con
 ## Estrutura de Pastas
 
 ```
-medicamentos/
+med-unificando/
 ├── prisma/
 │   ├── schema.prisma      # Medicine, Price, User, SyncLog
 │   ├── migrations/        # 7 migrations versionadas
@@ -78,12 +78,14 @@ medicamentos/
 ├── src/types/pdfmake.d.ts  # Declarações de tipo para pdfmake
 └── docs/
     ├── ARCHITECTURE.md
-    ├── BUSINESS_RULES.md
-    ├── USER_STORIES.md
     ├── API.md
+    ├── BUSINESS_RULES.md
     ├── DATABASE.md
     ├── DEPLOYMENT.md
-    └── DEVELOPMENT.md
+    ├── DESIGN_SYSTEM.md
+    ├── DEVELOPMENT.md
+    ├── SECURITY.md
+    └── USER_STORIES.md
 ```
 
 ## Fluxo de Dados
