@@ -32,6 +32,11 @@ vi.mock('xlsx', () => ({
   utils: { sheet_to_json: vi.fn(), json_to_sheet: vi.fn(), book_new: vi.fn(), book_append_sheet: vi.fn() },
 }))
 
+vi.mock('@xenova/transformers', () => ({
+  pipeline: vi.fn().mockResolvedValue(vi.fn()),
+  env: { cacheDir: '' },
+}))
+
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 
