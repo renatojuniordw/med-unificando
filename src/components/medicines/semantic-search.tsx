@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { semanticSearch } from '@/lib/actions/semantic-search'
+import { hybridSearch } from '@/lib/actions/semantic-search'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -30,7 +30,7 @@ export function SemanticSearch() {
     addRecent(searchQuery)
 
     try {
-      const data = await semanticSearch(query, 20)
+      const data = await hybridSearch(query, 20)
       setResults(data)
     } catch {
       setResults([])
