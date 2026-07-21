@@ -19,6 +19,7 @@ export async function regenerateEmbeddings() {
         id: true, reference: true, tradeName: true, activeIngredient: true,
         category: true, similarHolder: true, pharmaceuticalForm: true,
         concentration: true, status: true, synonyms: true, indications: true,
+        therapeuticClass: true,
       },
     })
 

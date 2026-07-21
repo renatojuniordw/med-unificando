@@ -13,6 +13,7 @@ export interface EmbeddingSourceMedicine {
   status: string | null
   synonyms: string | null
   indications: string | null
+  therapeuticClass: string | null
   reference: string
 }
 
@@ -42,7 +43,7 @@ export async function generateEmbeddings(
 
   const texts = medicines.map(m =>
     [m.tradeName, m.activeIngredient, m.category, m.similarHolder,
-     m.pharmaceuticalForm, m.concentration, m.synonyms, m.indications,
+     m.therapeuticClass, m.concentration, m.synonyms, m.indications,
      m.status === 'Ativo' ? 'ativo' : 'inativo', m.reference]
       .filter(Boolean).join(' | ')
   )

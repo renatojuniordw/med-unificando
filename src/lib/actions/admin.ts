@@ -105,7 +105,22 @@ function validateRow(reference: string, category: string, validCategories: Set<s
   return true
 }
 
-function transformRow(row: Record<string, string>, remoteTimestamp: Date, now: Date): Record<string, unknown> | null {
+function buildTherapeuticClassMap(rows: Record<string, string>[]): Map<string, string> {
+  const map = new Map<string, string>()
+  for (const row of rows) {
+    const reference = String(row['NUMERO_REGISTRO_PRODUTO'] ?? '').trim()
+    const therapeuticClass = (row['CLASSE_TERAPEUTICA'] ?? '').trim()
+    if (reference && therapeuticClass) map.set(reference, therapeuticClass)
+  }
+  return map
+}
+
+function transformRow(
+  row: Record<string, string>,
+  remoteTimestamp: Date,
+  now: Date,
+  therapeuticClassByReference: Map<string, string>
+): Record<string, unknown> | null {
   const reference = (row['NU_REGISTRO_PRODUTO'] ?? '').trim()
   const category = (row['DS_TIPO_CATEGORIA_REGULATORIA'] ?? '').trim()
 
@@ -128,6 +143,7 @@ function transformRow(row: Record<string, string>, remoteTimestamp: Date, now: D
     presentationCount: parseInt((row['NUMERO_APRESENTACOES'] ?? '').trim(), 10) || 0,
     synonyms: (row['SINONIMOS'] ?? '').trim(),
     indications: (row['INDICACOES'] ?? '').trim(),
+    therapeuticClass: therapeuticClassByReference.get(reference) ?? null,
     anvisaFileDate: remoteTimestamp,
     lastImportAt: now,
   }
@@ -180,12 +196,16 @@ export async function syncWithAnvisa() {
       }
     }
 
-    const rows = await fetchAndParseCSV(CSV_URL)
+    const [rows, therapeuticClassRows] = await Promise.all([
+      fetchAndParseCSV(CSV_URL),
+      fetchAndParseCSV(ANVISA.THERAPEUTIC_CLASS_URL).catch(() => []),
+    ])
+    const therapeuticClassByReference = buildTherapeuticClassMap(therapeuticClassRows)
     const now = new Date()
     const medicines: Array<Record<string, unknown>> = []
 
     for (const row of rows) {
-      const medicine = transformRow(row, remoteTimestamp, now)
+      const medicine = transformRow(row, remoteTimestamp, now, therapeuticClassByReference)
       if (medicine) medicines.push(medicine)
     }
 

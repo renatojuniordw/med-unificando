@@ -26,6 +26,7 @@ export interface MedicineResult {
   presentationCount: number | null
   synonyms: string | null
   indications: string | null
+  therapeuticClass: string | null
   anvisaFileDate: Date | null
   lastImportAt: Date | null
 }
