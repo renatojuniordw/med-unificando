@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { hybridSearch } from '@/lib/actions/semantic-search'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Tooltip } from '@/components/ui/tooltip'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SemanticResultsTable } from '@/components/medicines/semantic-results-table'
@@ -46,6 +47,16 @@ export function SemanticSearch() {
         <span className="text-xs text-muted">
           descreva o medicamento
         </span>
+        <Tooltip text='Digite sintomas ou usos ("anti-inflamatório para articulação"). A % indica o grau de similaridade — quanto maior, mais próximo do que você busca.'>
+          <button
+            type="button"
+            tabIndex={0}
+            className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold text-muted border border-border bg-[var(--color-bg-secondary)] hover:text-[var(--color-text)] hover:border-[var(--color-text)] transition-colors cursor-help"
+            aria-label="Saiba mais sobre a busca por descrição"
+          >
+            ?
+          </button>
+        </Tooltip>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
