@@ -33,8 +33,10 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/src/generated/prisma ./src/generated/prisma
 COPY --from=builder /app/next.config.ts ./next.config.ts
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
+COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
+COPY docker-entrypoint.sh ./docker-entrypoint.sh
 
-RUN mkdir -p /tmp && chown -R nextjs:nodejs /app
+RUN mkdir -p /tmp && chmod +x ./docker-entrypoint.sh && chown -R nextjs:nodejs /app
 
 USER nextjs
 
@@ -43,4 +45,5 @@ EXPOSE 11006
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
+ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["npm", "run", "start"]
