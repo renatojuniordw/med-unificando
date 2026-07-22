@@ -22,10 +22,22 @@ const SYNONYM_MAP: Record<string, string[]> = {
   'dor-de-cabeca': ['dor-de-cabeca', 'dor de cabeça', 'cefaleia', 'migrânea', 'migranea'],
 }
 
+// Words that describe "this is a medicine" rather than what it treats. They
+// match almost every row (e.g. via manufacturer names like "FUNDAÇÃO PARA O
+// REMÉDIO POPULAR") without narrowing anything, so they're dropped before
+// building the query instead of being treated as a real search term.
+const GENERIC_TERMS = new Set([
+  'remedio', 'remedios', 'medicamento', 'medicamentos', 'droga', 'drogas', 'farmaco', 'farmacos',
+])
+
+function stripAccents(str: string): string {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+}
+
 function expandWithSynonyms(terms: string[]): string[] {
   const expanded = new Set(terms)
   for (const term of terms) {
-    const synonyms = SYNONYM_MAP[term]
+    const synonyms = SYNONYM_MAP[stripAccents(term)]
     if (synonyms) {
       for (const syn of synonyms) expanded.add(syn)
     }
@@ -64,7 +76,7 @@ export async function keywordSearch(
     ...parsed.pharmaceuticalForms,
     ...parsed.therapeuticClasses,
     ...parsed.otherTerms,
-  ]
+  ].filter(term => !GENERIC_TERMS.has(stripAccents(term)))
 
   if (allTerms.length === 0) return []
 

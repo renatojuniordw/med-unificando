@@ -10,12 +10,23 @@ const prisma = new PrismaClient({
 })
 
 const CSV_URL = 'https://dados.anvisa.gov.br/dados/CONSULTAS/PRODUTOS/TA_CONSULTA_MEDICAMENTOS.CSV'
+const THERAPEUTIC_CLASS_URL = 'https://dados.anvisa.gov.br/dados/DADOS_ABERTOS_MEDICAMENTOS.csv'
 
 const VALID_CATEGORIES = new Set([
   'SIMILAR', 'GENÉRICO', 'REFERÊNCIA', 'NOVO', 'ESPECÍFICO',
   'FITOTERÁPICO', 'BIOLÓGICO', 'DINAMIZADO', 'BAIXO RISCO',
   'GASES MEDICINAIS', 'RADIOFÁRMACO',
 ])
+
+function buildTherapeuticClassMap(rows: Record<string, string>[]): Map<string, string> {
+  const map = new Map<string, string>()
+  for (const row of rows) {
+    const reference = String(row['NUMERO_REGISTRO_PRODUTO'] ?? '').trim()
+    const therapeuticClass = (row['CLASSE_TERAPEUTICA'] ?? '').trim()
+    if (reference && therapeuticClass) map.set(reference, therapeuticClass)
+  }
+  return map
+}
 
 async function main() {
   const adminEmail = process.env.ADMIN_EMAIL
@@ -76,6 +87,25 @@ async function main() {
 
   console.log(`Total de linhas no CSV: ${rows.length}`)
 
+  console.log("Baixando classes terapêuticas da ANVISA...")
+  let therapeuticClassByReference = new Map<string, string>()
+  try {
+    const classResp = await fetch(THERAPEUTIC_CLASS_URL)
+    if (classResp.ok) {
+      const classBuffer = Buffer.from(await classResp.arrayBuffer())
+      const classCsvText = iconv.decode(classBuffer, 'latin1')
+      const classWorkbook = XLSX.read(classCsvText, { type: 'string', raw: true })
+      const classSheet = classWorkbook.Sheets[classWorkbook.SheetNames[0]]
+      const classRows: Record<string, string>[] = XLSX.utils.sheet_to_json(classSheet, { defval: '' })
+      therapeuticClassByReference = buildTherapeuticClassMap(classRows)
+      console.log(`Classes terapêuticas encontradas: ${therapeuticClassByReference.size}`)
+    } else {
+      console.log(`Aviso: não foi possível baixar classes terapêuticas (${classResp.status}). Prosseguindo sem elas.`)
+    }
+  } catch (err) {
+    console.log(`Aviso: falha ao baixar classes terapêuticas: ${err instanceof Error ? err.message : 'erro desconhecido'}. Prosseguindo sem elas.`)
+  }
+
   const medicines: Array<Record<string, unknown>> = []
   const now = new Date()
 
@@ -103,6 +133,7 @@ async function main() {
       presentationCount: parseInt((row['NUMERO_APRESENTACOES'] ?? '').trim(), 10) || 0,
       synonyms: (row['SINONIMOS'] ?? '').trim(),
       indications: (row['INDICACOES'] ?? '').trim(),
+      therapeuticClass: therapeuticClassByReference.get(reference) ?? null,
       anvisaFileDate: remoteTimestamp,
       lastImportAt: now,
     })
