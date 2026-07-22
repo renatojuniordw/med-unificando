@@ -29,7 +29,7 @@ export async function semanticSearch(
 
   const model = await getModel()
 
-  const result = await model(query, { pooling: "mean", normalize: true })
+  const result = await model(`query: ${query}`, { pooling: "mean", normalize: true })
   const queryEmb = result.data as Float32Array
   const vecStr = `[${Array.from(queryEmb).join(",")}]`
 

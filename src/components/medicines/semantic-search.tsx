@@ -31,7 +31,7 @@ export function SemanticSearch() {
     addRecent(searchQuery)
 
     try {
-      const data = await hybridSearch(query, 20)
+      const data = await hybridSearch(searchQuery, 20)
       setResults(data)
     } catch {
       setResults([])
