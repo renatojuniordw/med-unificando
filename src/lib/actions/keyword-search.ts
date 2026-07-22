@@ -54,12 +54,37 @@ function stripAccents(str: string): string {
 
 function expandWithSynonyms(terms: string[]): string[] {
   const expanded = new Set(terms)
-  for (const term of terms) {
+  
+  // Primeiro, verificar se há frases compostas no mapa de sinônimos
+  // (ex: "dor de cabeça" → usar sinônimo específico em vez de expandir "dor" separadamente)
+  const composedPhrases = ['dor-de-cabeca', 'dor de cabeça']
+  
+  for (const phrase of composedPhrases) {
+    // Se a frase composta está nos termos originais, usar seus sinônimos
+    if (terms.some(t => t.toLowerCase().includes(phrase.toLowerCase()))) {
+      const synonyms = SYNONYM_MAP[phrase]
+      if (synonyms) {
+        for (const syn of synonyms) expanded.add(syn)
+      }
+    }
+  }
+  
+  // Depois, expandir termos individuais (mas excluindo termos que fazem parte de frases compostas)
+  const termsToExpand = terms.filter(term => {
+    // Não expandir "dor" se "cabeça" também está presente (já tratado acima)
+    if (term.toLowerCase() === 'dor' && terms.some(t => t.toLowerCase().includes('cabeça'))) {
+      return false
+    }
+    return true
+  })
+  
+  for (const term of termsToExpand) {
     const synonyms = SYNONYM_MAP[stripAccents(term)]
     if (synonyms) {
       for (const syn of synonyms) expanded.add(syn)
     }
   }
+  
   return [...expanded]
 }
 

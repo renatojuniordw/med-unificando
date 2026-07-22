@@ -110,7 +110,11 @@ const SEMANTIC_CEILING = 0.92
 // ts_rank scores are unbounded and not comparable to cosine similarity; this
 // saturates keyword strength into a 0-1 component. Observed ts_rank values
 // in this dataset for real corroborating matches sit around 0.03-0.09.
-const KEYWORD_SATURATION = 0.1
+//
+// ATUALIZAÇÃO: Aumentado de 0.1 para 0.15 para dar mais peso a resultados
+// keyword com ts_rank mais baixo (medicamentos específicos que não contêm
+// os termos de busca exatos mas ainda são relevantes).
+const KEYWORD_SATURATION = 0.15
 
 // Pesos de fusão otimizados para melhor relevância
 // Ajustado para dar mais peso ao keyword quando disponível, pois ele é mais preciso

@@ -26,7 +26,45 @@ export function parseQuery(query: string): ParsedQuery {
     return { pharmaceuticalForms: [], therapeuticClasses: [], otherTerms: [] }
   }
 
-  const terms = query.toLowerCase().split(/\s+/)
+  const normalizedQuery = query.toLowerCase().trim()
+  const terms: string[] = []
+  
+  // Primeiro, verificar se há frases compostas no mapa de sinônimos
+  // (ex: "dor de cabeça" → tratar como uma unidade)
+  const composedPhrases = [
+    'dor de cabeça', 'dor-de-cabeca',
+    'anti-inflamatório para articulação',
+    'remédio para pressão',
+    'remédio para diabetes',
+    'remédio para alergia',
+    'remédio para gripe',
+    'remédio para tosse',
+    'remédio para estômago',
+    'remédio para azia',
+    'remédio para ansiedade',
+    'remédio para depressão',
+    'remédio para infecção',
+    'remédio para pele',
+    'remédio para olho',
+    'remédio para bexiga',
+    'remédio para próstata',
+  ]
+  
+  let remainingQuery = normalizedQuery
+  
+  for (const phrase of composedPhrases) {
+    if (remainingQuery.includes(phrase)) {
+      terms.push(phrase)
+      remainingQuery = remainingQuery.replace(phrase, '').trim()
+    }
+  }
+  
+  // Se ainda há texto restante, separar em palavras
+  if (remainingQuery) {
+    const remainingTerms = remainingQuery.split(/\s+/).filter(Boolean)
+    terms.push(...remainingTerms)
+  }
+
   const pharmaceuticalForms: string[] = []
   const therapeuticClasses: string[] = []
   const otherTerms: string[] = []
