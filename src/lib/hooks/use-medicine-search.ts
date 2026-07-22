@@ -13,19 +13,27 @@ export function useMedicineSearch(initialData: SearchResponse) {
 
   const page = Number(searchParams.get('page')) || 1
   const pageSize = Number(searchParams.get('pageSize')) || 10
+  const query = searchParams.get('query') || ''
   const reference = searchParams.get('reference') || ''
   const activeIngredient = searchParams.get('activeIngredient') || ''
   const tradeName = searchParams.get('tradeName') || ''
   const category = searchParams.get('category') || ''
   const status = searchParams.get('status') || ''
+  const farmaciaPopular = searchParams.get('farmaciaPopular') === 'true'
+  const similarHolder = searchParams.get('similarHolder') || ''
+  const pharmaceuticalForm = searchParams.get('pharmaceuticalForm') || ''
 
   const currentFilters: SearchFilters = useMemo(() => ({
+    query: query || undefined,
     reference: reference || undefined,
     activeIngredient: activeIngredient || undefined,
     tradeName: tradeName || undefined,
     category: category || undefined,
     status: status || undefined,
-  }), [reference, activeIngredient, tradeName, category, status])
+    similarHolder: similarHolder || undefined,
+    pharmaceuticalForm: pharmaceuticalForm || undefined,
+    farmaciaPopular: farmaciaPopular || undefined,
+  }), [query, reference, activeIngredient, tradeName, category, status, similarHolder, pharmaceuticalForm, farmaciaPopular])
 
   useEffect(() => {
     async function fetchData() {

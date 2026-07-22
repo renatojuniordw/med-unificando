@@ -40,7 +40,15 @@ export default function ReferenciasPage() {
           </p>
         </div>
 
-        <Suspense fallback={<div className="space-y-4"><Skeleton className="h-12 w-full" /><Skeleton className="h-96 w-full" /></div>}>
+        <Suspense fallback={
+          <div className="space-y-4">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-8 w-3/4" />
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-16 w-full" />
+            ))}
+          </div>
+        }>
           <ReferenceSearchContainer />
         </Suspense>
       </div>

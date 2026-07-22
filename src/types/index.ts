@@ -1,4 +1,5 @@
 export interface SearchFilters {
+  query?: string
   reference?: string
   activeIngredient?: string
   tradeName?: string

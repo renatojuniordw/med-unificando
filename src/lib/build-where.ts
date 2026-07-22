@@ -13,5 +13,15 @@ export function buildWhere(filters?: SearchFilters): Record<string, unknown> {
   if (filters.status) where.status = { contains: filters.status, mode: 'insensitive' }
   if (filters.farmaciaPopular) where.farmaciaPopular = true
 
+  if (filters.query) {
+    const q = filters.query
+    const queryOr = [
+      { tradeName: { contains: q, mode: 'insensitive' } },
+      { activeIngredient: { contains: q, mode: 'insensitive' } },
+      { reference: { contains: q, mode: 'insensitive' } },
+    ]
+    where.AND = { OR: queryOr }
+  }
+
   return where
 }

@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { searchMedicines, getDistinctValues } from '@/lib/actions/search'
+import { searchMedicines } from '@/lib/actions/search'
 import { SearchForm } from '@/components/medicines/search-form'
 import { MedicineTable } from '@/components/medicines/medicine-table'
 import { Badge } from '@/components/ui/badge'
@@ -19,12 +19,6 @@ export const metadata: Metadata = {
 
 export default async function BuscaAvancadaPage() {
   const initialData = await searchMedicines(1, 10)
-  const [references, activeIngredients, tradeNames, categories] = await Promise.all([
-    getDistinctValues('reference'),
-    getDistinctValues('activeIngredient'),
-    getDistinctValues('tradeName'),
-    getDistinctValues('category'),
-  ])
 
   return (
     <section className="py-12 md:py-20 bg-[var(--color-bg)]">
@@ -46,12 +40,7 @@ export default async function BuscaAvancadaPage() {
 
         <Suspense fallback={<div className="bg-[var(--color-bg)] border border-border rounded-md shadow-card p-6 md:p-8"><Skeleton className="h-12 w-full mb-4" /><Skeleton className="h-64 w-full" /></div>}>
           <div className="bg-[var(--color-bg)] border border-border rounded-md shadow-card p-6 md:p-8">
-            <SearchForm
-              references={references}
-              activeIngredients={activeIngredients}
-              tradeNames={tradeNames}
-              categories={categories}
-            />
+            <SearchForm />
             <div className="mt-8">
               <MedicineTable initialData={initialData} />
             </div>

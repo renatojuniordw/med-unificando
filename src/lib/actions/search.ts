@@ -87,6 +87,42 @@ export async function getDistinctValues(field: string): Promise<DistinctValue[]>
     .filter((item) => item.value)
 }
 
+/** Server-side autocomplete: busca valores que correspondem ao termo digitado */
+export async function searchAutocomplete(field: string, q: string): Promise<DistinctValue[]> {
+  const fieldToPrismaEnum: Record<string, Prisma.MedicineScalarFieldEnum> = {
+    reference: Prisma.MedicineScalarFieldEnum.reference,
+    activeIngredient: Prisma.MedicineScalarFieldEnum.activeIngredient,
+    tradeName: Prisma.MedicineScalarFieldEnum.tradeName,
+    similarHolder: Prisma.MedicineScalarFieldEnum.similarHolder,
+    pharmaceuticalForm: Prisma.MedicineScalarFieldEnum.pharmaceuticalForm,
+    category: Prisma.MedicineScalarFieldEnum.category,
+    status: Prisma.MedicineScalarFieldEnum.status,
+  }
+
+  const fieldEnum = fieldToPrismaEnum[field]
+  if (!fieldEnum || !q.trim()) return []
+
+  const result = await prisma.medicine.findMany({
+    select: { [field]: true },
+    distinct: [fieldEnum],
+    where: {
+      [field]: { contains: q.trim(), mode: 'insensitive' },
+    },
+    take: 8,
+    orderBy: { [field]: 'asc' },
+  })
+
+  return result
+    .map((item) => ({ value: (item as Record<string, string>)[field] }))
+    .filter((item) => item.value)
+}
+
+/** Contagem rápida de medicamentos com os filtros atuais */
+export async function countMedicines(filters: SearchFilters): Promise<number> {
+  const where = buildWhere(filters)
+  return prisma.medicine.count({ where })
+}
+
 async function computeTimeline() {
   const allInclusionDates = await prisma.medicine.findMany({ select: { inclusionDate: true } })
   const yearCounts: Record<string, number> = {}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 interface UseDebouncedSearchOptions {
   minLength?: number
@@ -13,13 +13,28 @@ export function useDebouncedSearch<T>(
 ) {
   const [query, setQuery] = useState('')
   const [resolved, setResolved] = useState<{ query: string; results: T[] }>({ query: '', results: [] })
+  const latestQueryRef = useRef('')
 
   useEffect(() => {
-    if (query.length < minLength) return
+    if (query.length < minLength) {
+      setResolved({ query: '', results: [] })
+      return
+    }
+
+    latestQueryRef.current = query
 
     const timer = setTimeout(async () => {
-      const data = await searchFn(query)
-      setResolved({ query, results: data })
+      try {
+        const data = await searchFn(query)
+        // Só atualiza se esta ainda for a query mais recente (evita race condition)
+        if (latestQueryRef.current === query) {
+          setResolved({ query, results: data })
+        }
+      } catch {
+        if (latestQueryRef.current === query) {
+          setResolved({ query, results: [] })
+        }
+      }
     }, delay)
 
     return () => clearTimeout(timer)
