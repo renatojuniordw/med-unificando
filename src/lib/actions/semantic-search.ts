@@ -112,6 +112,12 @@ const SEMANTIC_CEILING = 0.92
 // in this dataset for real corroborating matches sit around 0.03-0.09.
 const KEYWORD_SATURATION = 0.1
 
+// Pesos de fusão otimizados para melhor relevância
+// Ajustado para dar mais peso ao keyword quando disponível, pois ele é mais preciso
+// para termos específicos (nomes de medicamentos, classes terapêuticas)
+const SEMANTIC_WEIGHT = 0.60
+const KEYWORD_WEIGHT = 0.40
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
 }
@@ -142,9 +148,18 @@ function keywordComponent(tsRank: number): number {
 function honestScore(semanticRaw: number | null, keywordRaw: number | null): number {
   const sem = semanticRaw !== null ? semanticComponent(semanticRaw) : null
   const kw = keywordRaw !== null ? keywordComponent(keywordRaw) : null
-  if (sem !== null && kw !== null) return 0.65 * sem + 0.35 * kw
-  if (sem !== null) return sem * 0.9
+  
+  // Se ambos estão disponíveis, usa os pesos otimizados
+  if (sem !== null && kw !== null) {
+    return SEMANTIC_WEIGHT * sem + KEYWORD_WEIGHT * kw
+  }
+  
+  // Se só tem semântico, aplica um fator de redução (keyword é mais confiável)
+  if (sem !== null) return sem * 0.85
+  
+  // Se só tem keyword, usa ele puro
   if (kw !== null) return kw
+  
   return 0
 }
 

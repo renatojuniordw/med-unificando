@@ -20,6 +20,24 @@ const SYNONYM_MAP: Record<string, string[]> = {
   asma:        ['asma', 'broncodilatador', 'bronquite'],
   insulina:    ['insulina', 'antidiabetico', 'antidiabético', 'diabetes'],
   'dor-de-cabeca': ['dor-de-cabeca', 'dor de cabeça', 'cefaleia', 'migrânea', 'migranea'],
+  
+  // Novos sinônimos para condições clínicas comuns
+  'articular':      ['articular', 'articulação', 'artrite', 'reumatismo', 'osteoartrite', 'doença articular'],
+  'articulacao':    ['articulação', 'articular', 'artrite', 'reumatismo', 'osteoartrite'],
+  'reumatismo':     ['reumatismo', 'artrite', 'reumatóide', 'doença autoimune'],
+  'artrite':        ['artrite', 'inflamação articular', 'dor articular', 'reumatismo'],
+  'renal':          ['renal', 'rim', 'insuficiência renal', 'doença renal'],
+  'cardiaco':       ['cardíaco', 'coração', 'cardiovascular', 'insuficiência cardíaca'],
+  'neurologico':    ['neurológico', 'sistema nervoso', 'neuropatia', 'doença neurológica'],
+  'dermatologico':  ['dermatológico', 'pele', 'dermatite', 'eczema', 'psoríase'],
+  'gastrointestinal': ['gastrointestinal', 'estômago', 'intestino', 'digestivo'],
+  'respiratorio':   ['respiratório', 'pulmão', 'vias aéreas', 'brônquios'],
+  'oftalmologico':  ['oftalmológico', 'olho', 'ocular', 'visão'],
+  'urologico':      ['urológico', 'urinário', 'bexiga', 'próstata'],
+  'psiquiatrico':   ['psiquiátrico', 'mental', 'psicológico', 'transtorno'],
+  'oncologico':     ['oncológico', 'câncer', 'tumor', 'quimioterapia'],
+  'pediatrico':     ['pediátrico', 'criança', 'infantil', 'bebê'],
+  'geriatrico':     ['geriátrico', 'idoso', 'terceira idade', 'senhor'],
 }
 
 // Words that describe "this is a medicine" rather than what it treats. They

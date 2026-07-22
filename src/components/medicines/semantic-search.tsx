@@ -11,6 +11,7 @@ import { SemanticResultsTable } from "@/components/medicines/semantic-results-ta
 import { RecentSearches } from "@/components/medicines/recent-searches";
 import { SearchResultsCards } from "@/components/medicines/search-results-cards";
 import { ViewToggle } from "@/components/medicines/view-toggle";
+import { SearchSuggestions } from "@/components/medicines/search-suggestions";
 import { useRecentSearches } from "@/hooks/use-recent-searches";
 import type { MedicineResult } from "@/types";
 
@@ -44,7 +45,7 @@ export function SemanticSearch() {
 
   return (
     <div className="bg-[var(--color-bg)] border border-border rounded-md shadow-card p-6 md:p-8">
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-1">
         <Badge variant="primary">BUSCA POR DESCRIÇÃO</Badge>
         <Tooltip text='Digite sintomas ou usos ("anti-inflamatório para articulação"). A % indica o grau de similaridade — quanto maior, mais próximo do que você busca.'>
           <button
@@ -57,6 +58,10 @@ export function SemanticSearch() {
           </button>
         </Tooltip>
       </div>
+
+      <p className="text-xs text-muted mb-4">
+        Busca com inteligência artificial — os resultados podem conter imprecisões. Sempre confirme com um profissional de saúde.
+      </p>
 
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1 min-w-0">
@@ -81,7 +86,10 @@ export function SemanticSearch() {
       </div>
 
       {!searched && (
-        <RecentSearches searches={recent} onSelect={handleSearch} />
+        <>
+          <RecentSearches searches={recent} onSelect={handleSearch} />
+          <SearchSuggestions onSelect={handleSearch} isVisible={!searched} />
+        </>
       )}
 
       <p id="search-description" className="sr-only">
