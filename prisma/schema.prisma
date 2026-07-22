@@ -90,3 +90,17 @@ model SyncLog {
 
   @@map("sync_logs")
 }
+
+model SearchFeedback {
+  id           Int      @id @default(autoincrement())
+  query        String
+  medicineId   Int      @map("medicine_id")
+  medicineName String   @map("medicine_name")
+  feedback     String   // "helpful" | "not_helpful"
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([query, feedback])
+  @@index([medicineId])
+  @@index([createdAt])
+  @@map("search_feedback")
+}

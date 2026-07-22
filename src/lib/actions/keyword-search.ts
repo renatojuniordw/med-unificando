@@ -15,7 +15,7 @@ const SYNONYM_MAP: Record<string, string[]> = {
   ansiedade:   ['ansiedade', 'ansiolitico', 'ansiolítico', 'calmante', 'benzodiazepinico'],
   depressao:   ['depressao', 'depressão', 'antidepressivo'],
   tosse:       ['tosse', 'antitussigeno', 'antitussígeno', 'expectorante'],
-  estomago:    ['estomago', 'estômago', 'gastrico', 'gástrico', 'antiacido', 'antiácido'],
+  estomago:    ['estomago', 'estômago', 'gastrico', 'gástrico', 'antiacido', 'antiácido', 'protetor gastrico', 'protetor gástrico', 'azia', 'refluxo', 'gastrite', 'ulcera', 'úlcera', 'dispepsia', 'digestao', 'digestão', 'omeprazol', 'pantoprazol', 'esomeprazol'],
   uc:          ['uc', 'ulcera', 'úlcera', 'gastrico', 'gástrico', 'protonico', 'protetor gástrico'],
   asma:        ['asma', 'broncodilatador', 'bronquite'],
   insulina:    ['insulina', 'antidiabetico', 'antidiabético', 'diabetes'],
@@ -62,10 +62,33 @@ function expandWithSynonyms(terms: string[]): string[] {
   for (const phrase of composedPhrases) {
     // Se a frase composta está nos termos originais, usar seus sinônimos
     if (terms.some(t => t.toLowerCase().includes(phrase.toLowerCase()))) {
-      const synonyms = SYNONYM_MAP[phrase]
+      // Tentar lookup tanto com a chave original quanto normalizada
+      // (ex: "dor de cabeça" com espaço deve buscar SYNONYM_MAP["dor-de-cabeca"])
+      const phraseKey = phrase in SYNONYM_MAP ? phrase :
+        phrase.replace(/[\s-]+/g, '-') in SYNONYM_MAP ? phrase.replace(/[\s-]+/g, '-') :
+        phrase.replace(/[\s-]+/g, ' ')
+      const synonyms = SYNONYM_MAP[phraseKey]
       if (synonyms) {
         for (const syn of synonyms) expanded.add(syn)
       }
+    }
+  }
+  
+  // Também mapear "remédio para X" para o sinônimo de X
+  // Ex: "remédio para estômago" usa sinônimos de "estomago"
+  const compoundSubjects: Record<string, string[]> = {
+    'estomago': ['estômago', 'gastrico', 'gástrico', 'antiacido', 'antiácido', 'protetor gastrico', 'protetor gástrico', 'azia', 'refluxo', 'gastrite', 'ulcera', 'úlcera', 'dispepsia', 'digestao', 'digestão', 'omeprazol', 'pantoprazol', 'esomeprazol'],
+    'gastrite': ['gastrite', 'estômago', 'gastrico', 'gástrico', 'antiacido', 'antiácido', 'azia', 'refluxo', 'ulcera', 'úlcera', 'protetor gastrico', 'protetor gástrico'],
+    'articulacao': ['articulação', 'articular', 'artrite', 'reumatismo', 'osteoartrite', 'doença articular', 'anti-inflamatorio', 'anti-inflamatório'],
+    'cabeça': ['cabeça', 'cefaleia', 'migrânea', 'migranea', 'dor de cabeça', 'dor-de-cabeca', 'analgesico', 'analgésico', 'anti-inflamatorio', 'anti-inflamatório'],
+    'cefaleia': ['cefaleia', 'dor de cabeça', 'dor-de-cabeca', 'migrânea', 'migranea', 'analgesico', 'analgésico', 'anti-inflamatorio', 'anti-inflamatório'],
+    'gripe': ['gripe', 'resfriado', 'congestao', 'nariz', 'tosse', 'febre', 'antitérmico'],
+    'pele': ['pele', 'dermatologico', 'dermatológico', 'dermatite', 'eczema', 'psoríase', 'creme', 'pomada'],
+  }
+  
+  for (const [subject, synonyms] of Object.entries(compoundSubjects)) {
+    if (terms.some(t => stripAccents(t).toLowerCase().includes(subject))) {
+      for (const syn of synonyms) expanded.add(syn)
     }
   }
   
@@ -77,20 +100,55 @@ function expandWithSynonyms(terms: string[]): string[] {
     }
     return true
   })
-  
+
   for (const term of termsToExpand) {
     const synonyms = SYNONYM_MAP[stripAccents(term)]
     if (synonyms) {
       for (const syn of synonyms) expanded.add(syn)
     }
   }
-  
+
+  // Também expandir palavras individuais dentro de termos multi-palavra
+  // (ex: "remédio para estômago" → expandir "estômago" individualmente)
+  for (const term of terms) {
+    const words = term.split(/\s+/)
+    if (words.length > 1) {
+      for (const word of words) {
+        const stripped = stripAccents(word.toLowerCase())
+        const wordSynonyms = SYNONYM_MAP[stripped]
+        if (wordSynonyms) {
+          for (const syn of wordSynonyms) expanded.add(syn)
+        }
+      }
+    }
+  }
+
   return [...expanded]
 }
 
 function sanitizeWord(word: string): string {
   return word.replace(/['&|!()<>:*]/g, ' ').trim()
 }
+
+// Stop words para evitar queries vazias ou incorretas no to_tsquery do PostgreSQL
+const PORTUGUESE_STOP_WORDS = new Set([
+  'de', 'da', 'do', 'das', 'dos', 'em', 'no', 'na', 'nos', 'nas',
+  'para', 'pra', 'pro', 'por', 'com', 'sem', 'sob', 'sobre',
+  'a', 'as', 'o', 'os', 'um', 'uma', 'uns', 'umas',
+  'e', 'ou', 'mas', 'que', 'se', 'como', 'mais', 'menos',
+  'ao', 'aos', 'à', 'às', 'pelo', 'pela', 'pelos', 'pelas',
+  'num', 'numa', 'dum', 'duma', 'duns', 'dumas',
+  'ele', 'ela', 'eles', 'elas', 'meu', 'minha', 'teu', 'tua',
+  'seu', 'sua', 'nosso', 'nossa', 'vosso', 'vossa',
+  'eu', 'tu', 'ele', 'nós', 'vós', 'eles', 'me', 'te', 'lhe',
+  'nos', 'vos', 'lhes', 'minha', 'tua', 'sua', 'nossa', 'vossa',
+  'este', 'esta', 'estes', 'estas', 'esse', 'essa', 'esses', 'essas',
+  'aquele', 'aquela', 'aqueles', 'aquelas', 'isto', 'isso', 'aquilo',
+  'já', 'ainda', 'bem', 'mal', 'sim', 'não', 'nunca', 'sempre',
+  'muito', 'pouco', 'tanto', 'quanto', 'todo', 'toda', 'todos', 'todas',
+  'outro', 'outra', 'outros', 'outras', 'cada', 'certo', 'algum', 'alguma',
+  'nenhum', 'nenhuma', 'qualquer', 'quaisquer',
+])
 
 // Builds `to_tsquery` syntax where every (possibly multi-word) term/synonym is
 // OR'd against the others. Using plainto_tsquery on the joined term list would
@@ -101,6 +159,7 @@ function buildOrTsQuery(terms: string[]): string {
   const operands = terms
     .map(term => {
       const words = term.trim().split(/\s+/).map(sanitizeWord).filter(Boolean)
+        .filter(w => !PORTUGUESE_STOP_WORDS.has(w.toLowerCase()))
       if (words.length === 0) return ''
       return words.length === 1 ? words[0] : `(${words.join(' & ')})`
     })

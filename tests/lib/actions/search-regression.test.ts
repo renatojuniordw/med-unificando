@@ -6,6 +6,9 @@ vi.mock('@/lib/prisma', () => {
   return {
     prisma: {
       medicine: { findMany: vi.fn() },
+      searchFeedback: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
       $queryRawUnsafe: queryRawUnsafe,
       $transaction: vi.fn((callback: (tx: unknown) => unknown) =>
         callback({

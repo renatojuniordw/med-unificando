@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { keywordSearch } from '@/lib/actions/keyword-search'
 import { EMBEDDING } from '@/lib/config'
 import { normalizeMedicine } from "@/lib/format"
+import { applyScoreAdjustments } from "@/lib/score-adjustments"
 import type { MedicineResult } from "@/types"
 import type { FeatureExtractionPipeline } from "@xenova/transformers"
 
@@ -24,7 +25,7 @@ export async function clearEmbeddingsCache() {
 
 export async function semanticSearch(
   query: string,
-  topK: number = 20
+  topK: number = 60
 ): Promise<{ score: number; medicine: MedicineResult }[]> {
   if (!query.trim()) return []
 
@@ -42,17 +43,15 @@ export async function semanticSearch(
     LIMIT $2
   `
 
+  // 30s timeout for large vector search
   const rows = await prisma.$transaction(async (tx) => {
-    // idx_medicines_embedding is an ivfflat index with 180 lists; the default
-    // probes=1 only scans ~1/180 of the vectors, causing near-empty/irrelevant
-    // results. Bump it for this query only (SET LOCAL scopes to the transaction).
-    await tx.$executeRawUnsafe(`SET LOCAL ivfflat.probes = 20`)
+    await tx.$executeRawUnsafe(`SET LOCAL ivfflat.probes = 40`)
     return tx.$queryRawUnsafe<{ id: number; semantic_score: number }[]>(
       sql,
       vecStr,
       topK,
     )
-  })
+  }, { timeout: 30000 })
 
   if (rows.length === 0) return []
 
@@ -81,60 +80,29 @@ export async function semanticSearch(
 
 const RRF_K = 60
 
-// Absolute cosine-similarity floor: below this, a semantic-only match is
-// unrelated noise regardless of its rank in this particular result set.
-//
-// Calibrated empirically (see scripts/tmp-test-search.ts / tmp-test-noise.ts
-// during development): with multilingual-e5-small on this dataset, raw
-// cosine similarity is heavily compressed and NOT a clean absolute
-// discriminator on its own — legitimate matches range ~0.85-0.91 depending
-// on the query, while fully unrelated/gibberish queries still score
-// ~0.82-0.85. There is no single cutoff that perfectly separates the two, so
-// this floor is intentionally conservative (a coarse safety net for
-// degenerate queries), not the primary precision mechanism — that role
-// belongs to keyword corroboration and, most importantly, to the
-// `indications` data backfill (scripts/backfill-indications.ts), which is
-// what actually fixed the reported "dor de cabeça" cross-contamination by
-// giving the embedding real symptom text to disambiguate on.
+// Absolute cosine-similarity floor
 const SEMANTIC_HARD_MIN = 0.80
 
 // Cosine similarity at/above which a semantic match is trusted standalone,
 // without needing keyword corroboration.
 const SEMANTIC_STRONG = 0.855
 
-// Practical ceiling used to stretch [SEMANTIC_HARD_MIN, SEMANTIC_CEILING]
-// into [0, 1] for display. e5 cosine scores for near-exact matches cluster
-// below 1.0 in practice, so 1.0 itself would be an unreachable ceiling.
 const SEMANTIC_CEILING = 0.92
 
-// ts_rank scores are unbounded and not comparable to cosine similarity; this
-// saturates keyword strength into a 0-1 component. Observed ts_rank values
-// in this dataset for real corroborating matches sit around 0.03-0.09.
-//
-// ATUALIZAÇÃO: Aumentado de 0.1 para 0.15 para dar mais peso a resultados
-// keyword com ts_rank mais baixo (medicamentos específicos que não contêm
-// os termos de busca exatos mas ainda são relevantes).
+// Keyword saturation — how much ts_rank fills the keyword component
 const KEYWORD_SATURATION = 0.15
 
-// Pesos de fusão otimizados para melhor relevância
-// Ajustado para dar mais peso ao keyword quando disponível, pois ele é mais preciso
-// para termos específicos (nomes de medicamentos, classes terapêuticas)
-const SEMANTIC_WEIGHT = 0.60
-const KEYWORD_WEIGHT = 0.40
+const SEMANTIC_WEIGHT = 0.50
+const KEYWORD_WEIGHT = 0.50
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
 }
 
-// A weak semantic match with no keyword backing is unrelated noise (e.g. an
-// anticonvulsant drifting toward "dor de cabeça" purely via broad "sistema
-// nervoso" vocabulary overlap in embedding space) — require either a strong
-// standalone similarity or corroboration from the keyword search, which
-// already filters correctly on its own.
 function passesSemanticGate(score: number, hasKeywordSupport: boolean): boolean {
   if (score < SEMANTIC_HARD_MIN) return false
-  if (score >= SEMANTIC_STRONG) return true
-  return hasKeywordSupport
+  if (score >= SEMANTIC_STRONG) return true // passa sem keyword support
+  return hasKeywordSupport // precisa de keyword
 }
 
 function semanticComponent(cosine: number): number {
@@ -145,26 +113,40 @@ function keywordComponent(tsRank: number): number {
   return Math.min(tsRank / KEYWORD_SATURATION, 1)
 }
 
-// The displayed "%" must mean roughly the same thing across different
-// queries — an absolute confidence estimate, not "how this ranked relative to
-// the best result in this particular result set" (which is what the old
-// top-1-relative normalization produced).
 function honestScore(semanticRaw: number | null, keywordRaw: number | null): number {
   const sem = semanticRaw !== null ? semanticComponent(semanticRaw) : null
   const kw = keywordRaw !== null ? keywordComponent(keywordRaw) : null
-  
-  // Se ambos estão disponíveis, usa os pesos otimizados
+
   if (sem !== null && kw !== null) {
     return SEMANTIC_WEIGHT * sem + KEYWORD_WEIGHT * kw
   }
-  
-  // Se só tem semântico, aplica um fator de redução (keyword é mais confiável)
-  if (sem !== null) return sem * 0.85
-  
-  // Se só tem keyword, usa ele puro
-  if (kw !== null) return kw
-  
+
+  // Apenas semântico (sem keyword support) — redutor de confiança
+  if (sem !== null) return sem * 0.80
+
+  // Apenas keyword
+  if (kw !== null) return kw * 0.80
+
   return 0
+}
+
+// Extrai termos significativos da query (remove "remédio para", stop words)
+function extractQueryTerms(query: string): string[] {
+  return query.toLowerCase()
+    .replace(/rem[eé]dio\s+para\s+/g, '')
+    .replace(/medicamento\s+para\s+/g, '')
+    .split(/\s+/)
+    .filter(t => t.length > 2)
+    .filter(t => !['dos', 'das', 'com', 'sem', 'para', 'pelo', 'pela'].includes(t))
+}
+
+// Verifica se um medicamento tem relação textual com os termos da busca
+function medicineRelatesToQuery(medicine: MedicineResult, queryTerms: string[]): boolean {
+  const tradeName = (medicine.tradeName || '').toLowerCase()
+  const ingredient = (medicine.activeIngredient || '').toLowerCase()
+  const indications = (medicine.indications || '').toLowerCase()
+  const medicineText = [tradeName, ingredient, indications].join(' ')
+  return queryTerms.some(term => medicineText.includes(term))
 }
 
 export async function hybridSearch(
@@ -174,21 +156,25 @@ export async function hybridSearch(
   if (!query.trim()) return []
 
   const [semanticResults, keywordResults] = await Promise.all([
-    semanticSearch(query, topK * 2),
-    keywordSearch(query, topK * 2),
+    semanticSearch(query, topK * 5),
+    keywordSearch(query, topK * 5),
   ])
 
   const keywordIds = new Set(keywordResults.map(r => r.medicineId))
-  // A weak semantic-only match (no keyword corroboration) below SEMANTIC_STRONG
-  // is dropped here, before it can win a rank slot in RRF purely by being
-  // less-bad than other weak matches.
-  const filteredSemanticResults = semanticResults.filter(r =>
-    passesSemanticGate(r.score, keywordIds.has(r.medicine.id))
-  )
+  const queryTerms = extractQueryTerms(query)
 
+  // Filter semantic results: pass through gate, then verify relation
+  const filteredSemanticResults = semanticResults.filter(r => {
+    const hasKeyword = keywordIds.has(r.medicine.id)
+    // Pass the semantic gate
+    if (!passesSemanticGate(r.score, hasKeyword)) return false
+    return true
+  })
+
+  // If no semantic results remain, fall back to keyword-only
   if (filteredSemanticResults.length === 0) {
+    if (keywordResults.length === 0) return []
     const ids = keywordResults.map(r => r.medicineId)
-    if (ids.length === 0) return []
     const medicines = await prisma.medicine.findMany({ where: { id: { in: ids } } })
     const medMap = new Map(medicines.map(m => [m.id, m]))
     return keywordResults
@@ -201,6 +187,7 @@ export async function hybridSearch(
       .slice(0, topK)
   }
 
+  // If no keyword results, use filtered semantic
   if (keywordResults.length === 0) {
     return filteredSemanticResults
       .map(r => ({
@@ -211,6 +198,7 @@ export async function hybridSearch(
       .slice(0, topK)
   }
 
+  // RRF fusion
   const semanticRank = new Map(filteredSemanticResults.map((r, i) => [r.medicine.id, i + 1]))
   const keywordRank = new Map(keywordResults.map(r => [r.medicineId, 0]))
   keywordResults.forEach((r, i) => keywordRank.set(r.medicineId, i + 1))
@@ -244,11 +232,44 @@ export async function hybridSearch(
   const semanticScoreMap = new Map(filteredSemanticResults.map(r => [r.medicine.id, r.score]))
   const keywordScoreMap = new Map(keywordResults.map(r => [r.medicineId, r.keywordScore]))
 
-  return topIds
+  const initialResults = topIds
     .map(id => ({
       score: honestScore(semanticScoreMap.get(id) ?? null, keywordScoreMap.get(id) ?? null),
       medicine: medMap.get(id)!,
     }))
     .filter(r => r.medicine)
     .sort((a, b) => b.score - a.score)
+  
+  // Penalidade para resultados sem keyword support nem relação textual
+  // Usa query expandida com sinônimos para verificar no banco
+  let keywordVerifiedIds = new Set<number>()
+  if (keywordResults.length > 0) {
+    const { buildExpandedTsquery } = await import('@/lib/keyword-utils')
+    const tsquery = buildExpandedTsquery(query)
+    if (tsquery) {
+      const allResultIds = initialResults.map(r => r.medicine.id)
+      if (allResultIds.length > 0) {
+        interface IdRow { id: number }
+        const verified = await prisma.$queryRawUnsafe<IdRow[]>(
+          `SELECT id FROM medicines WHERE id IN (${allResultIds.join(',')}) AND "search_document" @@ to_tsquery('portuguese', $1::text)`,
+          tsquery
+        )
+        keywordVerifiedIds = new Set(verified.map(r => r.id))
+      }
+    }
+  }
+  
+  const penalizedResults = initialResults.map(r => {
+    const hasKeyword = keywordVerifiedIds.has(r.medicine.id)
+    if (hasKeyword) return r
+    if (!medicineRelatesToQuery(r.medicine, queryTerms)) {
+      return { ...r, score: r.score * 0.1 }
+    }
+    return r
+  }).sort((a, b) => b.score - a.score)
+
+  // Aplicar ajustes de score baseados em feedback dos usuários
+  const adjustedResults = await applyScoreAdjustments(query, penalizedResults)
+
+  return adjustedResults
 }
