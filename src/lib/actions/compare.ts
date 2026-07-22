@@ -1,6 +1,7 @@
 'use server'
 
 import { prisma } from "@/lib/prisma"
+import { normalizeMedicine } from "@/lib/format"
 import type { MedicineResult } from "@/types"
 
 export async function getMedicinesByIds(ids: number[]): Promise<MedicineResult[]> {
@@ -10,7 +11,7 @@ export async function getMedicinesByIds(ids: number[]): Promise<MedicineResult[]
     where: { id: { in: ids } },
   })
 
-  return data as MedicineResult[]
+  return data.map(normalizeMedicine) as MedicineResult[]
 }
 
 export async function searchMedicinesForCompare(

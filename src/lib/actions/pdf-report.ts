@@ -3,6 +3,7 @@
 import PdfPrinter from 'pdfmake'
 import { prisma } from '@/lib/prisma'
 import { PDF_COLORS } from '@/lib/constants'
+import { normalizeMedicine } from '@/lib/format'
 
 const fonts = {
   Helvetica: {
@@ -214,6 +215,7 @@ function buildDocDefinition(
 export async function generateMedicinePdf(id: number): Promise<number[]> {
   const med = await prisma.medicine.findUnique({ where: { id } })
   if (!med) throw new Error('Medicamento não encontrado')
+  const normalizedMed = normalizeMedicine(med)
 
   const prices = await prisma.price.findMany({
     where: { reference: med.reference },
@@ -230,7 +232,7 @@ export async function generateMedicinePdf(id: number): Promise<number[]> {
       })
     : []
 
-  const docDefinition = buildDocDefinition(med, prices, similares)
+  const docDefinition = buildDocDefinition(normalizedMed, prices, similares)
   const pdfDoc = printer.createPdfKitDocument(docDefinition, {})
 
   const buffer = await new Promise<Buffer>((resolve, reject) => {

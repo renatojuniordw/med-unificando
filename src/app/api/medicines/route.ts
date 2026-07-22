@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { MEDICINE_LIMITS } from '@/lib/constants'
+import { normalizeMedicine } from '@/lib/format'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -33,7 +34,8 @@ export async function GET(request: NextRequest) {
       'forma_farmaceutica', 'concentracao', 'categoria', 'codigo_atc', 'tarja', 'situacao',
     ]
     const escapeCsv = (val: unknown) => `"${String(val ?? '').replace(/"/g, '""')}"`
-    const rows = data.map((m) => [
+    const normalizedData = data.map(normalizeMedicine)
+    const rows = normalizedData.map((m) => [
       m.reference, m.activeIngredient, m.tradeName, m.similarHolder,
       m.pharmaceuticalForm, m.concentration, m.category, m.atcCode, m.prescriptionType, m.status,
     ])
@@ -50,8 +52,9 @@ export async function GET(request: NextRequest) {
     })
   }
 
+  const normalizedData = data.map(normalizeMedicine)
   return NextResponse.json({
-    data,
+    data: normalizedData,
     pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
   })
 }

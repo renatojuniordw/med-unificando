@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma"
 import { buildWhere } from "@/lib/build-where"
+import { normalizeMedicine } from "@/lib/format"
 import * as XLSX from 'xlsx'
 import type { SearchFilters, MedicineResult } from "@/types"
 
@@ -40,7 +41,7 @@ export async function exportToExcel(filters?: SearchFilters): Promise<{ filename
   })
 
   const worksheet = XLSX.utils.json_to_sheet(
-    (data as unknown as MedicineResult[]).map(mapMedicine)
+    (data as unknown as MedicineResult[]).map(normalizeMedicine).map(mapMedicine)
   )
 
   const workbook = XLSX.utils.book_new()
@@ -62,7 +63,7 @@ export async function exportToCsv(filters?: SearchFilters): Promise<{ filename: 
   })
 
   const headers = ['Referência', 'Princípio Ativo', 'Nome Comercial', 'Detentor', 'Forma Farmacêutica', 'Concentração', 'Inclusão', 'Categoria', 'Medicamento Referência', 'Código ATC', 'Tarja', 'Situação', 'Autorização', 'Apresentações']
-  const rows = (data as unknown as MedicineResult[]).map(medicine => [
+  const rows = (data as unknown as MedicineResult[]).map(normalizeMedicine).map(medicine => [
     medicine.reference,
     medicine.activeIngredient,
     medicine.tradeName,

@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma"
 import { MEDICINE_LIMITS } from "@/lib/constants"
+import { normalizeText } from "@/lib/format"
 
 export async function getReferenceMedicines() {
   const groups = await prisma.medicine.groupBy({
@@ -17,7 +18,7 @@ export async function getReferenceMedicines() {
   return groups
     .filter((group): group is typeof group & { referenceMedicine: string } => !!group.referenceMedicine && group.referenceMedicine.length > 2)
     .map(group => ({
-      name: group.referenceMedicine,
+      name: normalizeText(group.referenceMedicine),
       count: group._count.referenceMedicine,
     }))
 }
@@ -50,7 +51,7 @@ export async function searchReferenceMedicines(query: string) {
   return groups
     .filter((group): group is typeof group & { referenceMedicine: string } => !!group.referenceMedicine && group.referenceMedicine.length > 2)
     .map(group => ({
-      name: group.referenceMedicine,
+      name: normalizeText(group.referenceMedicine),
       count: group._count.referenceMedicine,
     }))
 }

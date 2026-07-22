@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma"
 import { MEDICINE_LIMITS } from "@/lib/constants"
+import { normalizeMedicine } from "@/lib/format"
 
 export async function getAtcLevels() {
   const result = await prisma.medicine.findMany({
@@ -41,9 +42,10 @@ export async function getAtcLevels() {
 }
 
 export async function getMedicinesByAtc(code: string) {
-  return prisma.medicine.findMany({
+  const medicines = await prisma.medicine.findMany({
     where: { atcCode: { startsWith: code, mode: 'insensitive' } },
     orderBy: { tradeName: 'asc' },
     take: MEDICINE_LIMITS.MAX_ATC_RESULTS,
   })
+  return medicines.map(normalizeMedicine)
 }

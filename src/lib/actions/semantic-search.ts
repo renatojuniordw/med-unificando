@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma"
 import { keywordSearch } from '@/lib/actions/keyword-search'
 import { EMBEDDING } from '@/lib/config'
+import { normalizeMedicine } from "@/lib/format"
 import type { MedicineResult } from "@/types"
 import type { FeatureExtractionPipeline } from "@xenova/transformers"
 
@@ -57,11 +58,14 @@ export async function semanticSearch(
   const medMap = new Map(medicines.map(m => [m.id, m]))
 
   return rows
-    .map(r => ({
-      score: r.semantic_score,
-      medicine: medMap.get(r.id) as unknown as MedicineResult,
-    }))
-    .filter(r => r.medicine)
+    .map(r => {
+      const med = medMap.get(r.id)
+      return med ? {
+        score: r.semantic_score,
+        medicine: normalizeMedicine(med) as unknown as MedicineResult,
+      } : null
+    })
+    .filter((r): r is { score: number; medicine: MedicineResult } => r !== null)
     .sort((a, b) => {
       const aActive = a.medicine.status === 'Ativo' ? 0 : 1
       const bActive = b.medicine.status === 'Ativo' ? 0 : 1
@@ -97,7 +101,10 @@ export async function hybridSearch(
   }
 
   if (keywordResults.length === 0) {
-    return semanticResults.slice(0, topK)
+    return semanticResults.slice(0, topK).map(r => ({
+      ...r,
+      medicine: normalizeMedicine(r.medicine) as MedicineResult,
+    }))
   }
 
   const semanticRank = new Map(semanticResults.map((r, i) => [r.medicine.id, i + 1]))
@@ -126,7 +133,7 @@ export async function hybridSearch(
   const remainingIds = topIds.filter(id => !existingMedicines.some(m => m.id === id))
   if (remainingIds.length > 0) {
     const remaining = await prisma.medicine.findMany({ where: { id: { in: remainingIds } } })
-    existingMedicines.push(...remaining as unknown as MedicineResult[])
+    existingMedicines.push(...remaining.map(normalizeMedicine) as unknown as MedicineResult[])
   }
 
   const medMap = new Map(existingMedicines.map(m => [m.id, m]))

@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma"
 import { buildWhere } from "@/lib/build-where"
 import { YEARS } from "@/lib/constants"
+import { normalizeMedicine } from "@/lib/format"
 import type { Medicine } from "@/generated/prisma/client"
 import * as Prisma from "@/generated/prisma/internal/prismaNamespace"
 import type { SearchFilters, SearchResponse, DistinctValue, DashboardStats } from "@/types"
@@ -25,7 +26,7 @@ export async function searchMedicines(
     prisma.medicine.count({ where }),
   ])
 
-  return { data: data as Medicine[], total, page, pageSize }
+  return { data: data.map(normalizeMedicine) as Medicine[], total, page, pageSize }
 }
 
 export async function getHolderMedicines(
@@ -58,7 +59,7 @@ export async function getHolderMedicines(
     prisma.medicine.count({ where }),
   ])
 
-  return { data: data as Medicine[], total, page, pageSize }
+  return { data: data.map(normalizeMedicine) as Medicine[], total, page, pageSize }
 }
 
 export async function getDistinctValues(field: string): Promise<DistinctValue[]> {
