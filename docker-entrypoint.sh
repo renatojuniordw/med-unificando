@@ -10,6 +10,9 @@ NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx prisma/seed.ts
 echo "Sincronizando Farmácia Popular..."
 NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx scripts/sync-farmacia-popular.ts
 
+echo "Preenchendo indications a partir da classe terapêutica (idempotente)..."
+NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx scripts/backfill-indications.ts
+
 echo "Verificando embeddings de busca semântica..."
 EMBEDDING_COUNT=$(npx prisma query 'SELECT COUNT(*) as count FROM medicines WHERE embedding IS NOT NULL' --no-plaintext 2>/dev/null | grep -o '"count":[0-9]*' | cut -d: -f2)
 TOTAL=$(npx prisma query 'SELECT COUNT(*) as count FROM medicines' --no-plaintext 2>/dev/null | grep -o '"count":[0-9]*' | cut -d: -f2)

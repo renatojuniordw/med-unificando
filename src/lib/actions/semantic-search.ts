@@ -81,15 +81,71 @@ export async function semanticSearch(
 
 const RRF_K = 60
 
-// The UI renders `score` directly as a "%" relevance indicator. Raw cosine
-// similarity can be negative and raw RRF scores top out around 0.033, so
-// neither is meaningful as-is — normalize to the top score within this
-// result set (best match = 100%) before returning.
-function normalizeScores<T extends { score: number }>(results: T[]): T[] {
-  if (results.length === 0) return results
-  const max = Math.max(...results.map(r => r.score))
-  if (max <= 0) return results.map(r => ({ ...r, score: 0 }))
-  return results.map(r => ({ ...r, score: Math.max(r.score, 0) / max }))
+// Absolute cosine-similarity floor: below this, a semantic-only match is
+// unrelated noise regardless of its rank in this particular result set.
+//
+// Calibrated empirically (see scripts/tmp-test-search.ts / tmp-test-noise.ts
+// during development): with multilingual-e5-small on this dataset, raw
+// cosine similarity is heavily compressed and NOT a clean absolute
+// discriminator on its own — legitimate matches range ~0.85-0.91 depending
+// on the query, while fully unrelated/gibberish queries still score
+// ~0.82-0.85. There is no single cutoff that perfectly separates the two, so
+// this floor is intentionally conservative (a coarse safety net for
+// degenerate queries), not the primary precision mechanism — that role
+// belongs to keyword corroboration and, most importantly, to the
+// `indications` data backfill (scripts/backfill-indications.ts), which is
+// what actually fixed the reported "dor de cabeça" cross-contamination by
+// giving the embedding real symptom text to disambiguate on.
+const SEMANTIC_HARD_MIN = 0.80
+
+// Cosine similarity at/above which a semantic match is trusted standalone,
+// without needing keyword corroboration.
+const SEMANTIC_STRONG = 0.855
+
+// Practical ceiling used to stretch [SEMANTIC_HARD_MIN, SEMANTIC_CEILING]
+// into [0, 1] for display. e5 cosine scores for near-exact matches cluster
+// below 1.0 in practice, so 1.0 itself would be an unreachable ceiling.
+const SEMANTIC_CEILING = 0.92
+
+// ts_rank scores are unbounded and not comparable to cosine similarity; this
+// saturates keyword strength into a 0-1 component. Observed ts_rank values
+// in this dataset for real corroborating matches sit around 0.03-0.09.
+const KEYWORD_SATURATION = 0.1
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max)
+}
+
+// A weak semantic match with no keyword backing is unrelated noise (e.g. an
+// anticonvulsant drifting toward "dor de cabeça" purely via broad "sistema
+// nervoso" vocabulary overlap in embedding space) — require either a strong
+// standalone similarity or corroboration from the keyword search, which
+// already filters correctly on its own.
+function passesSemanticGate(score: number, hasKeywordSupport: boolean): boolean {
+  if (score < SEMANTIC_HARD_MIN) return false
+  if (score >= SEMANTIC_STRONG) return true
+  return hasKeywordSupport
+}
+
+function semanticComponent(cosine: number): number {
+  return clamp((cosine - SEMANTIC_HARD_MIN) / (SEMANTIC_CEILING - SEMANTIC_HARD_MIN), 0, 1)
+}
+
+function keywordComponent(tsRank: number): number {
+  return Math.min(tsRank / KEYWORD_SATURATION, 1)
+}
+
+// The displayed "%" must mean roughly the same thing across different
+// queries — an absolute confidence estimate, not "how this ranked relative to
+// the best result in this particular result set" (which is what the old
+// top-1-relative normalization produced).
+function honestScore(semanticRaw: number | null, keywordRaw: number | null): number {
+  const sem = semanticRaw !== null ? semanticComponent(semanticRaw) : null
+  const kw = keywordRaw !== null ? keywordComponent(keywordRaw) : null
+  if (sem !== null && kw !== null) return 0.65 * sem + 0.35 * kw
+  if (sem !== null) return sem * 0.9
+  if (kw !== null) return kw
+  return 0
 }
 
 export async function hybridSearch(
@@ -103,37 +159,45 @@ export async function hybridSearch(
     keywordSearch(query, topK * 2),
   ])
 
-  if (semanticResults.length === 0) {
+  const keywordIds = new Set(keywordResults.map(r => r.medicineId))
+  // A weak semantic-only match (no keyword corroboration) below SEMANTIC_STRONG
+  // is dropped here, before it can win a rank slot in RRF purely by being
+  // less-bad than other weak matches.
+  const filteredSemanticResults = semanticResults.filter(r =>
+    passesSemanticGate(r.score, keywordIds.has(r.medicine.id))
+  )
+
+  if (filteredSemanticResults.length === 0) {
     const ids = keywordResults.map(r => r.medicineId)
     if (ids.length === 0) return []
     const medicines = await prisma.medicine.findMany({ where: { id: { in: ids } } })
     const medMap = new Map(medicines.map(m => [m.id, m]))
-    return normalizeScores(
-      keywordResults
-        .map(r => ({
-          score: r.keywordScore,
-          medicine: medMap.get(r.medicineId) as unknown as MedicineResult,
-        }))
-        .filter(r => r.medicine)
-        .slice(0, topK)
-    )
+    return keywordResults
+      .map(r => ({
+        score: honestScore(null, r.keywordScore),
+        medicine: medMap.get(r.medicineId) as unknown as MedicineResult,
+      }))
+      .filter(r => r.medicine)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, topK)
   }
 
   if (keywordResults.length === 0) {
-    return normalizeScores(
-      semanticResults.slice(0, topK).map(r => ({
-        ...r,
+    return filteredSemanticResults
+      .map(r => ({
+        score: honestScore(r.score, null),
         medicine: normalizeMedicine(r.medicine) as MedicineResult,
       }))
-    )
+      .sort((a, b) => b.score - a.score)
+      .slice(0, topK)
   }
 
-  const semanticRank = new Map(semanticResults.map((r, i) => [r.medicine.id, i + 1]))
+  const semanticRank = new Map(filteredSemanticResults.map((r, i) => [r.medicine.id, i + 1]))
   const keywordRank = new Map(keywordResults.map(r => [r.medicineId, 0]))
   keywordResults.forEach((r, i) => keywordRank.set(r.medicineId, i + 1))
 
   const allIds = new Set([
-    ...semanticResults.map(r => r.medicine.id),
+    ...filteredSemanticResults.map(r => r.medicine.id),
     ...keywordResults.map(r => r.medicineId),
   ])
 
@@ -147,7 +211,7 @@ export async function hybridSearch(
   scores.sort((a, b) => b.rrfScore - a.rrfScore)
   const topIds = scores.slice(0, topK).map(s => s.id)
 
-  const existingMedicines = semanticResults
+  const existingMedicines = filteredSemanticResults
     .filter(r => topIds.includes(r.medicine.id))
     .map(r => r.medicine)
 
@@ -158,14 +222,14 @@ export async function hybridSearch(
   }
 
   const medMap = new Map(existingMedicines.map(m => [m.id, m]))
-  const scoreMap = new Map(scores.map(s => [s.id, s.rrfScore]))
+  const semanticScoreMap = new Map(filteredSemanticResults.map(r => [r.medicine.id, r.score]))
+  const keywordScoreMap = new Map(keywordResults.map(r => [r.medicineId, r.keywordScore]))
 
-  return normalizeScores(
-    topIds
-      .map(id => ({
-        score: scoreMap.get(id) ?? 0,
-        medicine: medMap.get(id)!,
-      }))
-      .filter(r => r.medicine)
-  )
+  return topIds
+    .map(id => ({
+      score: honestScore(semanticScoreMap.get(id) ?? null, keywordScoreMap.get(id) ?? null),
+      medicine: medMap.get(id)!,
+    }))
+    .filter(r => r.medicine)
+    .sort((a, b) => b.score - a.score)
 }
