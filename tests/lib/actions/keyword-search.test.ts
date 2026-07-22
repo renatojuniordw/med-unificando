@@ -24,7 +24,7 @@ describe('keywordSearch', () => {
     expect(result).toEqual([])
   })
 
-  it('calls $queryRawUnsafe with plainto_tsquery', async () => {
+  it('calls $queryRawUnsafe with to_tsquery', async () => {
     vi.mocked(prisma.$queryRawUnsafe).mockResolvedValue([
       { id: 1, keyword_score: 0.8 },
       { id: 2, keyword_score: 0.5 },
@@ -34,7 +34,7 @@ describe('keywordSearch', () => {
     expect(prisma.$queryRawUnsafe).toHaveBeenCalledOnce()
 
     const sql = vi.mocked(prisma.$queryRawUnsafe).mock.calls[0][0] as string
-    expect(sql).toContain('plainto_tsquery')
+    expect(sql).toContain('to_tsquery')
     expect(sql).toContain("portuguese")
     expect(sql).toContain('ts_rank')
     expect(sql).toContain('"search_document"')

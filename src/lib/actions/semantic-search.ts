@@ -42,11 +42,17 @@ export async function semanticSearch(
     LIMIT $2
   `
 
-  const rows = await prisma.$queryRawUnsafe<{ id: number; semantic_score: number }[]>(
-    sql,
-    vecStr,
-    topK,
-  )
+  const rows = await prisma.$transaction(async (tx) => {
+    // idx_medicines_embedding is an ivfflat index with 180 lists; the default
+    // probes=1 only scans ~1/180 of the vectors, causing near-empty/irrelevant
+    // results. Bump it for this query only (SET LOCAL scopes to the transaction).
+    await tx.$executeRawUnsafe(`SET LOCAL ivfflat.probes = 20`)
+    return tx.$queryRawUnsafe<{ id: number; semantic_score: number }[]>(
+      sql,
+      vecStr,
+      topK,
+    )
+  })
 
   if (rows.length === 0) return []
 
@@ -75,6 +81,17 @@ export async function semanticSearch(
 
 const RRF_K = 60
 
+// The UI renders `score` directly as a "%" relevance indicator. Raw cosine
+// similarity can be negative and raw RRF scores top out around 0.033, so
+// neither is meaningful as-is — normalize to the top score within this
+// result set (best match = 100%) before returning.
+function normalizeScores<T extends { score: number }>(results: T[]): T[] {
+  if (results.length === 0) return results
+  const max = Math.max(...results.map(r => r.score))
+  if (max <= 0) return results.map(r => ({ ...r, score: 0 }))
+  return results.map(r => ({ ...r, score: Math.max(r.score, 0) / max }))
+}
+
 export async function hybridSearch(
   query: string,
   topK: number = 20
@@ -91,20 +108,24 @@ export async function hybridSearch(
     if (ids.length === 0) return []
     const medicines = await prisma.medicine.findMany({ where: { id: { in: ids } } })
     const medMap = new Map(medicines.map(m => [m.id, m]))
-    return keywordResults
-      .map(r => ({
-        score: r.keywordScore,
-        medicine: medMap.get(r.medicineId) as unknown as MedicineResult,
-      }))
-      .filter(r => r.medicine)
-      .slice(0, topK)
+    return normalizeScores(
+      keywordResults
+        .map(r => ({
+          score: r.keywordScore,
+          medicine: medMap.get(r.medicineId) as unknown as MedicineResult,
+        }))
+        .filter(r => r.medicine)
+        .slice(0, topK)
+    )
   }
 
   if (keywordResults.length === 0) {
-    return semanticResults.slice(0, topK).map(r => ({
-      ...r,
-      medicine: normalizeMedicine(r.medicine) as MedicineResult,
-    }))
+    return normalizeScores(
+      semanticResults.slice(0, topK).map(r => ({
+        ...r,
+        medicine: normalizeMedicine(r.medicine) as MedicineResult,
+      }))
+    )
   }
 
   const semanticRank = new Map(semanticResults.map((r, i) => [r.medicine.id, i + 1]))
@@ -139,10 +160,12 @@ export async function hybridSearch(
   const medMap = new Map(existingMedicines.map(m => [m.id, m]))
   const scoreMap = new Map(scores.map(s => [s.id, s.rrfScore]))
 
-  return topIds
-    .map(id => ({
-      score: scoreMap.get(id) ?? 0,
-      medicine: medMap.get(id)!,
-    }))
-    .filter(r => r.medicine)
+  return normalizeScores(
+    topIds
+      .map(id => ({
+        score: scoreMap.get(id) ?? 0,
+        medicine: medMap.get(id)!,
+      }))
+      .filter(r => r.medicine)
+  )
 }

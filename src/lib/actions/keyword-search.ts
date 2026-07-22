@@ -33,6 +33,26 @@ function expandWithSynonyms(terms: string[]): string[] {
   return [...expanded]
 }
 
+function sanitizeWord(word: string): string {
+  return word.replace(/['&|!()<>:*]/g, ' ').trim()
+}
+
+// Builds `to_tsquery` syntax where every (possibly multi-word) term/synonym is
+// OR'd against the others. Using plainto_tsquery on the joined term list would
+// AND every term together, so adding synonyms only narrowed matches instead of
+// broadening them (e.g. a document would need to contain "dor" AND "cabeça"
+// AND "analgesico" simultaneously).
+function buildOrTsQuery(terms: string[]): string {
+  const operands = terms
+    .map(term => {
+      const words = term.trim().split(/\s+/).map(sanitizeWord).filter(Boolean)
+      if (words.length === 0) return ''
+      return words.length === 1 ? words[0] : `(${words.join(' & ')})`
+    })
+    .filter(Boolean)
+  return operands.join(' | ')
+}
+
 export async function keywordSearch(
   query: string,
   topK: number = 20
@@ -49,12 +69,14 @@ export async function keywordSearch(
   if (allTerms.length === 0) return []
 
   const expandedTerms = expandWithSynonyms(allTerms)
-  const searchQuery = expandedTerms.join(' ')
+  const searchQuery = buildOrTsQuery(expandedTerms)
+
+  if (!searchQuery) return []
 
   const sql = `
-    SELECT id, ts_rank("search_document", plainto_tsquery('portuguese', $1::text)) AS keyword_score
+    SELECT id, ts_rank("search_document", to_tsquery('portuguese', $1::text)) AS keyword_score
     FROM medicines
-    WHERE "search_document" @@ plainto_tsquery('portuguese', $1::text)
+    WHERE "search_document" @@ to_tsquery('portuguese', $1::text)
     ORDER BY keyword_score DESC
     LIMIT $2
   `

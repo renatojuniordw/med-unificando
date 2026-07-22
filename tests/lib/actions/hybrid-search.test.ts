@@ -1,11 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('@/lib/prisma', () => ({
-  prisma: {
-    medicine: { findMany: vi.fn() },
-    $queryRawUnsafe: vi.fn(),
-  },
-}))
+vi.mock('@/lib/prisma', () => {
+  const queryRawUnsafe = vi.fn()
+  return {
+    prisma: {
+      medicine: { findMany: vi.fn() },
+      $queryRawUnsafe: queryRawUnsafe,
+      $transaction: vi.fn((callback: (tx: unknown) => unknown) =>
+        callback({
+          $executeRawUnsafe: vi.fn(),
+          $queryRawUnsafe: queryRawUnsafe,
+        })
+      ),
+    },
+  }
+})
 
 vi.mock('@/lib/actions/keyword-search', () => ({
   keywordSearch: vi.fn(),
