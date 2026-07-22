@@ -3,7 +3,9 @@
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { getHolderMedicines } from '@/lib/actions/search'
+import { searchAutocomplete } from '@/lib/actions/search'
 import { StatusFilter } from '@/components/medicines/status-filter'
+import { AutocompleteField } from '@/components/medicines/autocomplete-field'
 import { PaginationBar } from '@/components/ui/pagination'
 import { StatusPill } from '@/components/ui/status-pill'
 import { Badge } from '@/components/ui/badge'
@@ -18,6 +20,11 @@ interface HolderContentProps {
   ativos: number
   categoriasCount: number
 }
+
+const MOBILE_FIELDS: { key: keyof MedicineResult; label: string }[] = [
+  { key: 'activeIngredient', label: 'Princípio Ativo' },
+  { key: 'category', label: 'Categoria' },
+]
 
 export function HolderContent({ holder, initialData, totalMedicines, ativos, categoriasCount }: HolderContentProps) {
   const searchParams = useSearchParams()
@@ -52,14 +59,13 @@ export function HolderContent({ holder, initialData, totalMedicines, ativos, cat
     fetch()
   }, [holder, page, pageSize, q, status])
 
-  const filteredAtivos = data.data.filter((m: MedicineResult) => m.status === 'Ativo').length
-  const filteredInativos = data.data.filter((m: MedicineResult) => m.status === 'Inativo').length
+  const inativos = totalMedicines - ativos
   const currentTotal = data.total
 
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault()
+  function handleSearch(value: string) {
+    setSearchInput(value)
     const params = new URLSearchParams(searchParams.toString())
-    if (searchInput) params.set('q', searchInput)
+    if (value) params.set('q', value)
     else params.delete('q')
     params.set('page', '1')
     router.push(`?${params.toString()}`)
@@ -83,45 +89,99 @@ export function HolderContent({ holder, initialData, totalMedicines, ativos, cat
 
   return (
     <>
-      <p className="mt-2 text-base text-muted">
+      {/* Cards de resumo visual */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
+        <div className="border border-border rounded-sm p-3 bg-[var(--color-bg-secondary)]">
+          <p className="text-xs text-muted">Total</p>
+          <p className="text-xl font-bold text-[var(--color-text)]">{totalMedicines}</p>
+        </div>
+        <div className="border border-border rounded-sm p-3 bg-green-50/50 dark:bg-green-950/20">
+          <p className="text-xs text-muted">Ativos</p>
+          <p className="text-xl font-bold text-success">{ativos}</p>
+        </div>
+        <div className="border border-border rounded-sm p-3 bg-red-50/50 dark:bg-red-950/20">
+          <p className="text-xs text-muted">Inativos</p>
+          <p className="text-xl font-bold text-error">{inativos}</p>
+        </div>
+        <div className="border border-border rounded-sm p-3 bg-blue-50/50 dark:bg-blue-950/20">
+          <p className="text-xs text-muted">Categorias</p>
+          <p className="text-xl font-bold text-blue-600">{categoriasCount}</p>
+        </div>
+      </div>
+
+      <p className="mt-4 text-sm text-muted">
         {currentTotal} medicamento{currentTotal !== 1 ? 's' : ''}
         {!q && !status ? ` | ${ativos} ativos | ${categoriasCount} categorias` : ''}
       </p>
 
-      <form onSubmit={handleSearch} className="mt-6 flex gap-3">
-        <input
-          type="search"
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
+      {/* Busca com AutocompleteField */}
+      <div className="mt-4">
+        <AutocompleteField
+          label=""
           placeholder="Buscar por nome comercial ou princípio ativo..."
-          className="flex-1 border border-border rounded-sm px-3 py-2.5 min-h-[44px] text-sm text-[var(--color-text)] bg-[var(--color-bg)]"
+          value={searchInput}
+          onChange={handleSearch}
+          onSelect={handleSearch}
+          fieldKey="holderSearch"
+          fetchSuggestions={(query) => searchAutocomplete('tradeName', query)}
         />
-        <button
-          type="submit"
-          className="bg-brand-black text-white font-semibold rounded-sm px-6 min-h-[44px] text-sm transition-colors hover:bg-primary-light"
-        >
-          Buscar
-        </button>
-        {q && (
-          <button
-            type="button"
-            onClick={() => {
-              setSearchInput('')
-              const params = new URLSearchParams(searchParams.toString())
-              params.delete('q')
-              params.set('page', '1')
-              router.push(`?${params.toString()}`)
-            }}
-            className="text-sm text-muted hover:text-[var(--color-text)] px-3 min-h-[44px]"
-          >
-            Limpar
-          </button>
+      </div>
+
+      <div className="mt-4">
+        <StatusFilter value={status} onChange={handleStatusChange} />
+      </div>
+
+      {/* Mobile: Cards */}
+      <div className="space-y-3 md:hidden">
+        {loading ? (
+          <p className="text-sm text-muted text-center py-4">Buscando...</p>
+        ) : data.data.length === 0 ? (
+          <p className="text-sm text-muted text-center py-4">Nenhum medicamento encontrado</p>
+        ) : (
+          data.data.map((med: MedicineResult) => (
+            <Link
+              key={med.id}
+              href={`/medicamento/${med.id}`}
+              className="block border border-border rounded-sm bg-[var(--color-bg)] p-4 hover:bg-brand-yellow/10 hover:border-brand-yellow transition-all group"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <span className="font-medium text-sm text-[var(--color-text)] group-hover:text-[var(--color-brand)] transition-colors">
+                    {med.tradeName}
+                  </span>
+                  {MOBILE_FIELDS.map(f => {
+                    const value = String(med[f.key] ?? '')
+                    if (!value) return null
+                    return (
+                      <p key={f.key} className="text-xs text-muted mt-0.5">
+                        {value}
+                      </p>
+                    )
+                  })}
+                </div>
+                <div className="flex gap-1.5 flex-wrap shrink-0">
+                  {med.category && (
+                    <Badge variant="primary" className="text-[10px]">
+                      {med.category}
+                    </Badge>
+                  )}
+                  {med.farmaciaPopular && (
+                    <Badge variant="success" className="text-[10px]" title="Farmácia Popular">
+                      FP
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              <div className="mt-2 flex items-center gap-2">
+                {med.status && <StatusPill status={med.status} />}
+              </div>
+            </Link>
+          ))
         )}
-      </form>
+      </div>
 
-      <StatusFilter value={status} onChange={handleStatusChange} />
-
-      <div className="border border-border rounded-md overflow-hidden">
+      {/* Desktop: Tabela */}
+      <div className="hidden md:block border border-border rounded-md overflow-hidden">
         <table className="w-full border-collapse">
           <thead>
             <tr className="bg-[var(--color-bg-secondary)] border-b border-border">

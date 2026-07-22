@@ -74,7 +74,8 @@ describe('atc - getMedicinesByAtc', () => {
     ] as never)
     const { getMedicinesByAtc } = await import('@/lib/actions/atc')
     const result = await getMedicinesByAtc('A01')
-    expect(result).toHaveLength(1)
+    expect(result).toHaveProperty('data')
+    expect(result.data).toHaveLength(1)
   })
 })
 

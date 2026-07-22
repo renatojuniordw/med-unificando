@@ -248,7 +248,7 @@ describe('atc', () => {
   it('getMedicinesByAtc', async () => {
     vi.mocked(prisma.medicine.findMany).mockResolvedValue([{ id: 1 }] as never)
     const { getMedicinesByAtc } = await import('@/lib/actions/atc')
-    expect(await getMedicinesByAtc('A')).toHaveLength(1)
+    expect(await getMedicinesByAtc('A')).toHaveProperty('data')
   })
 })
 

@@ -11,6 +11,7 @@ export default function AdminLoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -67,15 +68,33 @@ export default function AdminLoginPage() {
             aria-invalid={error ? 'true' : 'false'}
           />
 
-          <Input
-            label="Senha"
-            type="password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            aria-invalid={error ? 'true' : 'false'}
-          />
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label htmlFor="password" className="block text-xs font-semibold text-[var(--color-text-secondary)]">
+                Senha
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowPassword(prev => !prev)}
+                className="text-xs text-muted hover:text-[var(--color-text)] transition-colors"
+                tabIndex={-1}
+              >
+                {showPassword ? 'Ocultar' : 'Mostrar'}
+              </button>
+            </div>
+            <div className="relative">
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                aria-invalid={error ? 'true' : 'false'}
+                className="w-full border border-[var(--color-border)] rounded-sm px-3 py-2.5 min-h-[44px] text-sm bg-[var(--color-bg)] text-[var(--color-text)] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-black focus:ring-offset-1 dark:focus:ring-offset-[var(--color-bg)] transition-shadow pr-10"
+              />
+            </div>
+          </div>
 
           <Button
             type="submit"

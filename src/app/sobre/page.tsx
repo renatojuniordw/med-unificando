@@ -157,6 +157,17 @@ export default function AboutPage() {
                 e está disponível no GitHub.
               </p>
               <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed mt-3">
+                <strong className="text-[var(--color-text)]">GitHub:</strong>{' '}
+                <a
+                  href="https://github.com/unificando/medicamentos"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-brand-yellow transition-colors"
+                >
+                  github.com/unificando/medicamentos
+                </a>
+              </p>
+              <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed mt-3">
                 <strong className="text-[var(--color-text)]">Autor:</strong> Renato Bezerra —{' '}
                 <a href="https://renatobezerra.com.br" target="_blank" rel="noopener noreferrer"
                   className="underline hover:text-brand-yellow transition-colors">

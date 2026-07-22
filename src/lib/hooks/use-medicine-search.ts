@@ -1,7 +1,7 @@
 'use client'
 
 import { useSearchParams, useRouter } from 'next/navigation'
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { searchMedicines } from '@/lib/actions/search'
 import type { SearchResponse, SearchFilters } from '@/types'
 
@@ -10,6 +10,7 @@ export function useMedicineSearch(initialData: SearchResponse) {
   const router = useRouter()
   const [data, setData] = useState<SearchResponse>(initialData)
   const [loading, setLoading] = useState(false)
+  const latestKeyRef = useRef('')
 
   const page = Number(searchParams.get('page')) || 1
   const pageSize = Number(searchParams.get('pageSize')) || 10
@@ -36,11 +37,23 @@ export function useMedicineSearch(initialData: SearchResponse) {
   }), [query, reference, activeIngredient, tradeName, category, status, similarHolder, pharmaceuticalForm, farmaciaPopular])
 
   useEffect(() => {
+    const key = `${page}-${pageSize}-${JSON.stringify(currentFilters)}`
+    latestKeyRef.current = key
+
     async function fetchData() {
       setLoading(true)
-      const result = await searchMedicines(page, pageSize, currentFilters)
-      setData(result)
-      setLoading(false)
+      try {
+        const result = await searchMedicines(page, pageSize, currentFilters)
+        if (latestKeyRef.current === key) {
+          setData(result)
+        }
+      } catch {
+        // Silencia erro da busca
+      } finally {
+        if (latestKeyRef.current === key) {
+          setLoading(false)
+        }
+      }
     }
     fetchData()
   }, [page, pageSize, currentFilters])

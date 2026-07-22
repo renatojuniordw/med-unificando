@@ -1,4 +1,5 @@
 import { Card } from '@/components/ui/card'
+import { PriceChart } from '@/components/medicines/price-chart'
 
 interface Price {
   id: number
@@ -17,6 +18,10 @@ export function PriceSection({ prices }: { prices: Price[] }) {
     <Card>
       <p className="text-xs font-semibold text-muted mb-4">Preços CMED</p>
 
+      {/* Gráfico de barras */}
+      <PriceChart prices={prices} />
+
+      {/* Barras de progresso (top 5) */}
       <div className="mb-6 space-y-2">
         {prices.slice(0, 5).map(p => {
           const val = p.pf0Price ?? 0

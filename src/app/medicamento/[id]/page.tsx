@@ -75,7 +75,7 @@ export default async function MedicineDetailPage({ params }: { params: Promise<{
     { label: 'Categoria', value: med.category },
     { label: 'Forma Farmacêutica', value: med.pharmaceuticalForm },
     { label: 'Concentração', value: med.concentration },
-    { label: 'Código ATC', value: med.atcCode },
+    { label: 'Código ATC', value: med.atcCode, link: med.atcCode ? `/atc/${med.atcCode}` : undefined },
     { label: 'Tarja', value: med.prescriptionType },
     { label: 'Situação', value: med.status },
     { label: 'Autorização', value: med.authorization },
@@ -127,7 +127,7 @@ export default async function MedicineDetailPage({ params }: { params: Promise<{
           </Card>
         )}
 
-        <SimilarSection similares={similares} referenceMedicine={med.referenceMedicine ?? ''} />
+        <SimilarSection similares={similares} referenceMedicine={med.referenceMedicine ?? ''} currentMedicineId={med.id} />
 
         <PriceSection prices={prices} />
       </div>

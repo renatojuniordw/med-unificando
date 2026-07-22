@@ -41,11 +41,18 @@ export async function getAtcLevels() {
   }
 }
 
-export async function getMedicinesByAtc(code: string) {
-  const medicines = await prisma.medicine.findMany({
-    where: { atcCode: { startsWith: code, mode: 'insensitive' } },
-    orderBy: { tradeName: 'asc' },
-    take: MEDICINE_LIMITS.MAX_ATC_RESULTS,
-  })
-  return medicines.map(normalizeMedicine)
+export async function getMedicinesByAtc(code: string, page: number = 1, pageSize: number = 20) {
+  const where = { atcCode: { startsWith: code, mode: 'insensitive' as const } }
+  const skip = (page - 1) * pageSize
+
+  const [medicines, total] = await Promise.all([
+    prisma.medicine.findMany({
+      where,
+      orderBy: { tradeName: 'asc' },
+      skip,
+      take: pageSize,
+    }),
+    prisma.medicine.count({ where }),
+  ])
+  return { data: medicines.map(normalizeMedicine), total, page, pageSize }
 }
