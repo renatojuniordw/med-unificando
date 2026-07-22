@@ -34,18 +34,7 @@ NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx prisma/seed.ts
 npx tsx scripts/generate-embeddings.ts
 
 # 8. Sincronizar Farmácia Popular
-NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx -e "
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
-const ativos = ['BROMETO DE IPRATROPIO','DIPROPIONATO DE BECLOMETASONA','SULFATO DE SALBUTAMOL','CLORIDRATO DE METFORMINA','METFORMINA','GLIBENCLAMIDA','INSULINA HUMANA','ATENOLOL','BESILATO DE ANLODIPINO','ANLODIPINO','CAPTOPRIL','CLORIDRATO DE PROPRANOLOL','PROPRANOLOL','HIDROCLOROTIAZIDA','LOSARTANA POTASSICA','LOSARTANA','MALEATO DE ENALAPRIL','ENALAPRIL','ESPIRONOLACTONA','FUROSEMIDA','SUCCINATO DE METOPROLOL','METOPROLOL','ACETATO DE MEDROXIPROGESTERONA','MEDROXIPROGESTERONA','ETINILESTRADIOL','LEVONORGESTREL','NORETISTERONA','VALERATO DE ESTRADIOL','ENANTATO DE NORETISTERONA','ALENDRONATO DE SODIO','ALENDRONATO','SINVASTATINA','CARBIDOPA','LEVODOPA','CLORIDRATO DE BENSERAZIDA','MALEATO DE TIMOLOL','TIMOLOL','BUDESONIDA','DAPAGLIFLOZINA'];
-(async () => {
-  await prisma.medicine.updateMany({ where: { farmaciaPopular: true }, data: { farmaciaPopular: false } });
-  const conditions = ativos.map(a => ({ activeIngredient: { contains: a, mode: 'insensitive' } }));
-  const r = await prisma.medicine.updateMany({ where: { OR: conditions }, data: { farmaciaPopular: true } });
-  console.log(\`\${r.count} medicamentos marcados\`);
-  await prisma.\$disconnect();
-})();
-"
+npm run farmacia-popular
 
 # 9. Dev server
 npm run dev
@@ -59,38 +48,60 @@ npm run dev
 | `npm run build` | Build de produção |
 | `npm run start` | Servidor de produção :11006 |
 | `npm run lint` | ESLint |
+| `npm run test` | Vitest |
+| `npm run test:watch` | Vitest watch |
+| `npm run test:coverage` | Vitest coverage |
 | `npm run seed` | Importar dados ANVISA |
-| `npm run embeddings` | Gerar embeddings IA |
-| `npm run farmacia-popular` | Sincronizar Farmácia Popular |
 | `npm run migrate` | Aplicar migrations Prisma |
 | `npm run generate` | Gerar cliente Prisma |
-| `npm run docker:up` | `docker compose up -d` |
-| `npm run docker:down` | `docker compose down` |
-| `npm run docker:build` | `docker compose build --no-cache` |
+| `npm run search-index` | Gerar embeddings pgvector |
+| `npm run tsvector` | Gerar tsvector search documents |
+| `npm run backfill-indications` | Backfill indicações terapêuticas |
+| `npm run farmacia-popular` | Sincronizar Farmácia Popular |
+| `npm run docker:up` | docker compose up -d |
+| `npm run docker:down` | docker compose down |
+| `npm run docker:build` | docker compose build --no-cache |
 
 ## Estrutura de Arquivos
 
 ```
 src/
-├── app/             # App Router (cada pasta = uma rota)
-│   ├── page.tsx     # Home
-│   ├── medicamento/[id]/
-│   ├── referencias/
-│   ├── atc/
-│   ├── detentor/[cnpj]/
-│   ├── dashboard/
-│   ├── compare/
-│   ├── admin/
-│   └── api/
+├── app/             # App Router
+│   ├── page.tsx     # Home (busca semântica)
+│   ├── buscar-avancado/  # Busca textual avançada
+│   ├── medicamento/[id]/ # Detalhes + PDF + preços
+│   ├── referencias/      # Lista + detalhe de referência
+│   ├── atc/              # Árvore ATC
+│   ├── detentor/[cnpj]/  # Medicamentos por empresa
+│   ├── dashboard/        # Estatísticas
+│   ├── compare/          # Comparação
+│   ├── sobre/            # Sobre o projeto
+│   ├── admin/            # Login, import, medicamentos, feedback
+│   └── api/              # medicines, health, search-feedback, auth
 ├── components/
-│   ├── dashboard/   # DashboardFilters (filtros interativos)
+│   ├── admin/       # SyncCard, ImportStats, PriceStats, ConfirmModal, SyncLogList
+│   ├── dashboard/   # DashboardFilters, FilterBar, StatCards, ChartsSection
 │   ├── layout/      # Header, Footer
-│   ├── ui/          # Button, Badge, Card, Input, Skeleton, Breadcrumbs, ScrollToTop, ClipboardButton, PdfDownloadButton
-│   └── medicines/   # SearchForm, MedicineTable, SemanticSearch, CompareView, ExportButton
+│   ├── medicines/   # 22 componentes (SearchForm, MedicineTable, SemanticSearch, etc.)
+│   └── ui/          # 17 primitivos (Button, Badge, Card, Input, Toast, etc.)
+├── hooks/           # use-favorites, use-recent-searches, use-debounced-search, use-medicine-search
 ├── lib/
-│   ├── actions/     # Server Actions
-│   └── prisma.ts    # Prisma client singleton
-└── types/           # TypeScript interfaces
+│   ├── actions/     # 15 server actions
+│   ├── dictionaries/# ATC, formas farmacêuticas, tarjas, classes
+│   ├── config.ts    # Configurações centralizadas
+│   ├── constants.ts # Constantes nomeadas
+│   ├── format.ts    # Normalização de texto
+│   ├── build-where.ts # Construção de filtros Prisma
+│   ├── query-parser.ts # Parse de query
+│   ├── keyword-utils.ts # Sinônimos e expansão
+│   ├── search-relevance.ts # Labels de relevância
+│   ├── score-adjustments.ts # Ajustes por feedback
+│   ├── embeddings-generator.ts # Geração batch de embeddings
+│   ├── pdf-parser.ts # Parse de PDF
+│   └── theme-provider.tsx # Dark mode context
+├── types/           # TypeScript interfaces
+├── auth.ts          # NextAuth config
+└── proxy.ts         # Rate limiter middleware
 ```
 
 ## Convenções
@@ -162,12 +173,31 @@ O modelo é baixado automaticamente na primeira execução e cacheado em `/tmp/.
 
 O fluxo:
 1. `npm run search-index` → gera embeddings no banco pgvector
-2. Busca keyword: tsvector + GIN index (stemming pt-br + sinônimos)
-3. Busca semântica: pgvector IVFFlat index (cosine distance O(log n))
-4. RRF combina os dois rankings
+2. Busca semântica: pgvector IVFFlat index (cosine distance) com **semantic gate** (score mínimo 0.80)
+3. Busca keyword: tsvector + GIN index (stemming pt-br + sinônimos) com **keyword gate** fallback
+4. **RRF fusion** (Reciprocal Rank Fusion) combina os dois rankings
+5. **Score adjustments** baseados em feedback dos usuários
+6. **Synonym expansion** com 35+ entradas
 
 O texto usado para gerar cada embedding inclui:
 `nome | princípio ativo | categoria | detentor | forma farmacêutica | concentração | sinônimos | indicações | situação | registro`
+
+## Testes
+
+```bash
+npm run test           # Rodar testes
+npm run test:watch     # Modo watch
+npm run test:coverage  # Com cobertura
+```
+
+Testes estão em `tests/` usando Vitest + @testing-library/react + jsdom.
+
+## Hooks Customizados
+
+- `use-favorites` — Favoritos em localStorage (toggle, isFavorite)
+- `use-recent-searches` — Últimas 5 buscas em localStorage
+- `use-debounced-search` — Busca com debounce genérica
+- `use-medicine-search` — URL search params → server data → pagination
 
 ## Encoding
 

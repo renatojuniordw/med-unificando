@@ -147,3 +147,110 @@
 - Formatos: CSV e XLSX
 - Respeita os filtros aplicados na busca
 - Colunas: todas as informações disponíveis
+
+## US-12: Feedback de Resultados de Busca
+
+**Como** usuário  
+**Quero** avaliar se um resultado de busca foi útil ou não  
+**Para** ajudar a melhorar a relevância das buscas
+
+**Critérios de Aceitação:**
+- Botões "Útil" / "Não útil" nos resultados de busca
+- Feedback enviado via POST /api/search-feedback
+- Sem necessidade de autenticação
+- Feedback é usado para ajustar scores em buscas futuras
+
+## US-13: Favoritar Medicamentos
+
+**Como** usuário  
+**Quero** salvar medicamentos como favoritos  
+**Para** acessá-los rapidamente depois
+
+**Critérios de Aceitação:**
+- Botão de coração na página de detalhes e nos resultados
+- Favoritos persistem no navegador (localStorage)
+- Indicador visual de item favoritado
+- Lista de favoritos acessível
+
+## US-14: Busca Híbrida (Semântica + Textual)
+
+**Como** usuário  
+**Quero** descrever um medicamento em linguagem natural  
+**Para** encontrar resultados mesmo sem saber o nome exato
+
+**Critérios de Aceitação:**
+- IA 100% local (Xenova Transformers), sem custo de API
+- Combinação de busca semântica (pgvector) e textual (tsvector)
+- Resultados ordenados por relevância (score de 0-100%)
+- Score mínimo de 0.80 para relevância semântica
+- Fallback para busca keyword se semântica falhar
+
+## US-15: Exportar Resultados
+
+**Como** usuário  
+**Quero** exportar os resultados da busca  
+**Para** analisar offline ou compartilhar
+
+**Critérios de Aceitação:**
+- Botão de exportar na página de resultados
+- Formatos: CSV e XLSX
+- Respeita os filtros aplicados na busca
+- Colunas: todas as informações disponíveis
+
+## US-16: Navegar por Detentor
+
+**Como** profissional  
+**Quero** ver todos os medicamentos de um determinado laboratório  
+**Para** analisar o portfólio de uma empresa
+
+**Critérios de Aceitação:**
+- Link clicável no nome do detentor na página de detalhes
+- Página com tabela paginada de todos os medicamentos da empresa
+- Contagem total, ativos e inativos
+
+## US-17: Gerenciar Medicamentos (Admin)
+
+**Como** administrador  
+**Quero** buscar, visualizar e editar medicamentos  
+**Para** corrigir informações ou atualizar dados manualmente
+
+**Critérios de Aceitação:**
+- Busca por referência, princípio ativo, nome comercial
+- Visualização de todos os campos do medicamento
+- Edição de campos como indicações, classe terapêutica
+- Salvamento com atualização do timestamp
+
+## US-18: Visualizar Feedback de Buscas (Admin)
+
+**Como** administrador  
+**Quero** ver estatísticas de feedback das buscas  
+**Para** identificar queries de baixa qualidade e melhorar o sistema
+
+**Critérios de Aceitação:**
+- Total de feedbacks, úteis e não úteis
+- Taxa de utilidade (helpful rate)
+- Lista de queries de baixa qualidade
+- Detalhamento por query
+
+## US-19: Busca por Classe Terapêutica
+
+**Como** profissional de saúde  
+**Quero** filtrar medicamentos por classe terapêutica  
+**Para** encontrar medicamentos de uma mesma categoria terapêutica
+
+**Critérios de Aceitação:**
+- Filtro de classe terapêutica na busca avançada
+- Lista de classes disponíveis
+- Resultados filtrados corretamente
+
+## US-20: Autocomplete na Busca
+
+**Como** usuário  
+**Quero** ver sugestões enquanto digito na busca  
+**Para** encontrar medicamentos mais rapidamente
+
+**Critérios de Aceitação:**
+- Sugestões aparecem após 2 caracteres
+- Debounce de 300ms para evitar requisições excessivas
+- Sugestões incluem nome, princípio ativo e categoria
+- Navegação por teclado (setas, Enter)

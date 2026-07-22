@@ -56,15 +56,40 @@ A CMED define preços máximos por apresentação:
 
 ## 6. Busca por Descrição
 
-A busca por descrição combina **tsvector** (busca keyword com stemming e sinônimos) e **pgvector** (busca semântica vetorial) para encontrar medicamentos pela **intenção** da busca.
+### Arquitetura Híbrida com RRF Fusion
 
-**Arquitetura híbrida:**
-- tsvector GIN index: busca textual rápida com stemming português + mapa de sinônimos
-- pgvector IVFFlat: busca vetorial O(log n) com modelo multilingual-e5-small
-- RRF combina os dois rankings para melhores resultados
+A busca combina **tsvector** (keyword com stemming e sinônimos) e **pgvector** (busca semântica vetorial) usando **Reciprocal Rank Fusion (RRF)** para combinar os rankings.
 
-**Modelo de embedding**: multilingual-e5-small — 384 dimensões, ~118MB (processamento 100% local, zero custo de API)
-**Texto usado para indexação**: nome + princípio ativo + categoria + detentor + forma farmacêutica + concentração + sinônimos + indicações + situação + registro
+#### Busca Semântica (pgvector)
+
+- Modelo: `multilingual-e5-small` — 384 dimensões, ~118MB (processamento 100% local, zero custo de API)
+- Texto indexado: nome + princípio ativo + categoria + detentor + forma farmacêutica + concentração + sinônimos + indicações + situação + registro
+- Índice: IVFFlat para busca O(log n)
+- **Semantic Gate**: apenas resultados com cosine similarity ≥ **0.80** são considerados
+- **Standalone threshold**: quando a busca semântica roda sozinha (sem keyword complementar), o threshold é **0.855**
+
+#### Busca Textual (tsvector)
+
+- Índice GIN com stemming português via configuração de texto da base
+- Mapa de sinônimos médicos com **35+ entradas** (ex: "coração" ↔ "cardíaco", "pressão" ↔ "hipertensão")
+- **Synonym expansion**: termos médicos são expandidos automaticamente antes da consulta
+- **Compound subject parsing**: expressões compostas (ex: "ácido acetilsalicílico") são analisadas como unidades
+
+#### RRF Fusion
+
+```
+score = 1/(60 + rank_keyword) + 1/(60 + rank_semantic)
+```
+
+#### Score Adjustments
+
+- Feedback dos usuários (útil/não útil) gera **boost** ou **penalty** no score final
+- Boosts/penalties são aplicados por medicineId e tipo de query
+- Ajustes são normalizados para evitar distorção dos resultados
+
+#### Fallback: Keyword Gate
+
+Se a busca semântica não retornar resultados relevantes (score < 0.80), o sistema tenta **keyword search** pura como fallback, usando o tsvector com expansão de sinônimos.
 
 ## 7. Farmácia Popular
 
@@ -87,7 +112,17 @@ O programa Farmácia Popular do Ministério da Saúde disponibiliza medicamentos
 - Importação substitui **todos** os registros existentes
 - Preços CMED importados separadamente
 - Farmácia Popular sincronizado separadamente (lista do Ministério da Saúde)
+- **therapeuticClass**: sincronizado do CSV DADOS_ABERTOS_MEDICAMENTOS (campo `SUBSTANCIA` mapeado para classe terapêutica)
+- **Embeddings**: sincronizados apenas para novos medicamentos (sem embedding existente), em batches de 50
 - Cada sincronização é registrada em `SyncLog` (type, count, status, timestamp)
+
+### Backfill Scripts
+
+Scripts disponíveis para operações únicas de atualização em massa:
+
+- `backfill-indications`: preencher indicações terapêuticas ausentes
+- `backfill-therapeutic-class`: preencher classe terapêutica de registros existentes
+- `add-active-ingredients`: popula princípios ativos de medicamentos que estão sem
 
 ## 9. Estatísticas (Dashboard)
 
@@ -97,6 +132,8 @@ O dashboard permite filtrar os dados por:
 - **Situação**: filtra por Ativo ou Inativo
 
 Os filtros recalculam totais, top 10 medicamentos e top 10 princípios ativos em tempo real.
+
+Uma **timeline interativa** exibe a evolução temporal dos registros ao longo dos anos, permitindo visualizar tendências de aprovação de medicamentos por categoria.
 
 ## 10. Relatório PDF
 
@@ -123,6 +160,28 @@ Aplicativo instalável via navegador com `manifest.json`. Ideal para acesso mobi
 ## 13. Segurança
 
 - Rate limit de 60 requisições/minuto nas rotas `/api/*`
+- **proxy.ts middleware**: rate limiter adicional no middleware de API para proteção distribuída
+- **CSP headers**: Content-Security-Policy configurado para evitar XSS e ataques de injeção
 - Security headers: X-Frame-Options: DENY, X-Content-Type-Options: nosniff, X-XSS-Protection, Referrer-Policy, Permissions-Policy
 - Docker: read-only filesystem, non-root user, sem privilégios
 - Body size limit de 10MB para uploads
+
+## 14. Feedback de Busca
+
+Usuários podem avaliar resultados como "útil" ou "não útil".
+
+### Regras
+- Feedback é armazenado em SearchFeedback (query, medicineId, medicineName, feedback)
+- Score adjustments usam feedback para boost/penalty em buscas futuras
+- Admin pode visualizar estatísticas e queries de baixa qualidade em /admin/search-feedback
+- Dados ajudam a melhorar a relevância da busca continuamente
+
+## 15. Classes Terapêuticas
+
+### Definição
+Campo therapeuticClass no modelo Medicine, importado do CSV DADOS_ABERTOS_MEDICAMENTOS da ANVISA.
+
+### Regras
+- Cada medicamento pode ter uma classe terapêutica associada
+- Usado para filtro e agrupamento na busca avançada
+- Indicações terapêuticas mapeadas por classe (therapeutic-class-indications.ts)

@@ -7,23 +7,34 @@ Esta aplicação implementa múltiplas camadas de segurança seguindo princípio
 ## Medidas Implementadas
 
 ### Autenticação
-- **NextAuth v5** com estratégia JWT
+- **NextAuth v5** com Credentials provider e estratégia JWT
 - Sessão expira em 24 horas (`maxAge: 86400`)
 - Cookies `secure` em produção
-- Senhas com hash bcrypt
+- Senhas com hash bcrypt (salt + hash)
+- JWT com `maxAge: 86400` e role/id no token
 
 ### Controle de Acesso
 - Rotas `/admin/*` protegidas por middleware NextAuth
-- Rate limit: 60 req/min por IP nas rotas `/api/*`
+- Rate limit: 60 req/min por IP nas rotas `/api/*` — implementado via `src/proxy.ts` (middleware in-memory `Map<string, { count, resetAt }>`)
 - Middleware previne acesso não autenticado ao admin
 
 ### Headers de Segurança
-- `Content-Security-Policy` com fontes permitidas
+- `Content-Security-Policy`:
+  ```
+  default-src 'self'
+  img-src 'self' https: data:
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com
+  font-src 'self' https://fonts.gstatic.com
+  script-src 'self' 'unsafe-inline' 'unsafe-eval'
+  connect-src 'self' https://dados.anvisa.gov.br
+  frame-ancestors 'none'
+  ```
 - `X-Frame-Options: DENY`
 - `X-Content-Type-Options: nosniff`
 - `X-XSS-Protection: 1; mode=block`
 - `Strict-Transport-Security` via Nginx
 - `Referrer-Policy: strict-origin-when-cross-origin`
+- `Permissions-Policy: camera=(), microphone=(), geolocation=()`
 
 ### Docker Security
 - Containers rodando como não-root (UID 1001)
@@ -47,6 +58,13 @@ Esta aplicação implementa múltiplas camadas de segurança seguindo princípio
 - CSV sanitizado antes de parsing (remove chars de controle)
 - `escapeCsv()` para prevenir injection em exports
 
+### Sanitização de Input
+- Feedback de busca validado em `src/lib/actions/search-feedback.ts`:
+  - Verificação de campos obrigatórios (`query`, `medicineId`, `medicineName`, `feedback`)
+  - Validação de enum (`helpful` | `not_helpful`)
+  - `query` convertida para lowercase e trim
+  - `medicineId` validado como número via schema Prisma
+
 ### Vulnerabilidades Conhecidas
 
 | Dependência | Severidade | Status |
@@ -57,13 +75,13 @@ Esta aplicação implementa múltiplas camadas de segurança seguindo princípio
 
 ## Limitações Conhecidas
 
-1. **Rate limit em memória** — Funciona para single-worker. Para múltiplos workers, migrar para Redis.
+1. **Rate limit em memória** — Implementado via `Map<string, { count, resetAt }>` em `src/proxy.ts`. Funciona para single-worker. Para múltiplos workers, migrar para Redis.
 2. **xlsx@0.18.5** — Sem fix disponível para prototype pollution. Mitigado por ser fonte confiável (ANVISA).
-3. **Autenticação simples** — Apenas email/senha. Para produção com dados sensíveis, considerar 2FA.
+3. **Autenticação simples** — Apenas email/senha com Credentials provider. Sem 2FA. Para produção com dados sensíveis, considerar 2FA.
 
 ## Relatório de Auditoria
 
-Última auditoria realizada em 20/07/2026:
+Última auditoria realizada em 22/07/2026:
 - 0 vulnerabilidades críticas abertas
 - 0 vulnerabilidades altas abertas
 - 8 false positives identificados e documentados

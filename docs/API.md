@@ -15,6 +15,14 @@ Lista medicamentos com paginação, filtros e exportação.
 | `tradeName` | string | — | Filtro por nome comercial (LIKE insensitive) |
 | `category` | string | — | Filtro exato por categoria (Similar, Genérico, etc.) |
 | `status` | string | — | Filtro exato por situação (Ativo, Inativo) |
+| `pharmaceuticalForm` | string | — | Filtro por forma farmacêutica |
+| `prescriptionType` | string | — | Filtro por tipo de prescrição (tarja) |
+| `atcCode` | string | — | Filtro por código ATC |
+| `farmaciaPopular` | boolean | — | Filtro por Farmácia Popular (true/false) |
+| `therapeuticClass` | string | — | Filtro por classe terapêutica |
+| `query` | string | — | Busca textual genérica |
+| `sortBy` | string | — | Campo para ordenação |
+| `sortOrder` | string | asc | asc ou desc |
 | `format` | string | — | Se `csv`, retorna CSV ao invés de JSON |
 
 ### Exemplos
@@ -31,6 +39,15 @@ curl "http://localhost:11006/api/medicines?activeIngredient=ibuprofeno"
 
 # Múltiplos filtros
 curl "http://localhost:11006/api/medicines?category=Genérico&status=Ativo"
+
+# Filtro por forma farmacêutica e tipo de prescrição
+curl "http://localhost:11006/api/medicines?pharmaceuticalForm=Comprimido&prescriptionType=Tarja%20Vermelha"
+
+# Busca textual genérica
+curl "http://localhost:11006/api/medicines?query=paracetamol"
+
+# Ordenação por nome comercial
+curl "http://localhost:11006/api/medicines?sortBy=tradeName&sortOrder=asc"
 
 # Exportar como CSV
 curl "http://localhost:11006/api/medicines?format=csv" -o medicamentos.csv
@@ -77,6 +94,51 @@ referencia,principio_ativo,nome_comercial,detentor,...
 106460143,teicoplanina,TEICOPLANINA,LABORATORIO QUIMICO...
 ```
 
+## POST /api/search-feedback
+
+Envia feedback sobre resultado de busca.
+
+### Body
+
+```json
+{
+  "query": "dor de cabeça",
+  "medicineId": 123,
+  "medicineName": "Paracetamol",
+  "feedback": "helpful"
+}
+```
+
+`feedback` pode ser `"helpful"` ou `"not_helpful"`.
+
+### Resposta (201)
+
+```json
+{ "success": true }
+```
+
+## GET /api/search-feedback
+
+Retorna estatísticas de feedback (admin).
+
+### Parâmetros
+
+| Parâmetro | Tipo | Descrição |
+|-----------|------|-----------|
+| `stats` | boolean | Se true, retorna estatísticas agregadas |
+| `lowQuality` | boolean | Se true, retorna queries de baixa qualidade |
+
+### Resposta (stats=true)
+
+```json
+{
+  "total": 150,
+  "helpful": 120,
+  "notHelpful": 30,
+  "helpfulRate": 0.8
+}
+```
+
 ## GET /api/health
 
 Health check da aplicação.
@@ -94,7 +156,8 @@ curl "http://localhost:11006/api/health"
   "database": "connected",
   "stats": {
     "medicines": 32585,
-    "prices": 53422
+    "prices": 53422,
+    "searchFeedback": 150
   }
 }
 ```
@@ -119,6 +182,9 @@ Sitemap gerado dinamicamente com todas as URLs da aplicação (~32.585+ URLs):
 /dashboard
 /referencias
 /atc
+/sobre
+/detentor/[cnpj]
+/admin/medicamentos
 /medicamento/1
 /medicamento/2
 ...
@@ -136,8 +202,16 @@ Disallow: /api/
 Sitemap: https://medicamentos.unificando.com.br/sitemap.xml
 ```
 
+## Autenticação
+
+Rotas `/admin/*` são protegidas por NextAuth v5 (Credentials provider, JWT).
+
+```
+POST /api/auth/login — Login com email e senha
+```
+
 ## Rate Limit
 
-Todas as rotas `/api/*` têm limite de **60 requisições por minuto por IP**.
+Todas as rotas `/api/*` têm limite de **60 requisições por minuto por IP**, implementado via middleware em `src/proxy.ts`.
 
 Em caso de excesso, retorna `429 Too Many Requests`.
