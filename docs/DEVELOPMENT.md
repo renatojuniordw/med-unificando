@@ -81,9 +81,8 @@ src/
 ├── components/
 │   ├── admin/       # SyncCard, ImportStats, PriceStats, ConfirmModal, SyncLogList
 │   ├── dashboard/   # DashboardFilters, FilterBar, StatCards, ChartsSection
-│   ├── layout/      # Header, Footer
-│   ├── medicines/   # 22 componentes (SearchForm, MedicineTable, SemanticSearch, etc.)
-│   └── ui/          # 17 primitivos (Button, Badge, Card, Input, Toast, etc.)
+│   ├── layout/      # Header (active link), Footer
+│   └── medicines/   # 19 componentes (SearchForm, AutocompleteField, MedicineTable, etc.)
 ├── hooks/           # use-favorites, use-recent-searches, use-debounced-search, use-medicine-search
 ├── lib/
 │   ├── actions/     # 15 server actions
@@ -196,8 +195,8 @@ Testes estão em `tests/` usando Vitest + @testing-library/react + jsdom.
 
 - `use-favorites` — Favoritos em localStorage (toggle, isFavorite)
 - `use-recent-searches` — Últimas 5 buscas em localStorage
-- `use-debounced-search` — Busca com debounce genérica
-- `use-medicine-search` — URL search params → server data → pagination
+- `use-debounced-search` — Busca com debounce genérica, proteção contra race condition
+- `use-medicine-search` — URL search params → server data → pagination, proteção contra race condition
 
 ## Encoding
 

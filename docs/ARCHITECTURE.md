@@ -57,10 +57,11 @@ med-unificando/
 │   │   ├── sitemap.ts             # Sitemap dinâmico (~32k+ URLs)
 │   │   ├── robots.ts              # Configuração de indexação
 │   │   ├── opengraph-image.tsx    # OG Image gerada dinamicamente
-│   │   ├── medicamento/[id]/      # Detalhes + JSON-LD + breadcrumbs + bula + gráfico + similares
-│   │   ├── referencias/           # Lista + detalhe de referência
-│   │   ├── atc/                   # Árvore ATC + medicamentos por código
-│   │   ├── detentor/[cnpj]/       # Todos medicamentos de uma empresa
+│   │   ├── medicamento/[id]/      # Detalhes + JSON-LD + breadcrumbs + bula + gráfico preços + similares com navegação
+│   │   ├── referencias/           # Lista (paginação, A-Z, ordenação) + detalhe de referência
+│   │   ├── atc/                   # Árvore ATC (busca + autocomplete + expandir/recolher)
+│   │   ├── atc/[code]/            # Medicamentos por código (paginação, breadcrumbs, mobile cards)
+│   │   ├── detentor/[cnpj]/       # Todos medicamentos de uma empresa (cards mobile + resumo)
 │   │   ├── dashboard/             # Stats + timeline por ano
 │   │   ├── compare/               # Comparação lado a lado
 │   │   ├── sobre/                 # Sobre o projeto
@@ -106,27 +107,25 @@ med-unificando/
 │   │   │   ├── confirm-modal.tsx
 │   │   │   └── sync-log-list.tsx
 │   │   └── medicines/
-│   │       ├── search-form.tsx
-│   │       ├── medicine-table.tsx
-│   │       ├── semantic-search.tsx
-│   │       ├── compare-view.tsx
-│   │       ├── export-button.tsx
-│   │       ├── medicine-detail.tsx
-│   │       ├── medicine-header.tsx
-│   │       ├── medicine-info.tsx
-│   │       ├── medicine-prices.tsx
-│   │       ├── medicine-similars.tsx
-│   │       ├── medicine-reference.tsx
-│   │       ├── medicine-classification.tsx
-│   │       ├── medicine-indications.tsx
-│   │       ├── medicine-active-ingredients.tsx
-│   │       ├── medicine-therapeutic-class.tsx
-│   │       ├── medicine-atc.tsx
-│   │       ├── medicine-documents.tsx
-│   │       ├── medicine-feedback.tsx
-│   │       ├── medicine-actions.tsx
-│   │       ├── medicine-related-searches.tsx
-│   │       └── results-info.tsx
+│   │       ├── search-form.tsx              # Filtros de busca (query + 6 campos server-side)
+│   │       ├── autocomplete-field.tsx       # Autocomplete server-side com teclado
+│   │       ├── semantic-search.tsx          # Busca por descrição com IA
+│   │       ├── medicine-table.tsx           # Tabela + mobile cards + selecionar todos
+│   │       ├── medicine-info-card.tsx       # Card de informações (17 campos + ver mais)
+│   │       ├── similar-section.tsx          # Similares com navegação anterior/próximo
+│   │       ├── price-section.tsx            # Preços CMED
+│   │       ├── price-chart.tsx              # Gráfico de barras (recharts)
+│   │       ├── compare-view.tsx             # Comparação
+│   │       ├── compare-table.tsx            # Tabela comparativa com highlight de diferenças
+│   │       ├── compare-search.tsx           # Busca com autocomplete + teclado
+│   │       ├── export-button.tsx            # Exportação CSV/Excel
+│   │       ├── status-filter.tsx            # Pills de situação (Ativo/Inativo)
+│   │       ├── action-bar.tsx               # Ações contextuais
+│   │       ├── holder-content.tsx           # Detentor (cards mobile + autocomplete)
+│   │       ├── reference-search.tsx         # Referências (paginação + A-Z + ordenação)
+│   │       ├── similar-medicines-list.tsx   # Lista de similares com paginação
+│   │       ├── atc-tree.tsx                 # Árvore ATC (busca + autocomplete)
+│   │       └── atc-code-content.tsx         # Medicamentos ATC (paginação + breadcrumbs)
 │   ├── hooks/
 │   │   ├── use-favorites.ts
 │   │   ├── use-recent-searches.ts
@@ -134,7 +133,7 @@ med-unificando/
 │   │   └── use-medicine-search.ts
 │   ├── lib/
 │   │   ├── actions/
-│   │   │   ├── search.ts                       # searchMedicines, getDashboardStats
+│   │   │   ├── search.ts                       # searchMedicines, getDashboardStats, searchAutocomplete, countMedicines
 │   │   │   ├── semantic-search.ts              # IA local server-side (Xenova)
 │   │   │   ├── keyword-search.ts               # Busca tsvector + FTS
 │   │   │   ├── admin.ts                        # syncWithAnvisa, getImportInfo

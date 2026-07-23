@@ -14,14 +14,14 @@ Consulta inteligente de medicamentos intercambiáveis da ANVISA com busca semân
 - **Busca híbrida** — pgvector + tsvector com RRF fusion para resultados mais precisos
 - **Score adjustments** — relevância ajustada com base no feedback dos usuários
 - **Search Feedback** — usuários podem avaliar resultados como útil/não útil
-- **Busca por classe terapêutica** — filtre por classificação terapêutica ANVISA
-- **Autocomplete** com debounce na busca
+- **Autocomplete server-side** com debounce e navegação por teclado (setas, Enter, Escape)
 - **Farmácia Popular** — badge e filtro para medicamentos do programa
-- **Comparação** lado a lado com destaque visual de diferenças
-- **Explorar por referência** — veja todos os similares de um medicamento de referência
-- **Navegação ATC** — explore por classificação Anatômica/Terapêutica/Química
-- **Preços CMED** — visualize preços máximos ao consumidor com BarChart
-- **Página do detentor** — todos os medicamentos de uma empresa
+- **Comparação** lado a lado com destaque visual de diferenças + navegação por teclado
+- **Explorar por referência** — veja todos os similares de um medicamento de referência (paginação, A-Z, ordenação)
+- **Navegação ATC** — explore por classificação Anatômica/Terapêutica/Química com busca + autocomplete + expandir/recolher
+- **Breadcrumbs ATC** — navegação hierárquica entre níveis do código
+- **Preços CMED** — visualize preços máximos ao consumidor com BarChart e gráfico de barras (recharts)
+- **Página do detentor** — todos os medicamentos de uma empresa com cards mobile + autocomplete + cards de resumo
 - **Estatísticas** com filtros interativos (ano, categoria, situação) e timeline
 - **Exportação** em CSV e Excel (corretamente escaped)
 - **Relatório PDF** do medicamento com identidade visual
@@ -36,6 +36,11 @@ Consulta inteligente de medicamentos intercambiáveis da ANVISA com busca semân
 - **ExportButton** — exportação contextual (CSV/Excel)
 - **ActionBar** — ações contextuais por página
 - **Breadcrumbs** — navegação hierárquica
+- **Selecionar tudo** na tabela de resultados
+- **Header com active link** — navegação destaca página atual
+- **Mobile responsive** — cards em vez de tabela em detentor, ATC e referências
+- **Scroll to top** automático
+- **Página 404** customizada com links de navegação
 - **Dark mode** — tema claro/escuro com persistência
 - **Sincronização automática** com dados abertos ANVISA
 - **PWA** — instalável como app no celular
@@ -44,8 +49,7 @@ Consulta inteligente de medicamentos intercambiáveis da ANVISA com busca semân
 - **Sitemap dinâmico** com 32K+ URLs
 - **Robots.txt** com permissão para GPTBot, ClaudeBot, Google-Extended
 - **ErrorBoundary** global
-- **Loading skeleton** global
-- **Página 404** customizada
+- **Loading skeleton** global, realista (reflete estrutura da página)
 - **ConsoleCredits** — informações do projeto no DevTools
 
 ---
@@ -65,6 +69,7 @@ Consulta inteligente de medicamentos intercambiáveis da ANVISA com busca semân
 | IA (busca) | multilingual-e5-small (384d) + pgvector + tsvector |
 | PDF | pdfmake (server-side) |
 | Exportação | xlsx |
+| Gráficos | recharts |
 | Infra | Docker Compose + multi-stage build |
 
 ---

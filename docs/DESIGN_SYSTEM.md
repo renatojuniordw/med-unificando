@@ -49,6 +49,7 @@ impacto visual do Brutalismo puro usado em outros projetos da marca.
 | `bg-brand-yellow` + `text-brand-black` | **SEMPRE** juntos — fundo amarelo exige texto escuro fixo |
 | `bg-brand-black` + `text-white` | Botões primários — fundo escuro com texto branco |
 | `text-success` / `text-error` | Status "Ativo"/"Inativo" — nunca sobre brand-yellow |
+| `accent-brand-yellow` | Checkboxes personalizados (selecionar todos) |
 
 ---
 

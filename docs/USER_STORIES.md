@@ -7,9 +7,11 @@
 **Para** verificar rapidamente se o medicamento está na lista de intercambiáveis
 
 **Critérios de Aceitação:**
-- Campo de busca por referência com auto-complete
+- Campo de busca por referência com auto-complete server-side
+- Navegação por teclado (setas, Enter, Escape)
 - Resultados em tabela paginada (10/25/50 por página)
 - Colunas: referência, princípio ativo, nome comercial, detentor, categoria, situação
+- Checkbox "Selecionar todos" no cabeçalho da tabela
 - Ao clicar no nome, abre página de detalhes com breadcrumbs
 
 ## US-02: Busca por Princípio Ativo e Categoria
@@ -43,8 +45,11 @@
 **Para** ver todos os similares intercambiáveis de cada referência
 
 **Critérios de Aceitação:**
-- Lista de referências ordenada por quantidade de similares
+- Lista de referências com paginação (20/página)
+- Barra de navegação A-Z para filtrar por letra inicial
+- Ordenação por contagem, A-Z ou Z-A
 - Badge com contagem de similares
+- Campo de busca com debounce e proteção contra race condition
 - Ao clicar, mostra grid com cards de similares
 - Cada card mostra nome, princípio ativo, categoria, situação
 - Links para página de detalhes
@@ -87,9 +92,12 @@
 
 **Critérios de Aceitação:**
 - Link clicável no nome do detentor na página de detalhes
-- Página com tabela de todos os medicamentos da empresa
-- Contagem total, ativos e categorias
+- Página com cards (mobile) e tabela (desktop) de todos os medicamentos da empresa
+- Campo de busca com autocomplete server-side
+- Cards de resumo visual (total, ativos, inativos, categorias)
 - Filtro por situação
+- Contagem total, ativos e categorias
+- Paginação dos resultados
 
 ## US-08: Dashboard com Estatísticas e Filtros
 

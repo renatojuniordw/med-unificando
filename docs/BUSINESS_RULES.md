@@ -43,7 +43,13 @@ Sistema da OMS com 5 níveis hierárquicos para classificar medicamentos:
 4. **Nível 4** (5 chars) — subgrupo químico
 5. **Nível 5** (7 chars) — princípio ativo específico
 
-A aplicação navega pelos níveis 1-3 com drill-down até a lista de medicamentos.
+A aplicação navega pelos níveis 1-5 com:
+- Busca textual + autocomplete com sugestões de código
+- Navegação por teclado nos resultados
+- Botões "Mostrar todos" para expandir/recolher listas longas
+- Breadcrumbs hierárquicos (ATC > N1 > N2 > N3 > código)
+- Paginação na lista de medicamentos
+- Visualização em cards (mobile) ou tabela (desktop)
 
 ## 5. Preços CMED
 
@@ -52,7 +58,8 @@ A CMED define preços máximos por apresentação:
 - **PF0**: Preço Fábrica sem ICMS
 - **PF18**: Preço Fábrica com ICMS 18%
 - Os preços são por apresentação (dosagem + embalagem)
-- Exibidos em gráfico de barras na página de detalhes e em PDF exportável
+- Exibidos em gráfico de barras (recharts) na página de detalhes, barras de progresso e tabela completa
+- PDF exportável inclui tabela de preços
 
 ## 6. Busca por Descrição
 
@@ -103,7 +110,7 @@ O programa Farmácia Popular do Ministério da Saúde disponibiliza medicamentos
 - A sincronização é manual via painel admin (`/admin/import`, card "5. Farmácia Popular")
 - A lista contempla ~40 princípios ativos, cobrindo ~2.400 medicamentos da base ANVISA
 - Cada sincronização é registrada em `SyncLog` (type: `farmacia-popular`)
-- O campo é exibido como badge verde "Farmácia Popular" na página de detalhe e "FP" nos resultados
+- O campo é exibido como badge verde destacado **"✅ FARMÁCIA POPULAR"** na página de detalhe e **"FP"** nos resultados e tabelas
 
 ## 8. Sincronização com ANVISA
 
