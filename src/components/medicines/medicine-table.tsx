@@ -117,10 +117,12 @@ function LoadingState() {
   )
 }
 
-function MedicineTableContent({ data, selectedIds, toggleSelect }: {
+function MedicineTableContent({ data, selectedIds, toggleSelect, toggleSelectAll, allSelected }: {
   data: MedicineResult[]
   selectedIds: number[]
   toggleSelect: (id: number) => void
+  toggleSelectAll: () => void
+  allSelected: boolean
 }) {
   const mobileColumns = columns.filter(col => col.mobile)
 
@@ -143,7 +145,15 @@ function MedicineTableContent({ data, selectedIds, toggleSelect }: {
         <table className="w-full border-collapse">
           <thead>
             <tr className="bg-[var(--color-bg-secondary)] border-b border-border">
-              <th className="text-center p-3 text-xs font-semibold text-muted w-12">#</th>
+              <th className="text-center p-3 text-xs font-semibold text-muted w-12">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleSelectAll}
+                  className="accent-brand-yellow rounded-sm"
+                  aria-label={allSelected ? 'Desmarcar todos' : 'Selecionar todos'}
+                />
+              </th>
               {mobileColumns.map((col) => (
                 <th key={col.key} className="text-left p-3 text-xs font-semibold text-muted">
                   {col.label}
@@ -204,10 +214,22 @@ export function MedicineTable({ initialData }: MedicineTableProps) {
   const { data, loading, page, pageSize, currentFilters, totalPages, handlePageChange, handlePageSizeChange, router } = useMedicineSearch(initialData)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
 
+  const currentData = data.data
+  const allSelected = currentData.length > 0 && currentData.every(m => selectedIds.includes(m.id))
+
   function toggleSelect(id: number) {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
     )
+  }
+
+  function toggleSelectAll() {
+    if (allSelected) {
+      setSelectedIds(prev => prev.filter(id => !currentData.some(m => m.id === id)))
+    } else {
+      const newIds = currentData.filter(m => !selectedIds.includes(m.id)).map(m => m.id)
+      setSelectedIds(prev => [...prev, ...newIds])
+    }
   }
 
   function handleCompare() {
@@ -243,6 +265,8 @@ export function MedicineTable({ initialData }: MedicineTableProps) {
           data={data.data}
           selectedIds={selectedIds}
           toggleSelect={toggleSelect}
+          toggleSelectAll={toggleSelectAll}
+          allSelected={allSelected}
         />
       )}
 

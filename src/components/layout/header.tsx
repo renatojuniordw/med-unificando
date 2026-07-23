@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { usePathname } from 'next/navigation'
 import { useTheme } from '@/lib/theme-provider'
 
 const navLinks = [
@@ -17,6 +18,12 @@ export function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
   const { theme, toggle } = useTheme()
   const menuRef = useRef<HTMLDivElement>(null)
+  const pathname = usePathname()
+
+  function isActive(href: string) {
+    if (href === '/') return pathname === '/'
+    return pathname.startsWith(href)
+  }
 
   const closeMenu = useCallback(() => setMenuOpen(false), [])
 
@@ -60,7 +67,11 @@ export function Header() {
               <Link
                 key={l.href}
                 href={l.href}
-                className="text-sm font-medium text-[var(--color-text-secondary)] px-3 py-2 min-h-[44px] flex items-center rounded-sm hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition-colors"
+                className={`text-sm font-medium px-3 py-2 min-h-[44px] flex items-center rounded-sm transition-colors ${
+                  isActive(l.href)
+                    ? 'text-[var(--color-text)] bg-[var(--color-bg-secondary)] font-semibold'
+                    : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)]'
+                }`}
               >
                 {l.label}
               </Link>
@@ -117,7 +128,11 @@ export function Header() {
                 <Link
                   key={l.href}
                   href={l.href}
-                  className="block text-sm font-medium text-[var(--color-text-secondary)] py-3 px-2 min-h-[44px] flex items-center rounded-sm hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition-colors"
+                  className={`block text-sm font-medium py-3 px-2 min-h-[44px] flex items-center rounded-sm transition-colors ${
+                    isActive(l.href)
+                      ? 'text-[var(--color-text)] bg-[var(--color-bg-secondary)] font-semibold'
+                      : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)]'
+                  }`}
                   onClick={closeMenu}
                 >
                   {l.label}
