@@ -24,6 +24,10 @@ vi.mock('@/lib/actions/keyword-search', () => ({
   keywordSearch: vi.fn(),
 }))
 
+vi.mock('@/lib/actions/trigram-search', () => ({
+  trigramSearch: vi.fn().mockResolvedValue([]),
+}))
+
 vi.mock('@xenova/transformers', () => ({
   pipeline: vi.fn().mockResolvedValue(
     vi.fn().mockResolvedValue({

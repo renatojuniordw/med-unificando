@@ -25,7 +25,8 @@ export interface GenerateEmbeddingsResult {
   count: number
 }
 
-const DIM = 384
+const DIM = EMBEDDING.DIMS
+const EMBEDDING_COL = EMBEDDING.COLUMN
 const EMBEDDING_BATCH_SIZE = 50
 
 function buildDocumentText(m: EmbeddingSourceMedicine): string {
@@ -72,8 +73,10 @@ export async function generateEmbeddings(
     }).join(' ')
 
     const { prisma } = await import('@/lib/prisma')
+    const ids = batch.map(m => m.id)
     await prisma.$executeRawUnsafe(
-      `UPDATE medicines SET embedding = CASE id ${cases} END WHERE id IN (${batch.map(m => m.id).join(',')})`,
+      `UPDATE medicines SET "${EMBEDDING_COL}" = CASE id ${cases} END WHERE id = ANY($1::int[])`,
+      ids,
     )
 
     onProgress?.(Math.min(i + EMBEDDING_BATCH_SIZE, medicines.length), medicines.length)

@@ -23,6 +23,10 @@ vi.mock('@/lib/actions/keyword-search', () => ({
   keywordSearch: vi.fn(),
 }))
 
+vi.mock('@/lib/actions/trigram-search', () => ({
+  trigramSearch: vi.fn().mockResolvedValue([]),
+}))
+
 vi.mock('@xenova/transformers', () => ({
   pipeline: vi.fn().mockResolvedValue(
     vi.fn().mockResolvedValue({
@@ -79,7 +83,7 @@ describe('hybridSearch', () => {
 
     await hybridSearch('losartana', 10)
     const sql = vi.mocked(prisma.$queryRawUnsafe).mock.calls[0][0] as string
-    expect(sql).toContain('embedding <=> $1::vector')
+    expect(sql).toContain('<=> $1::vector')
     expect(sql).toContain('semantic_score')
   })
 })

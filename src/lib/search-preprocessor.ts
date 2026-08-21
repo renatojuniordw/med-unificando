@@ -147,11 +147,3 @@ export function classifyQuery(query: string): QueryClassification {
 
   return { type: 'condition', confidence: 0.4, conditionTerms: words }
 }
-
-export function normalizeMedicalTerms(query: string): string {
-  const normalized = normalizeQuery(query)
-  // Remove filler words
-  const words = normalized.split(/\s+/)
-  const cleaned = words.filter(w => !FILLER_WORDS.has(stripAccents(w)))
-  return cleaned.join(' ')
-}

@@ -6,10 +6,12 @@ import { getPharmaceuticalFormName } from "../src/lib/dictionaries/pharmaceutica
 import { getAtcDescription } from "../src/lib/dictionaries/atc-codes"
 import { getPrescriptionTypeName } from "../src/lib/dictionaries/prescription-types"
 
+// Re-indexa TODOS os medicamentos com o novo modelo de embedding
+// Uso: npx tsx scripts/reindex-embeddings.ts
+
 const DIM = EMBEDDING.DIMS
 const EMBEDDING_COL = EMBEDDING.COLUMN
 const BATCH_SIZE = 50
-const DB_BATCH_SIZE = 100
 const RETRY_COUNT = 3
 const DELAY_MS = 100
 
@@ -60,37 +62,45 @@ function buildDocumentText(m: MedicineRow): string {
 }
 
 async function main() {
-  console.log("Buscando medicamentos sem embedding...")
-  const ids = await prisma.$queryRawUnsafe<{ id: number }[]>(
-    `SELECT id FROM medicines WHERE "${EMBEDDING_COL}" IS NULL ORDER BY id ASC`
+  console.log(`Re-indexando embeddings com modelo ${EMBEDDING.MODEL} (${DIM} dims)...`)
+  console.log(`Coluna destino: ${EMBEDDING_COL}`)
+
+  const countRow = await prisma.$queryRawUnsafe<{ count: number }[]>(
+    `SELECT COUNT(*)::int AS count FROM medicines`
   )
-  const idList = ids.map(r => r.id)
+  const total = countRow[0].count
+  console.log(`Total: ${total} medicamentos`)
 
-  if (idList.length === 0) {
-    console.log("Todos os medicamentos já possuem embedding. Nada a fazer.")
-    await prisma.$disconnect()
-    return
+  // Carregar todos os IDs
+  const allIds = await prisma.$queryRawUnsafe<{ id: number }[]>(
+    `SELECT id FROM medicines ORDER BY id ASC`
+  )
+  const idList = allIds.map(r => r.id)
+
+  // Carregar em lotes (findMany tem limite de IN clause)
+  const medicines: MedicineRow[] = []
+  const CHUNK = 5000
+  for (let i = 0; i < idList.length; i += CHUNK) {
+    const chunk = idList.slice(i, i + CHUNK)
+    const batch = await prisma.medicine.findMany({
+      where: { id: { in: chunk } },
+      orderBy: { id: "asc" },
+      select: {
+        id: true, reference: true, tradeName: true, activeIngredient: true,
+        category: true, similarHolder: true, pharmaceuticalForm: true,
+        concentration: true, status: true, synonyms: true, indications: true,
+        therapeuticClass: true, atcCode: true, prescriptionType: true,
+        farmaciaPopular: true,
+      },
+    })
+    medicines.push(...batch as unknown as MedicineRow[])
   }
-  console.log(`Total: ${idList.length} medicamentos sem embedding`)
 
-  const medicines = (await prisma.medicine.findMany({
-    where: { id: { in: idList } },
-    orderBy: { id: "asc" },
-    select: {
-      id: true, reference: true, tradeName: true, activeIngredient: true,
-      category: true, similarHolder: true, pharmaceuticalForm: true,
-      concentration: true, status: true, synonyms: true, indications: true,
-      therapeuticClass: true, atcCode: true, prescriptionType: true,
-      farmaciaPopular: true,
-    },
-  })) as unknown as MedicineRow[]
-
-  console.log(`Carregando modelo de embedding (${EMBEDDING.MODEL})...`)
+  console.log(`Carregando modelo (${EMBEDDING.MODEL})...`)
   const { pipeline, env } = await import("@xenova/transformers")
   env.cacheDir = "/tmp/.transformers-cache"
   const extractor = await pipeline("feature-extraction", EMBEDDING.MODEL)
 
-  const total = medicines.length
   let done = 0
   let failed = 0
 
@@ -118,7 +128,7 @@ async function main() {
     return false
   }
 
-  for (let i = 0; i < total; i += BATCH_SIZE) {
+  for (let i = 0; i < medicines.length; i += BATCH_SIZE) {
     const batch = medicines.slice(i, i + BATCH_SIZE)
     const texts = batch.map(buildDocumentText)
 
@@ -143,7 +153,8 @@ async function main() {
   }
 
   extractor.dispose()
-  console.log("\nConcluído!")
+  console.log("\nRe-indexacao concluida!")
+  console.log(`Proximo passo: rodar prisma migrate para renomear a coluna (Fase final da migracao)`)
 }
 
 main()

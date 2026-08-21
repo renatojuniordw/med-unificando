@@ -9,7 +9,10 @@ export const ANVISA = {
 } as const
 
 export const EMBEDDING = {
-  MODEL: process.env.EMBEDDING_MODEL ?? 'Xenova/multilingual-e5-small',
+  MODEL: process.env.EMBEDDING_MODEL ?? 'Xenova/multilingual-e5-base',
+  DIMS: parseInt(process.env.EMBEDDING_DIMS ?? '768', 10),
+  // Coluna ativa: troque para 'embedding' quando a migracao estiver completa
+  COLUMN: (process.env.EMBEDDING_COLUMN ?? 'embedding_new') as 'embedding' | 'embedding_new',
 } as const
 
 export const SEARCH = {
@@ -34,6 +37,9 @@ export const SEARCH = {
 
   // Filtro de falsos positivos por substring
   SUBSTRING_MIN_LENGTH: 6,
+
+  // Penalidade quando resultado vem de uma única fonte (sem suporte cruzado)
+  SINGLE_SOURCE_PENALTY: 0.80,
 } as const
 
 export const SITE = {

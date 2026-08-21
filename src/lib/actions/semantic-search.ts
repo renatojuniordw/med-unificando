@@ -3,12 +3,38 @@
 import { prisma } from "@/lib/prisma"
 import { keywordSearch } from '@/lib/actions/keyword-search'
 import { trigramSearch } from '@/lib/actions/trigram-search'
+import { buildExpandedTsquery } from '@/lib/keyword-utils'
 import { classifyQuery, type QueryClassification } from '@/lib/search-preprocessor'
 import { EMBEDDING, SEARCH } from '@/lib/config'
 import { normalizeMedicine } from "@/lib/format"
 import { applyScoreAdjustments } from "@/lib/score-adjustments"
 import type { MedicineResult } from "@/types"
 import type { FeatureExtractionPipeline } from "@xenova/transformers"
+
+// Cache em memória para resultados de busca (TTL: 5 min)
+const SEARCH_CACHE_TTL_MS = 5 * 60 * 1000
+const searchCache = new Map<string, { results: { score: number; medicine: MedicineResult }[]; expiresAt: number }>()
+
+function getCachedSearch(query: string, topK: number): { score: number; medicine: MedicineResult }[] | null {
+  const key = `${query.toLowerCase().trim()}::${topK}`
+  const entry = searchCache.get(key)
+  if (!entry) return null
+  if (Date.now() > entry.expiresAt) {
+    searchCache.delete(key)
+    return null
+  }
+  return entry.results
+}
+
+function setCachedSearch(query: string, topK: number, results: { score: number; medicine: MedicineResult }[]): void {
+  const key = `${query.toLowerCase().trim()}::${topK}`
+  // Limitar tamanho do cache (max 500 entradas)
+  if (searchCache.size > 500) {
+    const oldest = searchCache.keys().next().value
+    if (oldest) searchCache.delete(oldest)
+  }
+  searchCache.set(key, { results, expiresAt: Date.now() + SEARCH_CACHE_TTL_MS })
+}
 
 let extractor: FeatureExtractionPipeline | null = null
 
@@ -37,11 +63,12 @@ export async function semanticSearch(
   const queryEmb = result.data as Float32Array
   const vecStr = `[${Array.from(queryEmb).join(",")}]`
 
+  const col = EMBEDDING.COLUMN
   const sql = `
-    SELECT id, 1 - (embedding <=> $1::vector) AS semantic_score
+    SELECT id, 1 - ("${col}" <=> $1::vector) AS semantic_score
     FROM medicines
-    WHERE embedding IS NOT NULL
-    ORDER BY embedding <=> $1::vector
+    WHERE "${col}" IS NOT NULL
+    ORDER BY "${col}" <=> $1::vector
     LIMIT $2
   `
 
@@ -141,9 +168,10 @@ function honestScore(
   if (kw !== null && tri !== null) return KEYWORD_WEIGHT * kw + TRIGRAM_WEIGHT * tri
 
   // Um componente apenas — redutor de confiança
-  if (sem !== null) return sem * 0.80
-  if (kw !== null) return kw * 0.80
-  if (tri !== null) return tri * 0.80
+  const penalty = SEARCH.SINGLE_SOURCE_PENALTY
+  if (sem !== null) return sem * penalty
+  if (kw !== null) return kw * penalty
+  if (tri !== null) return tri * penalty
 
   return 0
 }
@@ -221,16 +249,27 @@ export async function hybridSearch(
 ): Promise<{ score: number; medicine: MedicineResult }[]> {
   if (!query.trim()) return []
 
+  // Verificar cache
+  const cached = getCachedSearch(query, topK)
+  if (cached) {
+    console.log(`[search] "${query}" → cache hit (${cached.length} results)`)
+    return cached
+  }
+
+  const t0 = performance.now()
+
   // Classificar a query para decisões adaptativas
   const classification = classifyQuery(query)
   const isNameQuery = classification.type === 'medicine-name' && classification.confidence >= 0.6
 
   // Busca paralela: semântica + keyword + trigram
+  const t1 = performance.now()
   const [semanticResults, keywordResults, trigramResults] = await Promise.all([
     semanticSearch(query, topK * 5),
     keywordSearch(query, topK * 5),
     trigramSearch(query, topK * 5),
   ])
+  const searchMs = (performance.now() - t1).toFixed(0)
 
   const keywordIds = new Set(keywordResults.map(r => r.medicineId))
   const trigramIds = new Set(trigramResults.map(r => r.medicineId))
@@ -353,7 +392,6 @@ export async function hybridSearch(
   // Penalidade para resultados sem keyword/trigram support nem relação textual
   let keywordVerifiedIds = new Set<number>()
   if (keywordResults.length > 0) {
-    const { buildExpandedTsquery } = await import('@/lib/keyword-utils')
     const tsquery = buildExpandedTsquery(query)
     if (tsquery) {
       const allResultIds = filteredResults.map(r => r.medicine.id)
@@ -381,6 +419,17 @@ export async function hybridSearch(
 
   // Aplicar ajustes de score baseados em feedback dos usuários
   const adjustedResults = await applyScoreAdjustments(query, penalizedResults)
+
+  const totalMs = (performance.now() - t0).toFixed(0)
+  console.log(
+    `[search] "${query}" → ${adjustedResults.length} results ` +
+    `(${searchMs}ms search, ${totalMs}ms total) ` +
+    `[${classification.type}] ` +
+    `[sem:${semanticResults.length} kw:${keywordResults.length} tri:${trigramResults.length}]`
+  )
+
+  // Salvar no cache
+  setCachedSearch(query, topK, adjustedResults)
 
   return adjustedResults
 }
