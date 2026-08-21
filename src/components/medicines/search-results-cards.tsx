@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Badge } from '@/components/ui/badge'
 import { StatusPill } from '@/components/ui/status-pill'
-import { getRelevanceLabel } from '@/lib/search-relevance'
 import { submitSearchFeedback } from '@/lib/actions/search-feedback'
 import Link from 'next/link'
 import type { MedicineResult } from '@/types'
@@ -52,12 +50,6 @@ function MatchReasonBadges({ reasons }: { reasons: MatchReason[] }) {
   )
 }
 
-const RELEVANCE_BADGE_VARIANT = {
-  high: 'success',
-  medium: 'secondary',
-  low: 'muted',
-} as const
-
 function FeedbackButton({ query, medicineId, medicineName }: {
   query: string; medicineId: number; medicineName: string
 }) {
@@ -94,9 +86,7 @@ function FeedbackButton({ query, medicineId, medicineName }: {
 export function SearchResultsCards({ results, searchQuery }: SearchResultsCardsProps) {
   return (
     <div className="space-y-1.5" aria-live="polite" role="list">
-      {results.map(r => {
-        const relevance = getRelevanceLabel(r.score)
-        return (
+      {results.map(r => (
           <Link
             key={r.medicine.id}
             href={`/medicamento/${r.medicine.id}`}
@@ -105,19 +95,9 @@ export function SearchResultsCards({ results, searchQuery }: SearchResultsCardsP
           >
             {/* Coluna principal — informações enxutas */}
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-sm text-[var(--color-text)] leading-tight">
-                  {r.medicine.tradeName}
-                </span>
-                {/* Badge de relevância compacto */}
-                <Badge
-                  variant={RELEVANCE_BADGE_VARIANT[relevance.tier]}
-                  title={`${(r.score * 100).toFixed(0)}% de confiança`}
-                  className="shrink-0 text-[10px] px-1.5 py-0 leading-tight"
-                >
-                  {(r.score * 100).toFixed(0)}%
-                </Badge>
-              </div>
+              <span className="font-semibold text-sm text-[var(--color-text)] leading-tight">
+                {r.medicine.tradeName}
+              </span>
               {r.matchReasons && <MatchReasonBadges reasons={r.matchReasons} />}
               <p className="text-xs text-muted mt-0.5 truncate">
                 {r.medicine.activeIngredient}
@@ -159,8 +139,7 @@ export function SearchResultsCards({ results, searchQuery }: SearchResultsCardsP
               )}
             </div>
           </Link>
-        )
-      })}
+      ))}
     </div>
   )
 }

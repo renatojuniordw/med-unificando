@@ -46,7 +46,7 @@ model Medicine {
   anvisaFileDate                       DateTime?
   lastImportAt                         DateTime?
   farmaciaPopular                      Boolean  @default(false) @map("farmacia_popular")
-  embedding                            Unsupported("vector(384)")?
+  embedding                            Unsupported("vector(768)")?
   searchDocument                       Unsupported("tsvector")?   @map("search_document")
   createdAt                            DateTime @default(now())
   updatedAt                            DateTime @updatedAt
