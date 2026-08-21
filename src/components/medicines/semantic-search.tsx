@@ -40,7 +40,8 @@ const SUGGESTIONS = [
 export function SemanticSearch() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<{ score: number; medicine: MedicineResult }[]>([]);
+  const [results, setResults] = useState<{ score: number; medicine: MedicineResult; matchReasons?: any[] }[]>([]);
+  const [searchSuggestions, setSearchSuggestions] = useState<string[]>([]);
   const [searched, setSearched] = useState(false);
   const [view, setView] = useState<"cards" | "table">("cards");
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -62,11 +63,37 @@ export function SemanticSearch() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  // Sugestões filtradas para autocomplete
+  // Sugestões: estáticas + dinâmicas da API
+  const [dynamicSuggestions, setDynamicSuggestions] = useState<{ label: string; sublabel?: string | null }[]>([]);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  // Buscar sugestões dinâmicas da API enquanto digita
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!query.trim() || query.trim().length < 2 || searched) {
+      setDynamicSuggestions([]);
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/autocomplete?q=${encodeURIComponent(query.trim())}&limit=5`);
+        const data = await res.json();
+        setDynamicSuggestions(data.suggestions || []);
+      } catch {
+        setDynamicSuggestions([]);
+      }
+    }, 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [query, searched]);
+
   const filteredSuggestions = query.trim()
-    ? SUGGESTIONS.filter((s) =>
-        s.text.toLowerCase().includes(query.toLowerCase()),
-      ).slice(0, 6)
+    ? [
+        ...dynamicSuggestions.map(s => ({ text: s.label, category: s.sublabel || 'Medicamento', isDynamic: true })),
+        ...SUGGESTIONS.filter(s =>
+          s.text.toLowerCase().includes(query.toLowerCase()) &&
+          !dynamicSuggestions.some(d => d.label.toLowerCase() === s.text.toLowerCase())
+        ).slice(0, 3),
+      ].slice(0, 8)
     : [];
 
   // Reset active index when suggestions change
@@ -86,9 +113,11 @@ export function SemanticSearch() {
 
     try {
       const data = await hybridSearch(searchQuery, 20);
-      setResults(data);
+      setResults(data.results);
+      setSearchSuggestions(data.suggestions);
     } catch {
       setResults([]);
+      setSearchSuggestions([]);
     } finally {
       setLoading(false);
     }
@@ -176,6 +205,7 @@ export function SemanticSearch() {
                   onClick={() => {
                     setQuery("");
                     setResults([]);
+                    setSearchSuggestions([]);
                     setSearched(false);
                     inputElRef.current?.focus();
                   }}
@@ -326,6 +356,24 @@ export function SemanticSearch() {
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-16 w-full" />
           ))}
+        </div>
+      )}
+
+      {/* Sugestões de correção */}
+      {!loading && searchSuggestions.length > 0 && (
+        <div className="mt-4 p-3 bg-muted/50 rounded-lg border border-border animate-fade-in">
+          <p className="text-xs text-muted mb-2">Voce quis dizer:</p>
+          <div className="flex flex-wrap gap-2">
+            {searchSuggestions.map((suggestion) => (
+              <button
+                key={suggestion}
+                onClick={() => handleSuggestion(suggestion)}
+                className="px-3 py-1 text-sm bg-background border border-border rounded-full hover:bg-accent hover:text-accent-foreground transition-colors"
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

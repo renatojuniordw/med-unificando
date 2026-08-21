@@ -13,9 +13,9 @@ import type { FeatureExtractionPipeline } from "@xenova/transformers"
 
 // Cache em memória para resultados de busca (TTL: 5 min)
 const SEARCH_CACHE_TTL_MS = 5 * 60 * 1000
-const searchCache = new Map<string, { results: { score: number; medicine: MedicineResult }[]; expiresAt: number }>()
+const searchCache = new Map<string, { results: HybridSearchResult; expiresAt: number }>()
 
-function getCachedSearch(query: string, topK: number): { score: number; medicine: MedicineResult }[] | null {
+function getCachedSearch(query: string, topK: number): HybridSearchResult | null {
   const key = `${query.toLowerCase().trim()}::${topK}`
   const entry = searchCache.get(key)
   if (!entry) return null
@@ -26,7 +26,7 @@ function getCachedSearch(query: string, topK: number): { score: number; medicine
   return entry.results
 }
 
-function setCachedSearch(query: string, topK: number, results: { score: number; medicine: MedicineResult }[]): void {
+function setCachedSearch(query: string, topK: number, results: HybridSearchResult): void {
   const key = `${query.toLowerCase().trim()}::${topK}`
   // Limitar tamanho do cache (max 500 entradas)
   if (searchCache.size > 500) {
@@ -222,6 +222,65 @@ function isSubstringFalsePositive(
   return true
 }
 
+// Gera sugestões de correção quando a busca retorna poucos resultados ou score baixo
+async function generateSuggestions(
+  query: string,
+  results: { score: number; medicine: MedicineResult }[],
+  isMedicineNameQuery: boolean
+): Promise<string[]> {
+  // Só sugerir para queries curtas (provavelmente nomes de medicamentos)
+  if (query.length < 3) return []
+  // Não sugerir se já tem muitos bons resultados
+  if (results.length >= 5 && results[0].score >= 0.5) return []
+
+  try {
+    const { trigramSearch: triSearch } = await import('@/lib/actions/trigram-search')
+    const candidates = await triSearch(query, 5)
+    if (candidates.length === 0) return []
+
+    const suggestions: string[] = []
+    const normalizedQuery = stripAccents(query.toLowerCase().trim())
+
+    // Buscar nomes dos medicamentos candidatos
+    if (candidates.length > 0) {
+      const ids = candidates.map(c => c.medicineId)
+      const meds = await prisma.medicine.findMany({
+        where: { id: { in: ids } },
+        select: { tradeName: true, activeIngredient: true },
+      })
+
+      for (const med of meds) {
+        const tradeName = (med.tradeName || '').trim()
+        const ingredient = (med.activeIngredient || '').trim()
+        const normalizedTrade = stripAccents(tradeName.toLowerCase())
+
+        // Não sugerir o próprio query
+        if (normalizedTrade === normalizedQuery) continue
+
+        // Sugerir se o trigram score é alto o suficiente
+        const candidate = candidates.find(c => c.trigramScore > 0.3)
+        if (candidate && !suggestions.includes(tradeName)) {
+          suggestions.push(tradeName)
+        }
+
+        // Também sugerir por ingrediente ativo se for nome de medicamento
+        if (isMedicineNameQuery && ingredient) {
+          const normalizedIngredient = stripAccents(ingredient.toLowerCase())
+          if (normalizedIngredient !== normalizedQuery && !suggestions.includes(ingredient)) {
+            suggestions.push(ingredient)
+          }
+        }
+
+        if (suggestions.length >= 3) break
+      }
+    }
+
+    return suggestions
+  } catch {
+    return []
+  }
+}
+
 // Boost para match exato ou prefixo no nome do medicamento
 function nameMatchBoost(
   query: string,
@@ -243,16 +302,54 @@ function nameMatchBoost(
   return 0
 }
 
+export type MatchReason =
+  | { type: 'semantic'; score: number }
+  | { type: 'keyword'; score: number }
+  | { type: 'trigram'; score: number }
+  | { type: 'name-exact'; boost: number }
+  | { type: 'name-prefix'; boost: number }
+  | { type: 'ingredient-match'; boost: number }
+
+export interface SearchResultItem {
+  score: number
+  medicine: MedicineResult
+  matchReasons: MatchReason[]
+}
+
+// Log de analytics — fire-and-forget
+async function logSearch(
+  query: string,
+  resultsCount: number,
+  topScore: number | null,
+  queryType: string,
+  responseTimeMs: number
+): Promise<void> {
+  try {
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO search_logs (query, results_count, top_score, query_type, response_time_ms)
+       VALUES ($1, $2, $3, $4, $5)`,
+      query, resultsCount, topScore, queryType, Math.round(Number(responseTimeMs))
+    )
+  } catch {
+    // Silenciar erros de log — não deve afetar a busca
+  }
+}
+
+export interface HybridSearchResult {
+  results: SearchResultItem[]
+  suggestions: string[]
+}
+
 export async function hybridSearch(
   query: string,
   topK: number = 20
-): Promise<{ score: number; medicine: MedicineResult }[]> {
-  if (!query.trim()) return []
+): Promise<HybridSearchResult> {
+  if (!query.trim()) return { results: [], suggestions: [] }
 
   // Verificar cache
   const cached = getCachedSearch(query, topK)
   if (cached) {
-    console.log(`[search] "${query}" → cache hit (${cached.length} results)`)
+    console.log(`[search] "${query}" → cache hit (${cached.results.length} results)`)
     return cached
   }
 
@@ -283,7 +380,7 @@ export async function hybridSearch(
 
   // If no semantic results remain, fall back to keyword + trigram
   if (filteredSemanticResults.length === 0) {
-    if (keywordResults.length === 0 && trigramResults.length === 0) return []
+    if (keywordResults.length === 0 && trigramResults.length === 0) return { results: [], suggestions: [] }
     // Merge keyword + trigram via RRF para fallback
     const keywordRank = new Map(keywordResults.map((r, i) => [r.medicineId, i + 1]))
     const trigramRank = new Map(trigramResults.map((r, i) => [r.medicineId, i + 1]))
@@ -302,7 +399,7 @@ export async function hybridSearch(
 
     const medicines = await prisma.medicine.findMany({ where: { id: { in: topFallbackIds } } })
     const medMap = new Map(medicines.map(m => [m.id, m]))
-    return topFallbackIds
+    const fallbackResults = topFallbackIds
       .map(id => ({
         score: honestScore(
           null,
@@ -310,20 +407,24 @@ export async function hybridSearch(
           trigramScoreMapFb.get(id) ?? null
         ),
         medicine: medMap.get(id) as unknown as MedicineResult,
+        matchReasons: [] as MatchReason[],
       }))
       .filter(r => r.medicine)
       .slice(0, topK)
+    return { results: fallbackResults, suggestions: [] }
   }
 
   // If no keyword/trigram results, use filtered semantic
   if (keywordResults.length === 0 && trigramResults.length === 0) {
-    return filteredSemanticResults
+    const semanticOnlyResults = filteredSemanticResults
       .map(r => ({
         score: honestScore(r.score, null, null),
         medicine: normalizeMedicine(r.medicine) as MedicineResult,
+        matchReasons: [{ type: 'semantic' as const, score: r.score }],
       }))
       .sort((a, b) => b.score - a.score)
       .slice(0, topK)
+    return { results: semanticOnlyResults, suggestions: [] }
   }
 
   // RRF fusion com 3 fontes
@@ -364,14 +465,20 @@ export async function hybridSearch(
   const trigramScoreMap = new Map(trigramResults.map(r => [r.medicineId, r.trigramScore]))
 
   const initialResults = topIds
-    .map(id => ({
-      score: honestScore(
-        semanticScoreMap.get(id) ?? null,
-        keywordScoreMap.get(id) ?? null,
-        trigramScoreMap.get(id) ?? null
-      ),
-      medicine: medMap.get(id)!,
-    }))
+    .map(id => {
+      const semScore = semanticScoreMap.get(id) ?? null
+      const kwScore = keywordScoreMap.get(id) ?? null
+      const triScore = trigramScoreMap.get(id) ?? null
+      const matchReasons: MatchReason[] = []
+      if (semScore !== null) matchReasons.push({ type: 'semantic', score: semScore })
+      if (kwScore !== null) matchReasons.push({ type: 'keyword', score: kwScore })
+      if (triScore !== null) matchReasons.push({ type: 'trigram', score: triScore })
+      return {
+        score: honestScore(semScore, kwScore, triScore),
+        medicine: medMap.get(id)!,
+        matchReasons,
+      }
+    })
     .filter(r => r.medicine)
 
   // Filtro de falsos positivos por substring + boost por match exato
@@ -386,7 +493,13 @@ export async function hybridSearch(
 
     // Boost por match exato no nome
     const boost = nameMatchBoost(query, r.medicine)
-    return { ...r, score: r.score + boost }
+    const reasons = [...r.matchReasons]
+    if (boost > 0) {
+      if (boost >= 0.12) reasons.push({ type: 'name-exact', boost })
+      else if (boost >= 0.08) reasons.push({ type: 'ingredient-match', boost })
+      else reasons.push({ type: 'name-prefix', boost })
+    }
+    return { ...r, score: r.score + boost, matchReasons: reasons }
   }).sort((a, b) => b.score - a.score)
 
   // Penalidade para resultados sem keyword/trigram support nem relação textual
@@ -418,18 +531,27 @@ export async function hybridSearch(
   }).sort((a, b) => b.score - a.score)
 
   // Aplicar ajustes de score baseados em feedback dos usuários
-  const adjustedResults = await applyScoreAdjustments(query, penalizedResults)
+  // applyScoreAdjustments preserva matchReasons via spread, mas o tipo não reflete isso
+  const adjustedResults = await applyScoreAdjustments(query, penalizedResults) as SearchResultItem[]
+
+  // Gerar sugestões quando poucos resultados ou score baixo
+  const suggestions = await generateSuggestions(query, adjustedResults, isNameQuery)
 
   const totalMs = (performance.now() - t0).toFixed(0)
   console.log(
     `[search] "${query}" → ${adjustedResults.length} results ` +
     `(${searchMs}ms search, ${totalMs}ms total) ` +
     `[${classification.type}] ` +
-    `[sem:${semanticResults.length} kw:${keywordResults.length} tri:${trigramResults.length}]`
+    `[sem:${semanticResults.length} kw:${keywordResults.length} tri:${trigramResults.length}]` +
+    (suggestions.length > 0 ? ` suggestions: [${suggestions.join(', ')}]` : '')
   )
 
   // Salvar no cache
-  setCachedSearch(query, topK, adjustedResults)
+  const searchResult: HybridSearchResult = { results: adjustedResults, suggestions }
+  setCachedSearch(query, topK, searchResult)
 
-  return adjustedResults
+  // Log analytics (fire-and-forget — não bloqueia a resposta)
+  logSearch(query, adjustedResults.length, adjustedResults[0]?.score ?? null, classification.type, Number(totalMs))
+
+  return searchResult
 }

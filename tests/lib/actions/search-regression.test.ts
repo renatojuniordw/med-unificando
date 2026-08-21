@@ -73,19 +73,19 @@ describe('Casos de Teste de Regressão - Busca por Descrição', () => {
         { id: 4, tradeName: 'Ácido Acetilsalicílico', status: 'Ativo', therapeuticClass: 'ANALGESICOS' },
       ] as Medicine[])
 
-      const result = await hybridSearch('dor de cabeça', 20)
+      const { results } = await hybridSearch('dor de cabeça', 20)
 
-      expect(result.length).toBeGreaterThan(0)
-      
+      expect(results.length).toBeGreaterThan(0)
+
       // Todos os medicamentos devem ser analgésicos ou anti-inflamatórios
-      const therapeuticClasses = result.map(r => r.medicine.therapeuticClass?.toLowerCase())
+      const therapeuticClasses = results.map(r => r.medicine.therapeuticClass?.toLowerCase())
       const hasAnalgesic = therapeuticClasses.some(tc => tc?.includes('analgesico'))
       const hasAntiInflammatory = therapeuticClasses.some(tc => tc?.includes('anti-inflamatorio'))
-      
+
       expect(hasAnalgesic || hasAntiInflammatory).toBe(true)
-      
+
       // Não deve retornar medicamentos de Alzheimer/cognição
-      const tradeNames = result.map(r => r.medicine.tradeName.toLowerCase())
+      const tradeNames = results.map(r => r.medicine.tradeName.toLowerCase())
       expect(tradeNames).not.toContain('pregabalina')
       expect(tradeNames).not.toContain('donepezila')
       expect(tradeNames).not.toContain('memantina')
@@ -118,19 +118,19 @@ describe('Casos de Teste de Regressão - Busca por Descrição', () => {
         { id: 8, tradeName: 'Hidroclorotiazida', status: 'Ativo', therapeuticClass: 'DIURETICOS' },
       ] as any)
 
-      const result = await hybridSearch('remédio para pressão', 20)
+      const { results } = await hybridSearch('remédio para pressão', 20)
 
-      expect(result.length).toBeGreaterThan(0)
-      
+      expect(results.length).toBeGreaterThan(0)
+
       // Todos os medicamentos devem ser anti-hipertensivos ou diuréticos
-      const therapeuticClasses = result.map(r => r.medicine.therapeuticClass?.toLowerCase())
+      const therapeuticClasses = results.map(r => r.medicine.therapeuticClass?.toLowerCase())
       const hasAntiHypertensive = therapeuticClasses.some(tc => tc?.includes('anti-hipertensivo'))
       const hasDiuretic = therapeuticClasses.some(tc => tc?.includes('diuretico'))
-      
+
       expect(hasAntiHypertensive || hasDiuretic).toBe(true)
-      
+
       // Não deve retornar medicamentos não relacionados
-      const tradeNames = result.map(r => r.medicine.tradeName.toLowerCase())
+      const tradeNames = results.map(r => r.medicine.tradeName.toLowerCase())
       expect(tradeNames).not.toContain('paracetamol')
       expect(tradeNames).not.toContain('ibuprofeno')
     })
@@ -162,18 +162,18 @@ describe('Casos de Teste de Regressão - Busca por Descrição', () => {
         { id: 12, tradeName: 'Meloxicam', status: 'Ativo', therapeuticClass: 'ANTI-INFLAMATORIOS' },
       ] as any)
 
-      const result = await hybridSearch('anti-inflamatório para articulação', 20)
+      const { results } = await hybridSearch('anti-inflamatório para articulação', 20)
 
-      expect(result.length).toBeGreaterThan(0)
-      
+      expect(results.length).toBeGreaterThan(0)
+
       // Todos os medicamentos devem ser anti-inflamatórios
-      const therapeuticClasses = result.map(r => r.medicine.therapeuticClass?.toLowerCase())
+      const therapeuticClasses = results.map(r => r.medicine.therapeuticClass?.toLowerCase())
       const hasAntiInflammatory = therapeuticClasses.some(tc => tc?.includes('anti-inflamatorio'))
-      
+
       expect(hasAntiInflammatory).toBe(true)
-      
+
       // Não deve retornar medicamentos não relacionados
-      const tradeNames = result.map(r => r.medicine.tradeName.toLowerCase())
+      const tradeNames = results.map(r => r.medicine.tradeName.toLowerCase())
       expect(tradeNames).not.toContain('dipirona')
       expect(tradeNames).not.toContain('paracetamol')
     })
@@ -202,13 +202,13 @@ describe('Casos de Teste de Regressão - Busca por Descrição', () => {
         { id: 3, tradeName: 'Medicamento C', status: 'Ativo', therapeuticClass: 'ANALGESICOS' },
       ] as any)
 
-      const result = await hybridSearch('dor', 10)
+      const { results } = await hybridSearch('dor', 10)
 
-      expect(result.length).toBeGreaterThan(0)
-      
+      expect(results.length).toBeGreaterThan(0)
+
       // Verificar se está ordenado por score decrescente
-      for (let i = 0; i < result.length - 1; i++) {
-        expect(result[i].score).toBeGreaterThanOrEqual(result[i + 1].score)
+      for (let i = 0; i < results.length - 1; i++) {
+        expect(results[i].score).toBeGreaterThanOrEqual(results[i + 1].score)
       }
     })
 
@@ -231,13 +231,13 @@ describe('Casos de Teste de Regressão - Busca por Descrição', () => {
         { id: 2, tradeName: 'Medicamento Inativo', status: 'Inativo', therapeuticClass: 'ANALGESICOS' },
       ] as any)
 
-      const result = await hybridSearch('dor', 10)
+      const { results } = await hybridSearch('dor', 10)
 
-      expect(result.length).toBeGreaterThan(0)
-      
+      expect(results.length).toBeGreaterThan(0)
+
       // O medicamento ativo deve vir antes do inativo
-      const activeIndex = result.findIndex(r => r.medicine.status === 'Ativo')
-      const inactiveIndex = result.findIndex(r => r.medicine.status === 'Inativo')
+      const activeIndex = results.findIndex(r => r.medicine.status === 'Ativo')
+      const inactiveIndex = results.findIndex(r => r.medicine.status === 'Inativo')
       
       if (activeIndex !== -1 && inactiveIndex !== -1) {
         expect(activeIndex).toBeLessThan(inactiveIndex)

@@ -46,9 +46,10 @@ describe('hybridSearch', () => {
     await clearEmbeddingsCache()
   })
 
-  it('returns empty array for empty query', async () => {
+  it('returns empty results for empty query', async () => {
     const result = await hybridSearch('')
-    expect(result).toEqual([])
+    expect(result.results).toEqual([])
+    expect(result.suggestions).toEqual([])
   })
 
   it('calls pgvector $queryRawUnsafe for semantic search', async () => {
@@ -66,10 +67,9 @@ describe('hybridSearch', () => {
     ] as any)
 
     const result = await hybridSearch('teste', 5)
-    expect(Array.isArray(result)).toBe(true)
-    expect(result.length).toBeGreaterThan(0)
-    expect(result[0]).toHaveProperty('score')
-    expect(result[0]).toHaveProperty('medicine')
+    expect(result.results.length).toBeGreaterThan(0)
+    expect(result.results[0]).toHaveProperty('score')
+    expect(result.results[0]).toHaveProperty('medicine')
   })
 
   it('uses pgvector cosine distance in SQL', async () => {

@@ -34,10 +34,10 @@ export async function trigramSearch(
   }))
 }
 
-export function passesTrigramThreshold(
+export async function passesTrigramThreshold(
   score: number,
   isMedicineNameQuery: boolean
-): boolean {
+): Promise<boolean> {
   const min = isMedicineNameQuery
     ? SEARCH.TRIGRAM_MIN_THRESHOLD_NAME
     : SEARCH.TRIGRAM_MIN_THRESHOLD

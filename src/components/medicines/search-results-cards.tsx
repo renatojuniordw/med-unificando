@@ -7,10 +7,49 @@ import { getRelevanceLabel } from '@/lib/search-relevance'
 import { submitSearchFeedback } from '@/lib/actions/search-feedback'
 import Link from 'next/link'
 import type { MedicineResult } from '@/types'
+import type { MatchReason } from '@/lib/actions/semantic-search'
 
 interface SearchResultsCardsProps {
-  results: { score: number; medicine: MedicineResult }[]
+  results: { score: number; medicine: MedicineResult; matchReasons?: MatchReason[] }[]
   searchQuery?: string
+}
+
+function MatchReasonBadges({ reasons }: { reasons: MatchReason[] }) {
+  if (!reasons || reasons.length === 0) return null
+
+  const labels: Record<MatchReason['type'], string> = {
+    semantic: 'Semântica',
+    keyword: 'Palavra-chave',
+    trigram: 'Similaridade',
+    'name-exact': 'Nome exato',
+    'name-prefix': 'Nome similar',
+    'ingredient-match': 'Ingrediente',
+  }
+
+  const colors: Record<MatchReason['type'], string> = {
+    semantic: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+    keyword: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+    trigram: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+    'name-exact': 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+    'name-prefix': 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+    'ingredient-match': 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300',
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1 mt-1">
+      {reasons.map((r, i) => (
+        <span
+          key={`${r.type}-${i}`}
+          className={`text-[10px] px-1.5 py-0.5 rounded-full ${colors[r.type]}`}
+          title={r.type === 'semantic' || r.type === 'keyword' || r.type === 'trigram'
+            ? `Score: ${(r.score * 100).toFixed(0)}%`
+            : `Boost: +${(r.boost * 100).toFixed(0)}%`}
+        >
+          {labels[r.type]}
+        </span>
+      ))}
+    </div>
+  )
 }
 
 const RELEVANCE_BADGE_VARIANT = {
@@ -79,6 +118,7 @@ export function SearchResultsCards({ results, searchQuery }: SearchResultsCardsP
                   {(r.score * 100).toFixed(0)}%
                 </Badge>
               </div>
+              {r.matchReasons && <MatchReasonBadges reasons={r.matchReasons} />}
               <p className="text-xs text-muted mt-0.5 truncate">
                 {r.medicine.activeIngredient}
                 {r.medicine.similarHolder && <span className="text-muted/50"> · {r.medicine.similarHolder}</span>}
