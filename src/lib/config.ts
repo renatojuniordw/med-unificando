@@ -12,6 +12,30 @@ export const EMBEDDING = {
   MODEL: process.env.EMBEDDING_MODEL ?? 'Xenova/multilingual-e5-small',
 } as const
 
+export const SEARCH = {
+  // Thresholds semânticos — queries gerais
+  SEMANTIC_HARD_MIN: 0.80,
+  SEMANTIC_STRONG: 0.855,
+  SEMANTIC_CEILING: 0.92,
+
+  // Thresholds semânticos — queries de nome de medicamento (mais restritivos)
+  SEMANTIC_HARD_MIN_NAME_QUERY: 0.88,
+  SEMANTIC_STRONG_NAME_QUERY: 0.90,
+
+  // RRF fusion
+  RRF_K: 60,
+  SEMANTIC_WEIGHT: 0.40,
+  KEYWORD_WEIGHT: 0.35,
+  TRIGRAM_WEIGHT: 0.25,
+
+  // Trigram
+  TRIGRAM_MIN_THRESHOLD: 0.15,
+  TRIGRAM_MIN_THRESHOLD_NAME: 0.30,
+
+  // Filtro de falsos positivos por substring
+  SUBSTRING_MIN_LENGTH: 6,
+} as const
+
 export const SITE = {
   BASE_URL: process.env.BASE_URL ?? 'https://medicamentos.unificando.com.br',
 } as const

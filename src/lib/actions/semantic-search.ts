@@ -2,7 +2,9 @@
 
 import { prisma } from "@/lib/prisma"
 import { keywordSearch } from '@/lib/actions/keyword-search'
-import { EMBEDDING } from '@/lib/config'
+import { trigramSearch } from '@/lib/actions/trigram-search'
+import { classifyQuery, type QueryClassification } from '@/lib/search-preprocessor'
+import { EMBEDDING, SEARCH } from '@/lib/config'
 import { normalizeMedicine } from "@/lib/format"
 import { applyScoreAdjustments } from "@/lib/score-adjustments"
 import type { MedicineResult } from "@/types"
@@ -45,7 +47,10 @@ export async function semanticSearch(
 
   // 30s timeout for large vector search
   const rows = await prisma.$transaction(async (tx) => {
-    await tx.$executeRawUnsafe(`SET LOCAL ivfflat.probes = 40`)
+    // ivfflat.probes só se aplica a índices IVFFLAT — ignora erro se for HNSW
+    try {
+      await tx.$executeRawUnsafe(`SET LOCAL ivfflat.probes = 40`)
+    } catch { /* HNSW ou outro tipo de índice — ignorar */ }
     return tx.$queryRawUnsafe<{ id: number; semantic_score: number }[]>(
       sql,
       vecStr,
@@ -78,31 +83,30 @@ export async function semanticSearch(
     })
 }
 
-const RRF_K = 60
-
-// Absolute cosine-similarity floor
-const SEMANTIC_HARD_MIN = 0.80
-
-// Cosine similarity at/above which a semantic match is trusted standalone,
-// without needing keyword corroboration.
-const SEMANTIC_STRONG = 0.855
-
-const SEMANTIC_CEILING = 0.92
-
-// Keyword saturation — how much ts_rank fills the keyword component
+const RRF_K = SEARCH.RRF_K
+const SEMANTIC_HARD_MIN = SEARCH.SEMANTIC_HARD_MIN
+const SEMANTIC_STRONG = SEARCH.SEMANTIC_STRONG
+const SEMANTIC_CEILING = SEARCH.SEMANTIC_CEILING
 const KEYWORD_SATURATION = 0.15
-
-const SEMANTIC_WEIGHT = 0.50
-const KEYWORD_WEIGHT = 0.50
+const SEMANTIC_WEIGHT = SEARCH.SEMANTIC_WEIGHT
+const KEYWORD_WEIGHT = SEARCH.KEYWORD_WEIGHT
+const TRIGRAM_WEIGHT = SEARCH.TRIGRAM_WEIGHT
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
 }
 
-function passesSemanticGate(score: number, hasKeywordSupport: boolean): boolean {
-  if (score < SEMANTIC_HARD_MIN) return false
-  if (score >= SEMANTIC_STRONG) return true // passa sem keyword support
-  return hasKeywordSupport // precisa de keyword
+function passesSemanticGate(
+  score: number,
+  hasKeywordSupport: boolean,
+  classification: QueryClassification
+): boolean {
+  const isNameQuery = classification.type === 'medicine-name' && classification.confidence >= 0.6
+  const hardMin = isNameQuery ? SEARCH.SEMANTIC_HARD_MIN_NAME_QUERY : SEMANTIC_HARD_MIN
+  const strong = isNameQuery ? SEARCH.SEMANTIC_STRONG_NAME_QUERY : SEMANTIC_STRONG
+  if (score < hardMin) return false
+  if (score >= strong) return true
+  return hasKeywordSupport
 }
 
 function semanticComponent(cosine: number): number {
@@ -113,19 +117,33 @@ function keywordComponent(tsRank: number): number {
   return Math.min(tsRank / KEYWORD_SATURATION, 1)
 }
 
-function honestScore(semanticRaw: number | null, keywordRaw: number | null): number {
+function trigramComponent(score: number): number {
+  return clamp(score / 0.5, 0, 1)
+}
+
+function honestScore(
+  semanticRaw: number | null,
+  keywordRaw: number | null,
+  trigramRaw: number | null
+): number {
   const sem = semanticRaw !== null ? semanticComponent(semanticRaw) : null
   const kw = keywordRaw !== null ? keywordComponent(keywordRaw) : null
+  const tri = trigramRaw !== null ? trigramComponent(trigramRaw) : null
 
-  if (sem !== null && kw !== null) {
-    return SEMANTIC_WEIGHT * sem + KEYWORD_WEIGHT * kw
+  // Todos os três presentes
+  if (sem !== null && kw !== null && tri !== null) {
+    return SEMANTIC_WEIGHT * sem + KEYWORD_WEIGHT * kw + TRIGRAM_WEIGHT * tri
   }
 
-  // Apenas semântico (sem keyword support) — redutor de confiança
-  if (sem !== null) return sem * 0.80
+  // Dois componentes presentes — redistribui o peso ausente
+  if (sem !== null && kw !== null) return SEMANTIC_WEIGHT * sem + KEYWORD_WEIGHT * kw
+  if (sem !== null && tri !== null) return SEMANTIC_WEIGHT * sem + TRIGRAM_WEIGHT * tri
+  if (kw !== null && tri !== null) return KEYWORD_WEIGHT * kw + TRIGRAM_WEIGHT * tri
 
-  // Apenas keyword
+  // Um componente apenas — redutor de confiança
+  if (sem !== null) return sem * 0.80
   if (kw !== null) return kw * 0.80
+  if (tri !== null) return tri * 0.80
 
   return 0
 }
@@ -149,70 +167,143 @@ function medicineRelatesToQuery(medicine: MedicineResult, queryTerms: string[]):
   return queryTerms.some(term => medicineText.includes(term))
 }
 
+function stripAccents(str: string): string {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+}
+
+// Detecta falsos positivos onde a query é uma substring curta do nome do medicamento
+// sem suporte keyword ou trigram (ex: "rona" dentro de "CORONA" quando buscou "dipirona")
+function isSubstringFalsePositive(
+  query: string,
+  medicine: MedicineResult,
+  hasKeywordSupport: boolean,
+  hasTrigramSupport: boolean
+): boolean {
+  const normalizedQuery = stripAccents(query.toLowerCase().trim())
+  if (normalizedQuery.length >= SEARCH.SUBSTRING_MIN_LENGTH) return false
+
+  const tradeName = stripAccents((medicine.tradeName || '').toLowerCase())
+  const ingredient = stripAccents((medicine.activeIngredient || '').toLowerCase())
+
+  const queryIsSubstring = tradeName.includes(normalizedQuery) || ingredient.includes(normalizedQuery)
+  if (!queryIsSubstring) return false
+
+  // Se tem suporte keyword ou trigram, não é falso positivo
+  if (hasKeywordSupport || hasTrigramSupport) return false
+
+  return true
+}
+
+// Boost para match exato ou prefixo no nome do medicamento
+function nameMatchBoost(
+  query: string,
+  medicine: MedicineResult
+): number {
+  const normalizedQuery = stripAccents(query.toLowerCase().trim())
+  const tradeName = stripAccents((medicine.tradeName || '').toLowerCase())
+  const ingredient = stripAccents((medicine.activeIngredient || '').toLowerCase())
+
+  // Match exato no tradeName
+  if (tradeName === normalizedQuery) return 0.15
+  // Prefixo do tradeName (query é prefixo do nome)
+  if (tradeName.startsWith(normalizedQuery)) return 0.10
+  // Match exato no activeIngredient
+  if (ingredient === normalizedQuery) return 0.12
+  // activeIngredient contém query como palavra inteira
+  if (ingredient.split(/\s+/).includes(normalizedQuery)) return 0.08
+
+  return 0
+}
+
 export async function hybridSearch(
   query: string,
   topK: number = 20
 ): Promise<{ score: number; medicine: MedicineResult }[]> {
   if (!query.trim()) return []
 
-  const [semanticResults, keywordResults] = await Promise.all([
+  // Classificar a query para decisões adaptativas
+  const classification = classifyQuery(query)
+  const isNameQuery = classification.type === 'medicine-name' && classification.confidence >= 0.6
+
+  // Busca paralela: semântica + keyword + trigram
+  const [semanticResults, keywordResults, trigramResults] = await Promise.all([
     semanticSearch(query, topK * 5),
     keywordSearch(query, topK * 5),
+    trigramSearch(query, topK * 5),
   ])
 
   const keywordIds = new Set(keywordResults.map(r => r.medicineId))
+  const trigramIds = new Set(trigramResults.map(r => r.medicineId))
   const queryTerms = extractQueryTerms(query)
 
-  // Filter semantic results: pass through gate, then verify relation
+  // Filter semantic results: pass through gate (com threshold adaptativo)
   const filteredSemanticResults = semanticResults.filter(r => {
     const hasKeyword = keywordIds.has(r.medicine.id)
-    // Pass the semantic gate
-    if (!passesSemanticGate(r.score, hasKeyword)) return false
-    return true
+    return passesSemanticGate(r.score, hasKeyword, classification)
   })
 
-  // If no semantic results remain, fall back to keyword-only
+  // If no semantic results remain, fall back to keyword + trigram
   if (filteredSemanticResults.length === 0) {
-    if (keywordResults.length === 0) return []
-    const ids = keywordResults.map(r => r.medicineId)
-    const medicines = await prisma.medicine.findMany({ where: { id: { in: ids } } })
+    if (keywordResults.length === 0 && trigramResults.length === 0) return []
+    // Merge keyword + trigram via RRF para fallback
+    const keywordRank = new Map(keywordResults.map((r, i) => [r.medicineId, i + 1]))
+    const trigramRank = new Map(trigramResults.map((r, i) => [r.medicineId, i + 1]))
+    const keywordScoreMapFb = new Map(keywordResults.map(r => [r.medicineId, r.keywordScore]))
+    const trigramScoreMapFb = new Map(trigramResults.map(r => [r.medicineId, r.trigramScore]))
+    const allFallbackIds = new Set([...keywordIds, ...trigramIds])
+
+    const fallbackScores = [...allFallbackIds].map(id => ({
+      id,
+      rrfScore:
+        (KEYWORD_WEIGHT / (RRF_K + (keywordRank.get(id) ?? Infinity))) +
+        (TRIGRAM_WEIGHT / (RRF_K + (trigramRank.get(id) ?? Infinity))),
+    }))
+    fallbackScores.sort((a, b) => b.rrfScore - a.rrfScore)
+    const topFallbackIds = fallbackScores.slice(0, topK).map(s => s.id)
+
+    const medicines = await prisma.medicine.findMany({ where: { id: { in: topFallbackIds } } })
     const medMap = new Map(medicines.map(m => [m.id, m]))
-    return keywordResults
-      .map(r => ({
-        score: honestScore(null, r.keywordScore),
-        medicine: medMap.get(r.medicineId) as unknown as MedicineResult,
+    return topFallbackIds
+      .map(id => ({
+        score: honestScore(
+          null,
+          keywordScoreMapFb.get(id) ?? null,
+          trigramScoreMapFb.get(id) ?? null
+        ),
+        medicine: medMap.get(id) as unknown as MedicineResult,
       }))
       .filter(r => r.medicine)
-      .sort((a, b) => b.score - a.score)
       .slice(0, topK)
   }
 
-  // If no keyword results, use filtered semantic
-  if (keywordResults.length === 0) {
+  // If no keyword/trigram results, use filtered semantic
+  if (keywordResults.length === 0 && trigramResults.length === 0) {
     return filteredSemanticResults
       .map(r => ({
-        score: honestScore(r.score, null),
+        score: honestScore(r.score, null, null),
         medicine: normalizeMedicine(r.medicine) as MedicineResult,
       }))
       .sort((a, b) => b.score - a.score)
       .slice(0, topK)
   }
 
-  // RRF fusion
+  // RRF fusion com 3 fontes
   const semanticRank = new Map(filteredSemanticResults.map((r, i) => [r.medicine.id, i + 1]))
-  const keywordRank = new Map(keywordResults.map(r => [r.medicineId, 0]))
-  keywordResults.forEach((r, i) => keywordRank.set(r.medicineId, i + 1))
+  const keywordRank = new Map(keywordResults.map((r, i) => [r.medicineId, i + 1]))
+  const trigramRank = new Map(trigramResults.map((r, i) => [r.medicineId, i + 1]))
 
   const allIds = new Set([
     ...filteredSemanticResults.map(r => r.medicine.id),
     ...keywordResults.map(r => r.medicineId),
+    ...trigramResults.map(r => r.medicineId),
   ])
 
   const scores = [...allIds].map(id => ({
     id,
     rrfScore:
-      (1 / (RRF_K + (semanticRank.get(id) ?? Infinity))) +
-      (1 / (RRF_K + (keywordRank.get(id) ?? Infinity))),
+      (SEMANTIC_WEIGHT / (RRF_K + (semanticRank.get(id) ?? Infinity))) +
+      (KEYWORD_WEIGHT / (RRF_K + (keywordRank.get(id) ?? Infinity))) +
+      (TRIGRAM_WEIGHT / (RRF_K + (trigramRank.get(id) ?? Infinity))),
   }))
 
   scores.sort((a, b) => b.rrfScore - a.rrfScore)
@@ -231,37 +322,57 @@ export async function hybridSearch(
   const medMap = new Map(existingMedicines.map(m => [m.id, m]))
   const semanticScoreMap = new Map(filteredSemanticResults.map(r => [r.medicine.id, r.score]))
   const keywordScoreMap = new Map(keywordResults.map(r => [r.medicineId, r.keywordScore]))
+  const trigramScoreMap = new Map(trigramResults.map(r => [r.medicineId, r.trigramScore]))
 
   const initialResults = topIds
     .map(id => ({
-      score: honestScore(semanticScoreMap.get(id) ?? null, keywordScoreMap.get(id) ?? null),
+      score: honestScore(
+        semanticScoreMap.get(id) ?? null,
+        keywordScoreMap.get(id) ?? null,
+        trigramScoreMap.get(id) ?? null
+      ),
       medicine: medMap.get(id)!,
     }))
     .filter(r => r.medicine)
-    .sort((a, b) => b.score - a.score)
-  
-  // Penalidade para resultados sem keyword support nem relação textual
-  // Usa query expandida com sinônimos para verificar no banco
+
+  // Filtro de falsos positivos por substring + boost por match exato
+  const filteredResults = initialResults.map(r => {
+    const hasKeyword = keywordIds.has(r.medicine.id)
+    const hasTrigram = trigramIds.has(r.medicine.id)
+
+    // Remover falsos positivos de substring curta
+    if (isSubstringFalsePositive(query, r.medicine, hasKeyword, hasTrigram)) {
+      return { ...r, score: r.score * 0.05 }
+    }
+
+    // Boost por match exato no nome
+    const boost = nameMatchBoost(query, r.medicine)
+    return { ...r, score: r.score + boost }
+  }).sort((a, b) => b.score - a.score)
+
+  // Penalidade para resultados sem keyword/trigram support nem relação textual
   let keywordVerifiedIds = new Set<number>()
   if (keywordResults.length > 0) {
     const { buildExpandedTsquery } = await import('@/lib/keyword-utils')
     const tsquery = buildExpandedTsquery(query)
     if (tsquery) {
-      const allResultIds = initialResults.map(r => r.medicine.id)
+      const allResultIds = filteredResults.map(r => r.medicine.id)
       if (allResultIds.length > 0) {
         interface IdRow { id: number }
         const verified = await prisma.$queryRawUnsafe<IdRow[]>(
-          `SELECT id FROM medicines WHERE id IN (${allResultIds.join(',')}) AND "search_document" @@ to_tsquery('portuguese', $1::text)`,
+          `SELECT id FROM medicines WHERE id = ANY($1::int[]) AND "search_document" @@ to_tsquery('portuguese', $2::text)`,
+          allResultIds,
           tsquery
         )
         keywordVerifiedIds = new Set(verified.map(r => r.id))
       }
     }
   }
-  
-  const penalizedResults = initialResults.map(r => {
+
+  const penalizedResults = filteredResults.map(r => {
     const hasKeyword = keywordVerifiedIds.has(r.medicine.id)
-    if (hasKeyword) return r
+    const hasTrigram = trigramIds.has(r.medicine.id)
+    if (hasKeyword || hasTrigram) return r
     if (!medicineRelatesToQuery(r.medicine, queryTerms)) {
       return { ...r, score: r.score * 0.1 }
     }

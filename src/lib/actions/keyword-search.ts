@@ -2,51 +2,8 @@
 
 import { prisma } from '@/lib/prisma'
 import { parseQuery } from '@/lib/query-parser'
-
-const SYNONYM_MAP: Record<string, string[]> = {
-  pressao:     ['pressao', 'pressão', 'hipertensao', 'hipertensão', 'anti-hipertensivo', 'anti-hipertensão'],
-  alergia:     ['alergia', 'alergico', 'alérgico', 'antialergico', 'antialérgico', 'anti-histaminico', 'anti-histamínico'],
-  dor:         ['dor', 'analgesico', 'analgésico', 'anti-inflamatorio', 'anti-inflamatório'],
-  diabetes:    ['diabetes', 'antidiabetico', 'antidiabético', 'metformina', 'insulina'],
-  febre:       ['febre', 'antitermico', 'antitérmico', 'antipiretico', 'antipirético'],
-  inflamacao:  ['inflamacao', 'inflamação', 'anti-inflamatorio', 'anti-inflamatório', 'antiinflamatorio'],
-  infeccao:    ['infeccao', 'infecção', 'antibiotico', 'antibiótico', 'antimicrobiano'],
-  colesterol:  ['colesterol', 'antilipemico', 'antilipêmico', 'sinvastatina', 'estatina'],
-  ansiedade:   ['ansiedade', 'ansiolitico', 'ansiolítico', 'calmante', 'benzodiazepinico'],
-  depressao:   ['depressao', 'depressão', 'antidepressivo'],
-  tosse:       ['tosse', 'antitussigeno', 'antitussígeno', 'expectorante'],
-  estomago:    ['estomago', 'estômago', 'gastrico', 'gástrico', 'antiacido', 'antiácido', 'protetor gastrico', 'protetor gástrico', 'azia', 'refluxo', 'gastrite', 'ulcera', 'úlcera', 'dispepsia', 'digestao', 'digestão', 'omeprazol', 'pantoprazol', 'esomeprazol'],
-  uc:          ['uc', 'ulcera', 'úlcera', 'gastrico', 'gástrico', 'protonico', 'protetor gástrico'],
-  asma:        ['asma', 'broncodilatador', 'bronquite'],
-  insulina:    ['insulina', 'antidiabetico', 'antidiabético', 'diabetes'],
-  'dor-de-cabeca': ['dor-de-cabeca', 'dor de cabeça', 'cefaleia', 'migrânea', 'migranea'],
-  
-  // Novos sinônimos para condições clínicas comuns
-  'articular':      ['articular', 'articulação', 'artrite', 'reumatismo', 'osteoartrite', 'doença articular'],
-  'articulacao':    ['articulação', 'articular', 'artrite', 'reumatismo', 'osteoartrite'],
-  'reumatismo':     ['reumatismo', 'artrite', 'reumatóide', 'doença autoimune'],
-  'artrite':        ['artrite', 'inflamação articular', 'dor articular', 'reumatismo'],
-  'renal':          ['renal', 'rim', 'insuficiência renal', 'doença renal'],
-  'cardiaco':       ['cardíaco', 'coração', 'cardiovascular', 'insuficiência cardíaca'],
-  'neurologico':    ['neurológico', 'sistema nervoso', 'neuropatia', 'doença neurológica'],
-  'dermatologico':  ['dermatológico', 'pele', 'dermatite', 'eczema', 'psoríase'],
-  'gastrointestinal': ['gastrointestinal', 'estômago', 'intestino', 'digestivo'],
-  'respiratorio':   ['respiratório', 'pulmão', 'vias aéreas', 'brônquios'],
-  'oftalmologico':  ['oftalmológico', 'olho', 'ocular', 'visão'],
-  'urologico':      ['urológico', 'urinário', 'bexiga', 'próstata'],
-  'psiquiatrico':   ['psiquiátrico', 'mental', 'psicológico', 'transtorno'],
-  'oncologico':     ['oncológico', 'câncer', 'tumor', 'quimioterapia'],
-  'pediatrico':     ['pediátrico', 'criança', 'infantil', 'bebê'],
-  'geriatrico':     ['geriátrico', 'idoso', 'terceira idade', 'senhor'],
-}
-
-// Words that describe "this is a medicine" rather than what it treats. They
-// match almost every row (e.g. via manufacturer names like "FUNDAÇÃO PARA O
-// REMÉDIO POPULAR") without narrowing anything, so they're dropped before
-// building the query instead of being treated as a real search term.
-const GENERIC_TERMS = new Set([
-  'remedio', 'remedios', 'medicamento', 'medicamentos', 'droga', 'drogas', 'farmaco', 'farmacos',
-])
+import { SYNONYM_MAP, GENERIC_TERMS, COMPOUND_SUBJECTS } from '@/lib/dictionaries/synonyms'
+import { buildOrTsQuery } from '@/lib/keyword-utils'
 
 function stripAccents(str: string): string {
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -74,19 +31,7 @@ function expandWithSynonyms(terms: string[]): string[] {
     }
   }
   
-  // Também mapear "remédio para X" para o sinônimo de X
-  // Ex: "remédio para estômago" usa sinônimos de "estomago"
-  const compoundSubjects: Record<string, string[]> = {
-    'estomago': ['estômago', 'gastrico', 'gástrico', 'antiacido', 'antiácido', 'protetor gastrico', 'protetor gástrico', 'azia', 'refluxo', 'gastrite', 'ulcera', 'úlcera', 'dispepsia', 'digestao', 'digestão', 'omeprazol', 'pantoprazol', 'esomeprazol'],
-    'gastrite': ['gastrite', 'estômago', 'gastrico', 'gástrico', 'antiacido', 'antiácido', 'azia', 'refluxo', 'ulcera', 'úlcera', 'protetor gastrico', 'protetor gástrico'],
-    'articulacao': ['articulação', 'articular', 'artrite', 'reumatismo', 'osteoartrite', 'doença articular', 'anti-inflamatorio', 'anti-inflamatório'],
-    'cabeça': ['cabeça', 'cefaleia', 'migrânea', 'migranea', 'dor de cabeça', 'dor-de-cabeca', 'analgesico', 'analgésico', 'anti-inflamatorio', 'anti-inflamatório'],
-    'cefaleia': ['cefaleia', 'dor de cabeça', 'dor-de-cabeca', 'migrânea', 'migranea', 'analgesico', 'analgésico', 'anti-inflamatorio', 'anti-inflamatório'],
-    'gripe': ['gripe', 'resfriado', 'congestao', 'nariz', 'tosse', 'febre', 'antitérmico'],
-    'pele': ['pele', 'dermatologico', 'dermatológico', 'dermatite', 'eczema', 'psoríase', 'creme', 'pomada'],
-  }
-  
-  for (const [subject, synonyms] of Object.entries(compoundSubjects)) {
+  for (const [subject, synonyms] of Object.entries(COMPOUND_SUBJECTS)) {
     if (terms.some(t => stripAccents(t).toLowerCase().includes(subject))) {
       for (const syn of synonyms) expanded.add(syn)
     }
@@ -124,47 +69,6 @@ function expandWithSynonyms(terms: string[]): string[] {
   }
 
   return [...expanded]
-}
-
-function sanitizeWord(word: string): string {
-  return word.replace(/['&|!()<>:*]/g, ' ').trim()
-}
-
-// Stop words para evitar queries vazias ou incorretas no to_tsquery do PostgreSQL
-const PORTUGUESE_STOP_WORDS = new Set([
-  'de', 'da', 'do', 'das', 'dos', 'em', 'no', 'na', 'nos', 'nas',
-  'para', 'pra', 'pro', 'por', 'com', 'sem', 'sob', 'sobre',
-  'a', 'as', 'o', 'os', 'um', 'uma', 'uns', 'umas',
-  'e', 'ou', 'mas', 'que', 'se', 'como', 'mais', 'menos',
-  'ao', 'aos', 'à', 'às', 'pelo', 'pela', 'pelos', 'pelas',
-  'num', 'numa', 'dum', 'duma', 'duns', 'dumas',
-  'ele', 'ela', 'eles', 'elas', 'meu', 'minha', 'teu', 'tua',
-  'seu', 'sua', 'nosso', 'nossa', 'vosso', 'vossa',
-  'eu', 'tu', 'ele', 'nós', 'vós', 'eles', 'me', 'te', 'lhe',
-  'nos', 'vos', 'lhes', 'minha', 'tua', 'sua', 'nossa', 'vossa',
-  'este', 'esta', 'estes', 'estas', 'esse', 'essa', 'esses', 'essas',
-  'aquele', 'aquela', 'aqueles', 'aquelas', 'isto', 'isso', 'aquilo',
-  'já', 'ainda', 'bem', 'mal', 'sim', 'não', 'nunca', 'sempre',
-  'muito', 'pouco', 'tanto', 'quanto', 'todo', 'toda', 'todos', 'todas',
-  'outro', 'outra', 'outros', 'outras', 'cada', 'certo', 'algum', 'alguma',
-  'nenhum', 'nenhuma', 'qualquer', 'quaisquer',
-])
-
-// Builds `to_tsquery` syntax where every (possibly multi-word) term/synonym is
-// OR'd against the others. Using plainto_tsquery on the joined term list would
-// AND every term together, so adding synonyms only narrowed matches instead of
-// broadening them (e.g. a document would need to contain "dor" AND "cabeça"
-// AND "analgesico" simultaneously).
-function buildOrTsQuery(terms: string[]): string {
-  const operands = terms
-    .map(term => {
-      const words = term.trim().split(/\s+/).map(sanitizeWord).filter(Boolean)
-        .filter(w => !PORTUGUESE_STOP_WORDS.has(w.toLowerCase()))
-      if (words.length === 0) return ''
-      return words.length === 1 ? words[0] : `(${words.join(' & ')})`
-    })
-    .filter(Boolean)
-  return operands.join(' | ')
 }
 
 export async function keywordSearch(
