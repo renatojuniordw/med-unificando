@@ -112,3 +112,28 @@ export function classifyQuery(query: string): QueryClassification {
 
   return { type: 'condition', confidence: 0.4, conditionTerms: words }
 }
+
+export interface EmbeddingClassification {
+  type: 'medicine-name' | 'other'
+  confidence: number
+}
+
+// Reclassifica queries que caíram no fallback genérico da heurística usando
+// similaridade de embedding (calculada externamente, ver classifyByEmbedding
+// em semantic-search.ts). Não mexe em classificações que a heurística já fez
+// com confiança razoável — só cobre o caso "não bati com nenhuma regra".
+export function refineLowConfidenceClassification(
+  classification: QueryClassification,
+  embeddingClassification: EmbeddingClassification | null,
+  query: string
+): QueryClassification {
+  if (classification.confidence > 0.4) return classification
+  if (!embeddingClassification) return classification
+  if (embeddingClassification.type !== 'medicine-name') return classification
+
+  return {
+    type: 'medicine-name',
+    confidence: embeddingClassification.confidence,
+    medicineNameCandidate: normalizeQuery(query),
+  }
+}

@@ -4,11 +4,18 @@ import { prisma } from "@/lib/prisma"
 import { keywordSearch } from '@/lib/actions/keyword-search'
 import { trigramSearch } from '@/lib/actions/trigram-search'
 import { buildExpandedTsquery } from '@/lib/keyword-utils'
-import { classifyQuery, type QueryClassification } from '@/lib/search-preprocessor'
+import {
+  classifyQuery,
+  refineLowConfidenceClassification,
+  type QueryClassification,
+  type EmbeddingClassification,
+} from '@/lib/search-preprocessor'
 import { EMBEDDING, SEARCH } from '@/lib/config'
 import { normalizeMedicine } from "@/lib/format"
 import { applyScoreAdjustments } from "@/lib/score-adjustments"
 import { stripAccents } from '@/lib/text-utils'
+import { SYNONYM_MAP } from '@/lib/dictionaries/synonyms'
+import { THERAPEUTIC_CLASS_INDICATIONS } from '@/lib/dictionaries/therapeutic-class-indications'
 import type { MedicineResult } from "@/types"
 import type { FeatureExtractionPipeline } from "@xenova/transformers"
 
@@ -50,18 +57,95 @@ async function getModel() {
 
 export async function clearEmbeddingsCache() {
   extractor = null
+  categoryCentroids = null
+}
+
+export async function embedQuery(query: string): Promise<Float32Array> {
+  const model = await getModel()
+  const result = await model(`query: ${query}`, { pooling: "mean", normalize: true })
+  return result.data as Float32Array
+}
+
+function cosineSimilarity(a: Float32Array, b: Float32Array): number {
+  let dot = 0
+  for (let i = 0; i < a.length; i++) dot += a[i] * b[i]
+  // a e b já vêm normalizados (normalize: true), então dot product == cosine
+  return dot
+}
+
+async function embedCentroid(texts: string[]): Promise<Float32Array> {
+  const vectors = await Promise.all(texts.map(t => embedQuery(t)))
+  const dims = vectors[0].length
+  const centroid = new Float32Array(dims)
+  for (const v of vectors) {
+    for (let i = 0; i < dims; i++) centroid[i] += v[i]
+  }
+  for (let i = 0; i < dims; i++) centroid[i] /= vectors.length
+  return centroid
+}
+
+interface CategoryCentroids {
+  medicineName: Float32Array
+  other: Float32Array
+}
+
+let categoryCentroids: CategoryCentroids | null = null
+
+// Amostra nomes reais de medicamentos (tradeName/activeIngredient) do banco
+// para servir de âncora "medicine-name" — reflete a distribuição real de
+// nomes comerciais, mais robusto que uma lista hardcoded.
+async function sampleMedicineNameSeeds(limit = 150): Promise<string[]> {
+  const rows = await prisma.$queryRawUnsafe<{ name: string }[]>(
+    `SELECT name FROM (
+       SELECT DISTINCT "tradeName" AS name FROM medicines
+       WHERE "tradeName" IS NOT NULL AND "tradeName" != ''
+     ) t ORDER BY random() LIMIT $1`,
+    limit
+  )
+  return rows.map(r => r.name).filter(Boolean)
+}
+
+async function getCategoryCentroids(): Promise<CategoryCentroids> {
+  if (categoryCentroids) return categoryCentroids
+
+  const medicineNameSeeds = await sampleMedicineNameSeeds()
+  const otherSeeds = [
+    ...Object.values(THERAPEUTIC_CLASS_INDICATIONS),
+    ...Object.values(SYNONYM_MAP).flat(),
+  ]
+
+  const [medicineName, other] = await Promise.all([
+    embedCentroid(medicineNameSeeds),
+    embedCentroid(otherSeeds),
+  ])
+
+  categoryCentroids = { medicineName, other }
+  return categoryCentroids
+}
+
+// Classifica a query como medicine-name vs. condição/classe-terapêutica por
+// proximidade aos centróides de categoria. Usado apenas como refinamento
+// quando a heurística de classifyQuery cai no fallback genérico.
+export async function classifyByEmbedding(queryEmb: Float32Array): Promise<EmbeddingClassification> {
+  const centroids = await getCategoryCentroids()
+  const simMedicineName = cosineSimilarity(queryEmb, centroids.medicineName)
+  const simOther = cosineSimilarity(queryEmb, centroids.other)
+
+  const type = simMedicineName > simOther ? 'medicine-name' : 'other'
+  const margin = Math.abs(simMedicineName - simOther)
+  const confidence = Math.min(Math.max(0.5 + margin * 2, 0.5), 0.85)
+
+  return { type, confidence }
 }
 
 export async function semanticSearch(
   query: string,
-  topK: number = 60
+  topK: number = 60,
+  precomputedEmbedding?: Float32Array
 ): Promise<{ score: number; medicine: MedicineResult }[]> {
   if (!query.trim()) return []
 
-  const model = await getModel()
-
-  const result = await model(`query: ${query}`, { pooling: "mean", normalize: true })
-  const queryEmb = result.data as Float32Array
+  const queryEmb = precomputedEmbedding ?? await embedQuery(query)
   const vecStr = `[${Array.from(queryEmb).join(",")}]`
 
   const col = EMBEDDING.COLUMN
@@ -352,14 +436,27 @@ export async function hybridSearch(
 
   const t0 = performance.now()
 
+  // Embedding da query — calculado uma única vez e reaproveitado na busca
+  // semântica e no refinamento de classificação (evita rodar o modelo 2x)
+  const queryEmb = await embedQuery(query)
+
   // Classificar a query para decisões adaptativas
-  const classification = classifyQuery(query)
+  let classification = classifyQuery(query)
+  if (classification.confidence <= SEARCH.CLASSIFICATION_REFINE_MAX_CONFIDENCE) {
+    try {
+      const embeddingClassification = await classifyByEmbedding(queryEmb)
+      classification = refineLowConfidenceClassification(classification, embeddingClassification, query)
+    } catch {
+      // Se a classificação por embedding falhar (ex: banco indisponível para
+      // amostrar seeds), mantém a classificação heurística original
+    }
+  }
   const isNameQuery = classification.type === 'medicine-name' && classification.confidence >= 0.6
 
   // Busca paralela: semântica + keyword + trigram
   const t1 = performance.now()
   const [semanticResults, keywordResults, trigramResults] = await Promise.all([
-    semanticSearch(query, topK * 5),
+    semanticSearch(query, topK * 5, queryEmb),
     keywordSearch(query, topK * 5),
     trigramSearch(query, topK * 5),
   ])

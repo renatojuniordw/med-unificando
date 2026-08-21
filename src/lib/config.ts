@@ -41,6 +41,10 @@ export const SEARCH = {
   // Penalidade quando resultado vem de uma única fonte (sem suporte cruzado)
   SINGLE_SOURCE_PENALTY: 0.80,
 
+  // Refinamento por embedding: só reclassifica quando a heurística de
+  // classifyQuery cai no fallback genérico (baixíssima confiança)
+  CLASSIFICATION_REFINE_MAX_CONFIDENCE: 0.4,
+
   // Pagination
   PAGE_SIZE: 20,
 } as const
