@@ -26,10 +26,16 @@ vi.mock('@/lib/prisma', () => ({
 
 vi.mock('@/auth', () => ({ auth: vi.fn() }))
 
+
 vi.mock('xlsx', () => ({
   read: vi.fn(),
   write: vi.fn(),
   utils: { sheet_to_json: vi.fn(), json_to_sheet: vi.fn(), book_new: vi.fn(), book_append_sheet: vi.fn() },
+}))
+
+vi.mock('@/lib/csv-utils', () => ({
+  downloadCsv: vi.fn().mockResolvedValue(''),
+  parseCsvToRows: vi.fn().mockReturnValue([]),
 }))
 
 vi.mock('@xenova/transformers', () => ({

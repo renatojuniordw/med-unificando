@@ -36,7 +36,6 @@ vi.mock('@/lib/prisma', () => ({
 vi.mock('@/auth', () => ({
   auth: vi.fn(),
 }))
-
 vi.mock('xlsx', () => ({
   read: vi.fn().mockReturnValue({
     SheetNames: ['Sheet1'],
@@ -55,6 +54,11 @@ vi.mock('@/lib/pdf-parser', () => ({
   parseMedicinePDF: vi.fn().mockResolvedValue([{ reference: '12345' }]),
 }))
 
+vi.mock('@/lib/csv-utils', () => ({
+  downloadCsv: vi.fn().mockResolvedValue(''),
+  parseCsvToRows: vi.fn().mockReturnValue([]),
+}))
+
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 
@@ -62,8 +66,8 @@ describe('admin.ts internal functions', async () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('validateRow rejects empty reference', async () => {
-    const xlsx = await import('xlsx')
-    vi.mocked(xlsx.utils.sheet_to_json).mockReturnValue([{ 'NU_REGISTRO_PRODUTO': '', 'DS_TIPO_CATEGORIA_REGULATORIA': 'Similar' }])
+    const csvUtils = await import('@/lib/csv-utils')
+    vi.mocked(csvUtils.parseCsvToRows).mockReturnValue([{ 'NU_REGISTRO_PRODUTO': '', 'DS_TIPO_CATEGORIA_REGULATORIA': 'Similar' }])
     const https = await import('https')
     mockHttpsGet(https.default.get).mockImplementation((url, options, cb) => {
       const callback = typeof options === 'function' ? options : cb!

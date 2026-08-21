@@ -1,5 +1,7 @@
 import type { NextAuthConfig } from "next-auth"
 
+const SESSION_MAX_AGE = 24 * 60 * 60 // 24 hours
+
 export const authConfig = {
   pages: {
     signIn: "/admin/login",
@@ -19,10 +21,10 @@ export const authConfig = {
   providers: [],
   session: {
     strategy: "jwt",
-    maxAge: 24 * 60 * 60, // 24 hours
+    maxAge: SESSION_MAX_AGE,
   },
   jwt: {
-    maxAge: 24 * 60 * 60,
+    maxAge: SESSION_MAX_AGE,
   },
   useSecureCookies: process.env.NODE_ENV === "production",
   trustHost: true,

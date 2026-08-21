@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@/auth'
 import { submitSearchFeedback, getFeedbackStats, getLowQualityQueries } from '@/lib/actions/search-feedback'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { query, medicineId, medicineName, feedback } = body
+
+    if (!query || typeof query !== 'string' || !feedback) {
+      return NextResponse.json(
+        { error: 'Campos obrigatórios: query, feedback' },
+        { status: 400 }
+      )
+    }
 
     const result = await submitSearchFeedback({
       query,
@@ -34,6 +42,11 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
+  const session = await auth()
+  if (!session?.user) {
+    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  }
+
   try {
     const stats = await getFeedbackStats()
     const lowQuality = await getLowQualityQueries()

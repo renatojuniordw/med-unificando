@@ -1,9 +1,15 @@
 import { NextResponse } from 'next/server'
+import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 
 // GET /api/search-analytics
 // Retorna estatísticas de busca para o dashboard admin
 export async function GET() {
+  const session = await auth()
+  if (!session?.user) {
+    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  }
+
   try {
     // Queries mais frequentes (últimos 30 dias)
     const topQueries = await prisma.$queryRawUnsafe<{ query: string; count: number; avg_score: number }[]>(

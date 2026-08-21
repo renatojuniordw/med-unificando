@@ -26,6 +26,7 @@ vi.mock('@/lib/prisma', () => ({
 
 vi.mock('@/auth', () => ({ auth: vi.fn() }))
 
+
 vi.mock('xlsx', () => ({
   read: vi.fn().mockReturnValue({ SheetNames: ['Sheet1'], Sheets: { Sheet1: {} } }),
   write: vi.fn().mockReturnValue(Buffer.from([1])),
@@ -35,6 +36,11 @@ vi.mock('xlsx', () => ({
     book_new: vi.fn().mockReturnValue({}),
     book_append_sheet: vi.fn(),
   },
+}))
+
+vi.mock('@/lib/csv-utils', () => ({
+  downloadCsv: vi.fn().mockResolvedValue(''),
+  parseCsvToRows: vi.fn().mockReturnValue([{ 'NU_REGISTRO_PRODUTO': '12345', 'DS_TIPO_CATEGORIA_REGULATORIA': 'SIMILAR', 'SUBSTANCIAS_MEDICAMENTOS': 'Sub', 'NO_PRODUTO': 'Med', 'NO_RAZAO_SOCIAL_EMPRESA': 'Co', 'CO_FORMA_FISICA': 'Comp', 'COMPLEMENTO': '10mg', 'DATA_PUBLICACAO': '2024-01-01', 'DS_REFERENCIA': 'Ref', 'CO_ATC': 'A01', 'CO_TARJA': 'Tarja', 'VALIDADE_SITUACAO': 'Ativo', 'AUTORIZACAO_MEDICAMENTO': 'Aut', 'NUMERO_APRESENTACOES': '1', 'SINONIMOS': 'Syn', 'INDICACOES': 'Ind' }]),
 }))
 
 import { prisma } from '@/lib/prisma'

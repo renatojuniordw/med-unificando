@@ -1,25 +1,10 @@
+import { PHARMACEUTICAL_FORM_TERMS, THERAPEUTIC_CLASS_TERMS } from '@/lib/text-utils'
+
 export interface ParsedQuery {
   pharmaceuticalForms: string[]
   therapeuticClasses: string[]
   otherTerms: string[]
 }
-
-const PHARMACEUTICAL_FORM_TERMS = [
-  'xarope', 'comprimido', 'cápsula', 'gotas', 'injetável',
-  'solução', 'suspensão', 'pomada', 'creme', 'spray',
-  'aerossol', 'adesivo', 'implante', 'elixir', 'granulado',
-  'pó', 'supositório', 'óvulo', 'enema', 'colírio', 'xampu',
-]
-
-const THERAPEUTIC_CLASS_TERMS: string[] = [
-  'antialérgico', 'anti-inflamatório', 'analgésico', 'antibiótico',
-  'antiviral', 'antifúngico', 'antidepressivo', 'ansiolítico',
-  'anticonvulsivante', 'anti-hipertensivo', 'diurético',
-  'anticoagulante', 'antidiabético', 'antilipêmico',
-  'antipsicótico', 'antiparkinsoniano', 'broncodilatador',
-  'corticosteroide', 'imunossupressor', 'relaxante muscular',
-  'vasoconstritor', 'vasodilatador',
-]
 
 export function parseQuery(query: string): ParsedQuery {
   if (!query.trim()) {

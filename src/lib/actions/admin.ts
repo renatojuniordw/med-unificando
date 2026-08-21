@@ -1,15 +1,15 @@
 'use server'
 
 import { prisma } from "@/lib/prisma"
-import { auth } from "@/auth"
-import * as XLSX from 'xlsx'
+import { withAuth, withAuthReturn } from "@/lib/auth-guard"
+import { downloadCsv, parseCsvToRows } from "@/lib/csv-utils"
 import https from 'https'
-import iconv from 'iconv-lite'
 import { BATCH } from "@/lib/constants"
 import { ANVISA } from "@/lib/config"
 import type { ImportInfo } from "@/types"
 
 const CSV_URL = ANVISA.MEDICINES_URL
+const agent = new https.Agent({ rejectUnauthorized: false })
 
 const VALID_CATEGORIES = new Set([
   'SIMILAR', 'GENÉRICO', 'REFERÊNCIA', 'NOVO', 'ESPECÍFICO',
@@ -17,65 +17,52 @@ const VALID_CATEGORIES = new Set([
   'GASES MEDICINAIS', 'RADIOFÁRMACO',
 ])
 
-const agent = new https.Agent({ rejectUnauthorized: false })
-
-// xlsx@0.18.5 has known vulnerabilities (prototype pollution, ReDoS).
-// Risk is mitigated because: 1) CSV comes from ANVISA (trusted source), 2) not user-uploaded.
-// TODO: Replace xlsx with a safer CSV parser when fix becomes available.
 function parseCSV(csvText: string) {
-  const sanitized = csvText.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
-  const workbook = XLSX.read(sanitized, { type: 'string', raw: true })
-  const sheet = workbook.Sheets[workbook.SheetNames[0]]
-  const data: Record<string, string>[] = XLSX.utils.sheet_to_json(sheet, { defval: '' })
-  return data
+  return parseCsvToRows(csvText)
 }
 
 export async function importPdf(formData: FormData) {
-  const session = await auth()
-
-  if (!session?.user) {
-    return { success: false, error: 'Não autorizado' }
-  }
-
-  const file = formData.get('file') as File | null
-  if (!file) {
-    return { success: false, error: 'Nenhum arquivo enviado' }
-  }
-
-  if (!file.name.endsWith('.pdf')) {
-    return { success: false, error: 'Formato inválido. Envie um arquivo .pdf' }
-  }
-
-  try {
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-
-    const { parseMedicinePDF } = await import('@/lib/pdf-parser')
-    const medicines = await parseMedicinePDF(buffer)
-
-    if (medicines.length === 0) {
-      return { success: false, error: 'Nenhum medicamento encontrado no PDF' }
+  return withAuth(async () => {
+    const file = formData.get('file') as File | null
+    if (!file) {
+      return { success: false, error: 'Nenhum arquivo enviado' }
     }
 
-    await prisma.medicine.deleteMany()
-
-    let count = 0
-    for (const med of medicines) {
-      await prisma.medicine.create({ data: med })
-      count++
+    if (!file.name.endsWith('.pdf')) {
+      return { success: false, error: 'Formato inválido. Envie um arquivo .pdf' }
     }
 
-    return {
-      success: true,
-      count,
-      message: `${count} medicamentos importados com sucesso! (dados anteriores substituídos)`,
+    try {
+      const bytes = await file.arrayBuffer()
+      const buffer = Buffer.from(bytes)
+
+      const { parseMedicinePDF } = await import('@/lib/pdf-parser')
+      const medicines = await parseMedicinePDF(buffer)
+
+      if (medicines.length === 0) {
+        return { success: false, error: 'Nenhum medicamento encontrado no PDF' }
+      }
+
+      await prisma.medicine.deleteMany()
+
+      let count = 0
+      for (const med of medicines) {
+        await prisma.medicine.create({ data: med })
+        count++
+      }
+
+      return {
+        success: true,
+        count,
+        message: `${count} medicamentos importados com sucesso! (dados anteriores substituídos)`,
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: `Erro ao processar PDF: ${error instanceof Error ? error.message : 'erro desconhecido'}`,
+      }
     }
-  } catch (error) {
-    return {
-      success: false,
-      error: `Erro ao processar PDF: ${error instanceof Error ? error.message : 'erro desconhecido'}`,
-    }
-  }
+  })
 }
 
 function getHeader(url: string): Promise<Date | null> {
@@ -89,14 +76,7 @@ function getHeader(url: string): Promise<Date | null> {
 }
 
 function downloadCSV(url: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    https.get(url, { agent }, (res) => {
-      const chunks: Buffer[] = []
-      res.on('data', (chunk: Buffer) => chunks.push(chunk))
-      res.on('end', () => resolve(iconv.decode(Buffer.concat(chunks), 'latin1')))
-      res.on('error', reject)
-    }).on('error', reject)
-  })
+  return downloadCsv(url)
 }
 
 function validateRow(reference: string, category: string, validCategories: Set<string>): boolean {
@@ -192,103 +172,98 @@ async function fetchTherapeuticClassWithRetry(url: string, retries = 2): Promise
 }
 
 export async function syncWithAnvisa() {
-  const session = await auth()
-  if (!session?.user) {
-    return { success: false, error: 'Não autorizado' }
-  }
+  return withAuth(async () => {
+    try {
+      const remoteDate = await getHeader(CSV_URL)
+      const remoteTimestamp = remoteDate ?? new Date()
 
-  try {
-    const remoteDate = await getHeader(CSV_URL)
-    const remoteTimestamp = remoteDate ?? new Date()
+      const currentMedicine = await prisma.medicine.findFirst({
+        orderBy: { lastImportAt: 'desc' },
+        select: { anvisaFileDate: true },
+      })
 
-    const currentMedicine = await prisma.medicine.findFirst({
-      orderBy: { lastImportAt: 'desc' },
-      select: { anvisaFileDate: true },
-    })
-
-    if (currentMedicine?.anvisaFileDate && remoteDate) {
-      const storedMs = new Date(currentMedicine.anvisaFileDate).getTime()
-      const remoteMs = remoteTimestamp.getTime()
-      if (Math.abs(storedMs - remoteMs) < 60000) {
-        const total = await prisma.medicine.count()
-        return {
-          success: true,
-          message: 'Dados já estão atualizados com a versão mais recente da ANVISA.',
-          count: total,
-          skipped: true,
+      if (currentMedicine?.anvisaFileDate && remoteDate) {
+        const storedMs = new Date(currentMedicine.anvisaFileDate).getTime()
+        const remoteMs = remoteTimestamp.getTime()
+        if (Math.abs(storedMs - remoteMs) < 60000) {
+          const total = await prisma.medicine.count()
+          return {
+            success: true,
+            message: 'Dados já estão atualizados com a versão mais recente da ANVISA.',
+            count: total,
+            skipped: true,
+          }
         }
       }
+
+      const [rows, therapeuticClassRows] = await Promise.all([
+        fetchAndParseCSV(CSV_URL),
+        fetchTherapeuticClassWithRetry(ANVISA.THERAPEUTIC_CLASS_URL),
+      ])
+      const therapeuticClassByReference = buildTherapeuticClassMap(therapeuticClassRows)
+      const now = new Date()
+      const medicines: Array<Record<string, unknown>> = []
+
+      for (const row of rows) {
+        const medicine = transformRow(row, remoteTimestamp, now, therapeuticClassByReference)
+        if (medicine) medicines.push(medicine)
+      }
+
+      if (medicines.length === 0) {
+        return { success: false, error: 'Nenhum medicamento encontrado no CSV' }
+      }
+
+      await bulkReplaceMedicines(medicines)
+
+      await prisma.syncLog.create({
+        data: { type: 'medicines', count: medicines.length, status: 'success' },
+      })
+
+      const { regenerateEmbeddings } = await import('@/lib/actions/embeddings')
+      regenerateEmbeddings().catch(err =>
+        console.error('[sync] Background embedding regeneration failed:', err)
+      )
+
+      return {
+        success: true,
+        message: `${medicines.length} medicamentos sincronizados. Índice de busca sendo atualizado em segundo plano.`,
+        count: medicines.length,
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'erro desconhecido'
+      await prisma.syncLog.create({
+        data: { type: 'medicines', count: 0, status: 'error', message },
+      })
+      return {
+        success: false,
+        error: `Erro ao sincronizar: ${message}`,
+      }
     }
-
-    const [rows, therapeuticClassRows] = await Promise.all([
-      fetchAndParseCSV(CSV_URL),
-      fetchTherapeuticClassWithRetry(ANVISA.THERAPEUTIC_CLASS_URL),
-    ])
-    const therapeuticClassByReference = buildTherapeuticClassMap(therapeuticClassRows)
-    const now = new Date()
-    const medicines: Array<Record<string, unknown>> = []
-
-    for (const row of rows) {
-      const medicine = transformRow(row, remoteTimestamp, now, therapeuticClassByReference)
-      if (medicine) medicines.push(medicine)
-    }
-
-    if (medicines.length === 0) {
-      return { success: false, error: 'Nenhum medicamento encontrado no CSV' }
-    }
-
-    await bulkReplaceMedicines(medicines)
-
-    await prisma.syncLog.create({
-      data: { type: 'medicines', count: medicines.length, status: 'success' },
-    })
-
-    const { regenerateEmbeddings } = await import('@/lib/actions/embeddings')
-    regenerateEmbeddings().catch(err =>
-      console.error('[sync] Background embedding regeneration failed:', err)
-    )
-
-    return {
-      success: true,
-      message: `${medicines.length} medicamentos sincronizados. Índice de busca sendo atualizado em segundo plano.`,
-      count: medicines.length,
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'erro desconhecido'
-    await prisma.syncLog.create({
-      data: { type: 'medicines', count: 0, status: 'error', message },
-    })
-    return {
-      success: false,
-      error: `Erro ao sincronizar: ${message}`,
-    }
-  }
+  })
 }
 
 export async function getSyncLogs() {
-  const session = await auth()
-  if (!session?.user) return []
-
-  return prisma.syncLog.findMany({
-    orderBy: { createdAt: 'desc' },
-    take: 20,
+  return withAuthReturn([], async () => {
+    return prisma.syncLog.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    })
   })
 }
 
 export async function getImportInfo(): Promise<ImportInfo | null> {
-  const session = await auth()
-  if (!session?.user) return null
+  return withAuthReturn(null, async () => {
+    const total = await prisma.medicine.count()
+    const lastMedicine = await prisma.medicine.findFirst({
+      orderBy: { lastImportAt: 'desc' },
+    })
 
-  const total = await prisma.medicine.count()
-  const lastMedicine = await prisma.medicine.findFirst({
-    orderBy: { lastImportAt: 'desc' },
+    return {
+      total,
+      lastImport: lastMedicine?.lastImportAt ?? null,
+      anvisaFileDate: lastMedicine?.anvisaFileDate ?? null,
+      medicinesUrl: ANVISA.MEDICINES_URL,
+      pricesUrl: ANVISA.PRICES_URL,
+    }
   })
-
-  return {
-    total,
-    lastImport: lastMedicine?.lastImportAt ?? null,
-    anvisaFileDate: lastMedicine?.anvisaFileDate ?? null,
-    medicinesUrl: ANVISA.MEDICINES_URL,
-    pricesUrl: ANVISA.PRICES_URL,
-  }
 }

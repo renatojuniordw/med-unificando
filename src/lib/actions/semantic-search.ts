@@ -8,6 +8,7 @@ import { classifyQuery, type QueryClassification } from '@/lib/search-preprocess
 import { EMBEDDING, SEARCH } from '@/lib/config'
 import { normalizeMedicine } from "@/lib/format"
 import { applyScoreAdjustments } from "@/lib/score-adjustments"
+import { stripAccents } from '@/lib/text-utils'
 import type { MedicineResult } from "@/types"
 import type { FeatureExtractionPipeline } from "@xenova/transformers"
 
@@ -193,10 +194,6 @@ function medicineRelatesToQuery(medicine: MedicineResult, queryTerms: string[]):
   const indications = (medicine.indications || '').toLowerCase()
   const medicineText = [tradeName, ingredient, indications].join(' ')
   return queryTerms.some(term => medicineText.includes(term))
-}
-
-function stripAccents(str: string): string {
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 }
 
 // Detecta falsos positivos onde a query é uma substring curta do nome do medicamento

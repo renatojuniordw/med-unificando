@@ -1,7 +1,7 @@
 'use server'
 
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/auth'
+import { withAuth, withAuthReturn } from '@/lib/auth-guard'
 
 export interface AdminMedicineSummary {
   id: number
@@ -12,31 +12,30 @@ export interface AdminMedicineSummary {
 }
 
 export async function searchMedicinesForAdmin(query: string): Promise<AdminMedicineSummary[]> {
-  const session = await auth()
-  if (!session?.user) return []
-  if (query.length < 2) return []
+  return withAuthReturn([], async () => {
+    if (query.length < 2) return []
 
-  const medicines = await prisma.medicine.findMany({
-    where: {
-      OR: [
-        { reference: { contains: query, mode: 'insensitive' } },
-        { activeIngredient: { contains: query, mode: 'insensitive' } },
-        { tradeName: { contains: query, mode: 'insensitive' } },
-      ],
-    },
-    select: { id: true, tradeName: true, reference: true, activeIngredient: true, status: true },
-    take: 20,
-    orderBy: { tradeName: 'asc' },
+    const medicines = await prisma.medicine.findMany({
+      where: {
+        OR: [
+          { reference: { contains: query, mode: 'insensitive' } },
+          { activeIngredient: { contains: query, mode: 'insensitive' } },
+          { tradeName: { contains: query, mode: 'insensitive' } },
+        ],
+      },
+      select: { id: true, tradeName: true, reference: true, activeIngredient: true, status: true },
+      take: 20,
+      orderBy: { tradeName: 'asc' },
+    })
+
+    return medicines
   })
-
-  return medicines
 }
 
 export async function getMedicineForEdit(id: number) {
-  const session = await auth()
-  if (!session?.user) return null
-
-  return prisma.medicine.findUnique({ where: { id } })
+  return withAuthReturn(null, async () => {
+    return prisma.medicine.findUnique({ where: { id } })
+  })
 }
 
 export interface UpdateMedicineData {
@@ -59,16 +58,15 @@ export interface UpdateMedicineData {
 }
 
 export async function updateMedicine(id: number, data: UpdateMedicineData) {
-  const session = await auth()
-  if (!session?.user) return { success: false, error: 'Não autorizado' }
-
-  try {
-    await prisma.medicine.update({ where: { id }, data })
-    return { success: true }
-  } catch (error) {
-    return {
-      success: false,
-      error: `Erro ao salvar: ${error instanceof Error ? error.message : 'erro desconhecido'}`,
+  return withAuth(async () => {
+    try {
+      await prisma.medicine.update({ where: { id }, data })
+      return { success: true }
+    } catch (error) {
+      return {
+        success: false,
+        error: `Erro ao salvar: ${error instanceof Error ? error.message : 'erro desconhecido'}`,
+      }
     }
-  }
+  })
 }

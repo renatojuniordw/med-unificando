@@ -1,10 +1,3 @@
-export const LOCALE = 'pt-BR'
-
-export const STATUS = {
-  ATIVO: 'Ativo',
-  INATIVO: 'Inativo',
-} as const
-
 export const MEDICINE_LIMITS = {
   MAX_SIMILARES: 10,
   PRICE_DISPLAY_LIMIT: 20,
@@ -25,11 +18,6 @@ export const MEDICINE_LIMITS = {
 export const BATCH = {
   MEDICINE_IMPORT: 500,
   PRICE_IMPORT: 500,
-} as const
-
-export const UI = {
-  TOAST_DURATION_MS: 3000,
-  SCROLL_THRESHOLD: 400,
 } as const
 
 export const YEARS = {

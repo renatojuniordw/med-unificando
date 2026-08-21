@@ -1,11 +1,6 @@
-import { auth } from '@/auth'
-import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 
 export default async function AdminSearchAnalyticsPage() {
-  const session = await auth()
-  if (!session?.user) redirect('/admin/login')
-
   // Buscar dados diretamente do banco
   let topQueries: { query: string; count: number; avg_score: number }[] = []
   let noResults: { query: string; count: number }[] = []

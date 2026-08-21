@@ -4,10 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { parseQuery } from '@/lib/query-parser'
 import { SYNONYM_MAP, GENERIC_TERMS, COMPOUND_SUBJECTS } from '@/lib/dictionaries/synonyms'
 import { buildOrTsQuery } from '@/lib/keyword-utils'
-
-function stripAccents(str: string): string {
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-}
+import { stripAccents } from '@/lib/text-utils'
 
 function expandWithSynonyms(terms: string[]): string[] {
   const expanded = new Set(terms)

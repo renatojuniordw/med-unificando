@@ -1,4 +1,5 @@
 import { SYNONYM_MAP } from '@/lib/dictionaries/synonyms'
+import { PHARMACEUTICAL_FORMS, THERAPEUTIC_CLASSES, stripAccents, normalizeQuery } from '@/lib/text-utils'
 
 export interface QueryClassification {
   type: 'medicine-name' | 'condition' | 'therapeutic-class' | 'mixed'
@@ -6,23 +7,6 @@ export interface QueryClassification {
   medicineNameCandidate?: string
   conditionTerms?: string[]
 }
-
-const PHARMACEUTICAL_FORMS = new Set([
-  'xarope', 'comprimido', 'cápsula', 'gotas', 'injetável',
-  'solução', 'suspensão', 'pomada', 'creme', 'spray',
-  'aerossol', 'adesivo', 'implante', 'elixir', 'granulado',
-  'pó', 'supositório', 'óvulo', 'enema', 'colírio', 'xampu',
-])
-
-const THERAPEUTIC_CLASSES = new Set([
-  'antialérgico', 'anti-inflamatório', 'analgésico', 'antibiótico',
-  'antiviral', 'antifúngico', 'antidepressivo', 'ansiolítico',
-  'anticonvulsivante', 'anti-hipertensivo', 'diurético',
-  'anticoagulante', 'antidiabético', 'antilipêmico',
-  'antipsicótico', 'antiparkinsoniano', 'broncodilatador',
-  'corticosteroide', 'imunossupressor', 'relaxante muscular',
-  'vasoconstritor', 'vasodilatador',
-])
 
 const CONDITION_KEYWORDS = new Set([
   ...Object.keys(SYNONYM_MAP),
@@ -34,25 +18,6 @@ const FILLER_WORDS = new Set([
   'tomar', 'preciso', 'quero', 'buscar', 'procurar', 'acho',
   'qual', 'quais', 'me', 'dá', 'passa', 'indica',
 ])
-
-function stripAccents(str: string): string {
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-}
-
-function normalizeQuery(query: string): string {
-  return query
-    .toLowerCase()
-    .trim()
-    .replace(/rem[eé]dio\s+para\s+/g, '')
-    .replace(/medicamento\s+para\s+/g, '')
-    .replace(/tomar\s+/g, '')
-    .replace(/preciso\s+de\s+/g, '')
-    .replace(/quero\s+/g, '')
-    .replace(/buscar\s+/g, '')
-    .replace(/procurar\s+/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
 
 function hasConditionKeyword(words: string[]): boolean {
   const normalized = words.map(w => stripAccents(w))

@@ -1,12 +1,7 @@
 import { getFeedbackStats, getLowQualityQueries } from '@/lib/actions/search-feedback'
-import { auth } from '@/auth'
-import { redirect } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 
 export default async function AdminSearchFeedbackPage() {
-  const session = await auth()
-  if (!session?.user) redirect('/admin/login')
-
   const stats = await getFeedbackStats()
   const lowQuality = await getLowQualityQueries()
 

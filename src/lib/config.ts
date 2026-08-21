@@ -40,6 +40,9 @@ export const SEARCH = {
 
   // Penalidade quando resultado vem de uma única fonte (sem suporte cruzado)
   SINGLE_SOURCE_PENALTY: 0.80,
+
+  // Pagination
+  PAGE_SIZE: 20,
 } as const
 
 export const SITE = {

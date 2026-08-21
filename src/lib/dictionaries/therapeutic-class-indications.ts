@@ -512,7 +512,3 @@ export const THERAPEUTIC_CLASS_INDICATIONS: Record<string, string> = {
   'RITUXIMABE': 'câncer, artrite reumatoide, doença autoimune',
 }
 
-export function getTherapeuticClassIndications(therapeuticClass: string | null): string | null {
-  if (!therapeuticClass) return null
-  return THERAPEUTIC_CLASS_INDICATIONS[therapeuticClass.trim()] ?? null
-}

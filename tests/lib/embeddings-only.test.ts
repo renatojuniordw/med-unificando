@@ -13,6 +13,7 @@ vi.mock('@/lib/prisma', () => ({
 
 vi.mock('@/auth', () => ({ auth: vi.fn() }))
 
+
 vi.mock('@/lib/embeddings-generator', () => ({
   generateEmbeddings: vi.fn().mockResolvedValue({ count: 100 }),
 }))

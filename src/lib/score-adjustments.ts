@@ -2,6 +2,7 @@
 // Coleta dados de feedback e gera ajustes para melhorar a relevância
 
 import { prisma } from '@/lib/prisma'
+import { normalizeQuery } from '@/lib/text-utils'
 
 interface ScoreAdjustment {
   query: string
@@ -21,10 +22,6 @@ const MANUAL_ADJUSTMENTS: ScoreAdjustment[] = [
   // Anti-inflamatórios clássicos que merecem boost para "articulação"
   { query: 'articulação', medicineId: 0, boost: 0.15, confidence: 0.8 },
 ]
-
-function normalizeQuery(query: string): string {
-  return query.toLowerCase().trim()
-}
 
 // Buscar ajustes do banco de dados baseados em feedback
 async function loadAdjustmentsFromDb(): Promise<ScoreAdjustment[]> {
@@ -215,17 +212,4 @@ export async function applyScoreAdjustments<T extends {
   // (sem support semântico) têm scores típicos de 10-14%, sendo cortados.
   // Reduzido para 0.08 para preservar resultados keyword relevantes.
   .filter(r => r.score > 0.08)
-}
-
-// Função para limpar cache (útil para testes)
-export function clearAdjustmentsCache(): void {
-  adjustmentsCache = null
-  lastAdjustmentUpdate = 0
-}
-
-// Função para forçar recarga dos ajustes
-export async function reloadAdjustments(): Promise<number> {
-  clearAdjustmentsCache()
-  const adjustments = await loadAdjustmentsFromDb()
-  return adjustments.length
 }

@@ -47,8 +47,8 @@ export function useMedicineSearch(initialData: SearchResponse) {
         if (latestKeyRef.current === key) {
           setData(result)
         }
-      } catch {
-        // Silencia erro da busca
+      } catch (err) {
+        console.warn('Busca falhou:', err)
       } finally {
         if (latestKeyRef.current === key) {
           setLoading(false)

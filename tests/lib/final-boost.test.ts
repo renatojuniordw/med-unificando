@@ -26,8 +26,14 @@ vi.mock('@/lib/prisma', () => ({
 
 vi.mock('@/auth', () => ({ auth: vi.fn() }))
 
+
 vi.mock('@/lib/pdf-parser', () => ({
   parseMedicinePDF: vi.fn(),
+}))
+
+vi.mock('@/lib/csv-utils', () => ({
+  downloadCsv: vi.fn().mockResolvedValue(''),
+  parseCsvToRows: vi.fn().mockReturnValue([]),
 }))
 
 import { prisma } from '@/lib/prisma'
