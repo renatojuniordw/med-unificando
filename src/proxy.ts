@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   if (request.method === 'POST' && request.nextUrl.pathname === '/admin/login') {
     const ip = getClientIp(request)
     const rl = rateLimit(ip, 'login', { limit: 10 })
