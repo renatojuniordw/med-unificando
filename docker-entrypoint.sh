@@ -30,14 +30,12 @@ echo "🔧 Aplicando migrations..."
 npx prisma migrate deploy 2>&1
 echo "✅ Schema ok!"
 
-# ── 3. Verificar se já populou (se sim, pula init) ─────────────────────────
+# ── 3. Verificar dados iniciais (Seed ANVISA e Farmácia Popular) ───────────
 echo "🔍 Verificando dados existentes..."
 MED_COUNT=$(psql "$DATABASE_URL" -Atc "SELECT COUNT(*) FROM medicines;" 2>/dev/null || echo "0")
 echo "   Medicamentos no banco: $MED_COUNT"
 
-if [ "$MED_COUNT" != "0" ]; then
-  echo "⏩ Banco já populado — pulando init."
-else
+if [ "$MED_COUNT" = "0" ]; then
   echo "📥 Banco vazio — seed ANVISA + dados auxiliares..."
   npx tsx prisma/seed.ts 2>&1
   echo "✅ Seed concluído!"
@@ -45,18 +43,28 @@ else
   echo "🏪 Sincronizando Farmácia Popular..."
   npx tsx scripts/sync-farmacia-popular.ts 2>&1
   echo "✅ Farmácia Popular OK!"
+else
+  echo "⏩ Banco já populado com $MED_COUNT medicamentos — pulando seed da ANVISA."
+fi
 
-  echo "📋 Preenchendo indications a partir da classe terapêutica..."
-  npx tsx scripts/backfill-indications.ts 2>&1
-  echo "✅ Indicações OK!"
+# ── 3b. Verificação e geração automática de índices / embeddings ─────────────
+# Executa de forma resiliente e idempotente: mesmo com banco já populado (ex: dump
+# ou seed prévio), garante que todas as colunas de busca (FTS e pgvector) sejam preenchidas.
 
-  echo "🧠 Gerando embeddings de busca semântica..."
-  npx tsx scripts/generate-search-index.ts 2>&1
-  echo "✅ Embeddings OK!"
+echo "📋 Verificando indications a partir da classe terapêutica..."
+npx tsx scripts/backfill-indications.ts 2>&1 || echo "⚠️ Aviso: falha não-crítica no backfill de indicações"
 
-  echo "📑 Gerando tsvector..."
-  npx tsx scripts/generate-tsvector.ts 2>&1
-  echo "✅ Tsvector OK!"
+echo "📑 Verificando tsvector para busca textual..."
+npx tsx scripts/generate-tsvector.ts 2>&1 || echo "⚠️ Aviso: falha não-crítica no tsvector"
+
+echo "🧠 Verificando embeddings para busca semântica..."
+EMB_MISSING=$(psql "$DATABASE_URL" -Atc "SELECT COUNT(*) FROM medicines WHERE embedding IS NULL;" 2>/dev/null || echo "0")
+if [ "$EMB_MISSING" != "0" ]; then
+  echo "🧠 Encontrados $EMB_MISSING medicamentos sem embedding vetorial."
+  echo "🚀 Iniciando geração de embeddings em segundo plano para não travar o boot..."
+  npx tsx scripts/generate-search-index.ts 2>&1 &
+else
+  echo "✅ Embeddings 100% calculados!"
 fi
 
 # ── 4. Iniciar servidor ────────────────────────────────────────────────────

@@ -69,6 +69,7 @@ services:
         condition: service_healthy
     volumes:
       - transformers_cache:/tmp/.transformers-cache
+      - next_cache:/app/.next/cache
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:11006/api/health"]
       interval: 30s
@@ -78,7 +79,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 1.5G
           cpus: "2.0"
         reservations:
           memory: 256M
@@ -101,4 +102,6 @@ volumes:
   pgdata:
     driver: local
   transformers_cache:
+    driver: local
+  next_cache:
     driver: local

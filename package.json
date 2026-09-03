@@ -17,6 +17,7 @@
     "tsvector": "tsx scripts/generate-tsvector.ts",
     "backfill-indications": "tsx scripts/backfill-indications.ts",
     "farmacia-popular": "tsx scripts/sync-farmacia-popular.ts",
+    "db:index": "tsx scripts/backfill-indications.ts && tsx scripts/generate-tsvector.ts && tsx scripts/generate-search-index.ts",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:build": "docker compose build --no-cache"
