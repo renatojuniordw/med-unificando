@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import { PwaRegister } from "@/components/pwa-register";
 import { ScrollToTop } from "@/components/ui/scroll-to-top";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
@@ -79,7 +80,7 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#ffffff" />
         <link rel="icon" type="image/png" href="/favicon.png" sizes="any" />
-        <link rel="apple-touch-icon" href="/logo_thumbnail.svg" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
         <link rel="dns-prefetch" href={SITE.BASE_URL} />
         <script
           type="application/ld+json"
@@ -116,6 +117,7 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased min-h-screen flex flex-col" suppressHydrationWarning>
+        <PwaRegister />
         <ThemeProvider>
           <ToastProvider>
           <ConsoleCredits />

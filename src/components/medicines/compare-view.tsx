@@ -22,6 +22,15 @@ export function CompareView() {
   const [error, setError] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<number[]>(ids)
 
+  // Sincroniza com a URL quando ela muda externamente (back/forward, novo link),
+  // mantendo o estado de comparação consistente com ?ids=.
+  useEffect(() => {
+    const next = searchParams.get('ids')?.split(',').map(Number).filter(Boolean).slice(0, 10) || []
+    setSelectedIds(prev =>
+      prev.length === next.length && prev.every((v, i) => v === next[i]) ? prev : next
+    )
+  }, [searchParams])
+
   const syncUrl = useCallback((newIds: number[]) => {
     const params = new URLSearchParams()
     if (newIds.length > 0) params.set('ids', newIds.join(','))

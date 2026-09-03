@@ -17,6 +17,7 @@ import {
   getHolderMedicines,
   getHolderSummary,
   countMedicines,
+  searchMedicines,
 } from '@/lib/actions/search'
 import { getMedicinesByIds, searchMedicinesForCompare } from '@/lib/actions/compare'
 
@@ -163,5 +164,29 @@ describe('compare actions', () => {
       expect.objectContaining({ take: 10, orderBy: { reference: 'asc' } })
     )
     expect(result).toEqual([{ id: 1, label: 'REF1 — Med (Ing)' }])
+  })
+})
+
+describe('searchMedicines — clamp de pageSize (Fase 3)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(prisma.medicine.findMany).mockResolvedValue([])
+    vi.mocked(prisma.medicine.count).mockResolvedValue(0)
+  })
+
+  it('limita pageSize acima do máximo a MEDICINE_LIMITS.MAX_PAGE_SIZE (100)', async () => {
+    const result = await searchMedicines(1, 100_000)
+    expect(prisma.medicine.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ take: 100, skip: 0 })
+    )
+    expect(result.pageSize).toBe(100)
+  })
+
+  it('normaliza page/pageSize abaixo de 1 para 1', async () => {
+    const result = await searchMedicines(-3, -5)
+    expect(prisma.medicine.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ take: 1, skip: 0 })
+    )
+    expect(result).toMatchObject({ page: 1, pageSize: 1 })
   })
 })

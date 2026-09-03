@@ -41,6 +41,8 @@ export interface SearchResponse {
   total: number
   page: number
   pageSize: number
+  /** Contagem global de ativos (usada pelo header ATC; p/ listas paginadas). */
+  ativos?: number
 }
 
 export interface DistinctValue {

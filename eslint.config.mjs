@@ -14,6 +14,11 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "coverage/**",
     "src/generated/**",
+    // Artefatos gerados de teste/build local (não devem ser lintados):
+    "test-results/**",
+    "playwright-report/**",
+    ".playwright/**",
+    ".refactor/**",
   ]),
   {
     rules: {

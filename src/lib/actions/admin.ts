@@ -4,12 +4,37 @@ import { prisma } from "@/lib/prisma"
 import { withAdmin, withAdminReturn } from "@/lib/auth-guard"
 import { downloadCsv, parseCsvToRows } from "@/lib/csv-utils"
 import https from 'https'
+import { revalidatePath } from 'next/cache'
 import { anvisaAgent } from '@/lib/anvisa-https'
 import { BATCH } from "@/lib/constants"
 import { ANVISA } from "@/lib/config"
+import { planDiff, type DiffRow } from '@/lib/sync-diff'
 import type { ImportInfo } from "@/types"
 
 const CSV_URL = ANVISA.MEDICINES_URL
+
+// Campos de conteúdo que definem a identidade de uma linha no diff. anvisaFileDate,
+// lastImportAt e metadados de auditoria ficam DE FORA (mudam a cada import e seriam
+// um falso "update em tudo" no fingerprint).
+const CONTENT_KEYS = [
+  'reference',
+  'activeIngredient',
+  'tradeName',
+  'similarHolder',
+  'pharmaceuticalForm',
+  'concentration',
+  'inclusionDate',
+  'category',
+  'referenceMedicine',
+  'atcCode',
+  'prescriptionType',
+  'status',
+  'authorization',
+  'presentationCount',
+  'synonyms',
+  'indications',
+  'therapeuticClass',
+] as const
 
 const VALID_CATEGORIES = new Set([
   'SIMILAR', 'GENÉRICO', 'REFERÊNCIA', 'NOVO', 'ESPECÍFICO',
@@ -43,18 +68,27 @@ export async function importPdf(formData: FormData) {
         return { success: false, error: 'Nenhum medicamento encontrado no PDF' }
       }
 
-      await prisma.medicine.deleteMany()
+      await prisma.$transaction(async (tx) => {
+        // Impede importações concorrentes de varrerem o catálogo no meio.
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('unificando_sync'))`
 
-      let count = 0
-      for (const med of medicines) {
-        await prisma.medicine.create({ data: med })
-        count++
-      }
+        await tx.medicine.deleteMany()
+
+        const batchSize = BATCH.MEDICINE_IMPORT
+        for (let i = 0; i < medicines.length; i += batchSize) {
+          await tx.medicine.createMany({
+            data: medicines.slice(i, i + batchSize) as never,
+          })
+        }
+      }, { timeout: 120_000 })
+
+      revalidatePath('/dashboard')
+      revalidatePath('/atc')
 
       return {
         success: true,
-        count,
-        message: `${count} medicamentos importados com sucesso! (dados anteriores substituídos)`,
+        count: medicines.length,
+        message: `${medicines.length} medicamentos importados com sucesso! (dados anteriores substituídos)`,
       }
     } catch (error) {
       console.error('Erro ao processar PDF:', error)
@@ -130,14 +164,43 @@ function transformRow(
   }
 }
 
-async function bulkReplaceMedicines(medicines: Array<Record<string, unknown>>) {
-  await prisma.medicine.deleteMany()
+async function bulkReplaceMedicines(
+  medicines: Array<Record<string, unknown>>,
+  remoteTimestamp: Date,
+  now: Date
+) {
+  // Diff preservando IDS: URLs públicas (/medicamento/{id}), favoritos e comparação
+  // só quebram quando o id muda — aqui mantemos os ids estáveis entre imports.
+  // Linhas idênticas ficam intactas, alteradas viram UPDATE, removidas viram DELETE,
+  // novas viram INSERT; tudo dentro de uma transação (rollback se falhar no meio).
+  const existing = await prisma.medicine.findMany({
+    select: { id: true, ...Object.fromEntries(CONTENT_KEYS.map(k => [k, true])) },
+  }) as unknown as DiffRow[]
 
-  const batchSize = BATCH.MEDICINE_IMPORT
-  for (let i = 0; i < medicines.length; i += batchSize) {
-    const batch = medicines.slice(i, i + batchSize)
-    await prisma.medicine.createMany({ data: batch as never })
-  }
+  const { toCreate, toUpdate, toDeleteIds } = planDiff(existing, medicines, [...CONTENT_KEYS], 'reference')
+
+  await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('unificando_sync'))`
+
+    const batchSize = BATCH.MEDICINE_IMPORT
+    for (let i = 0; i < toCreate.length; i += batchSize) {
+      await tx.medicine.createMany({ data: toCreate.slice(i, i + batchSize) as never })
+    }
+
+    for (const { id, patch } of toUpdate) {
+      await tx.medicine.update({ where: { id }, data: patch })
+    }
+
+    if (toDeleteIds.length > 0) {
+      await tx.medicine.deleteMany({ where: { id: { in: toDeleteIds } } })
+    }
+
+    // Metadados de import em massa (mantém o skip-check de anvisaFileDate).
+    await tx.$executeRaw`
+      UPDATE medicines
+      SET "anvisaFileDate" = ${remoteTimestamp}, "lastImportAt" = ${now}, "updatedAt" = ${now}
+    `
+  }, { timeout: 120_000 })
 }
 
 function fetchAndParseCSV(url: string) {
@@ -214,15 +277,26 @@ export async function syncWithAnvisa() {
         return { success: false, error: 'Nenhum medicamento encontrado no CSV' }
       }
 
-      await bulkReplaceMedicines(medicines)
+      await bulkReplaceMedicines(medicines, remoteTimestamp, now)
 
       await prisma.syncLog.create({
         data: { type: 'medicines', count: medicines.length, status: 'success' },
       })
 
+      // Invalida os caches de página (dashboard/atc usam unstable_cache 1h).
+      revalidatePath('/dashboard')
+      revalidatePath('/atc')
+
       const { regenerateEmbeddings } = await import('@/lib/actions/embeddings')
       regenerateEmbeddings().catch(err =>
         console.error('[sync] Background embedding regeneration failed:', err)
+      )
+
+      // Texto de busca: o trigger já preencheu vetores crus no insert; este
+      // refinamento (fire-and-forget) eleva a qualidade com nomes ATC/forma resolvidos.
+      const { refreshTsvector } = await import('@/lib/tsvector-refresh')
+      refreshTsvector(prisma).catch(err =>
+        console.error('[sync] Background tsvector refinement failed:', err)
       )
 
       return {

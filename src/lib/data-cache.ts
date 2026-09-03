@@ -5,10 +5,32 @@
 import { unstable_cache } from 'next/cache'
 import { prisma } from '@/lib/prisma'
 import { getMedicineDetail } from '@/lib/actions/medicine-detail'
-import { getMedicinesByAtc } from '@/lib/actions/atc'
-import { getHolderMedicines, getHolderSummary } from '@/lib/actions/search'
+import { getMedicinesByAtc, getAtcLevels } from '@/lib/actions/atc'
+import { getHolderMedicines, getHolderSummary, getDashboardStats } from '@/lib/actions/search'
+import type { SearchFilters } from '@/types'
 
 const REVALIDATE = 3600
+
+export const getCachedDashboardStats = unstable_cache(
+  async () => getDashboardStats(),
+  ['dashboard-stats'],
+  { revalidate: REVALIDATE }
+)
+
+export const getCachedAtcLevels = unstable_cache(
+  async () => getAtcLevels(),
+  ['atc-levels'],
+  { revalidate: REVALIDATE }
+)
+
+export const getCachedFilteredStats = unstable_cache(
+  async (filters: SearchFilters) => {
+    const { getFilteredStats } = await import('@/lib/actions/search')
+    return getFilteredStats(filters)
+  },
+  ['filtered-stats'],
+  { revalidate: REVALIDATE }
+)
 
 export const getCachedMedicineDetail = unstable_cache(
   async (id: number) => getMedicineDetail(id),

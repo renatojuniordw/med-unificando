@@ -14,17 +14,20 @@ vi.mock('@/lib/actions/medicine-detail', () => ({
 
 vi.mock('@/lib/actions/atc', () => ({
   getMedicinesByAtc: vi.fn(),
+  getAtcLevels: vi.fn(),
 }))
 
 vi.mock('@/lib/actions/search', () => ({
   getHolderMedicines: vi.fn(),
   getHolderSummary: vi.fn(),
+  getDashboardStats: vi.fn(),
+  getFilteredStats: vi.fn(),
 }))
 
 import { prisma } from '@/lib/prisma'
 import { getMedicineDetail } from '@/lib/actions/medicine-detail'
-import { getMedicinesByAtc } from '@/lib/actions/atc'
-import { getHolderMedicines, getHolderSummary } from '@/lib/actions/search'
+import { getMedicinesByAtc, getAtcLevels } from '@/lib/actions/atc'
+import { getHolderMedicines, getHolderSummary, getDashboardStats, getFilteredStats } from '@/lib/actions/search'
 import {
   getCachedMedicineDetail,
   getCachedAtcMedicines,
@@ -32,6 +35,9 @@ import {
   getCachedHolderSummary,
   getCachedReferenceMedicines,
   getCachedSitemapData,
+  getCachedDashboardStats,
+  getCachedAtcLevels,
+  getCachedFilteredStats,
 } from '@/lib/data-cache'
 
 describe('data-cache wrappers (unstable_cache pass-through)', () => {
@@ -81,6 +87,24 @@ describe('data-cache wrappers (unstable_cache pass-through)', () => {
       })
     )
     expect(result).toEqual([{ tradeName: 'A' }])
+  })
+
+  it('getCachedDashboardStats delegates to getDashboardStats', async () => {
+    vi.mocked(getDashboardStats).mockResolvedValue({ totalMedicines: 1 } as never)
+    await getCachedDashboardStats()
+    expect(getDashboardStats).toHaveBeenCalledTimes(1)
+  })
+
+  it('getCachedAtcLevels delegates to getAtcLevels', async () => {
+    vi.mocked(getAtcLevels).mockResolvedValue({ level1: [], level2: [], level3: [] } as never)
+    await getCachedAtcLevels()
+    expect(getAtcLevels).toHaveBeenCalledTimes(1)
+  })
+
+  it('getCachedFilteredStats delegates to getFilteredStats (import dinâmico)', async () => {
+    vi.mocked(getFilteredStats).mockResolvedValue({ totalMedicines: 2 } as never)
+    await getCachedFilteredStats({ year: '2026', category: 'Genérico', status: 'Ativo' } as never)
+    expect(getFilteredStats).toHaveBeenCalledWith(expect.objectContaining({ year: '2026' }))
   })
 
   it('getCachedSitemapData aggregates the four findMany queries', async () => {

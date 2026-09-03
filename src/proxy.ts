@@ -14,5 +14,8 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/login'],
+  // O POST de credenciais do NextAuth também é alvo de brute force; o gate de
+  // verdade fica na route /api/auth/callback/credentials (rate-limit por IP),
+  // este matcher é defesa em profundidade na borda.
+  matcher: ['/admin/login', '/api/auth/callback/credentials'],
 }

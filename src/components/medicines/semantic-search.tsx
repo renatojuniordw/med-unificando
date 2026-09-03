@@ -65,6 +65,7 @@ export function SemanticSearch() {
   // Sugestões: estáticas + dinâmicas da API
   const [dynamicSuggestions, setDynamicSuggestions] = useState<{ label: string; sublabel?: string | null }[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const requestIdRef = useRef(0); // guard anti-resposta-obsoleta da busca
 
   // Buscar sugestões dinâmicas da API enquanto digita
   useEffect(() => {
@@ -103,6 +104,9 @@ export function SemanticSearch() {
   async function handleSearch(q?: string) {
     const searchQuery = q ?? query;
     if (!searchQuery.trim()) return;
+    // Guard de request: incrementa a cada busca/limpeza para que a resposta de uma
+    // busca antiga (atrasada) não sobrescreva o resultado de uma mais recente.
+    const id = ++requestIdRef.current;
     setLoading(true);
     setSearched(true);
     setQuery(searchQuery);
@@ -112,14 +116,16 @@ export function SemanticSearch() {
 
     try {
       const data = await hybridSearch(searchQuery, 20);
+      if (requestIdRef.current !== id) return; // resposta obsoleta — descarta
       setResults(data.results);
       setSearchSuggestions(data.suggestions);
     } catch (err) {
+      if (requestIdRef.current !== id) return;
       console.error("[BUSCA DESCRIÇÃO] [Client] Erro ao chamar hybridSearch:", err);
       setResults([]);
       setSearchSuggestions([]);
     } finally {
-      setLoading(false);
+      if (requestIdRef.current === id) setLoading(false);
     }
   }
 
@@ -202,6 +208,7 @@ export function SemanticSearch() {
                 <button
                   type="button"
                   onClick={() => {
+                    requestIdRef.current++; // invalida requisição em voo
                     setQuery("");
                     setResults([]);
                     setSearchSuggestions([]);

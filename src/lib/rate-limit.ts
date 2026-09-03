@@ -12,6 +12,30 @@ interface Bucket {
 
 const buckets = new Map<string, Bucket>()
 
+// Auditoria de retenção: o Map nunca é podado (chaves únicas por IP+scope e
+// headers forjáveis podem crescer sem limite). Um sweep periódico remove buckets
+// expirados; se ainda assim estourar o teto (XFF aleatórios), evicta os mais antigos.
+const MAX_BUCKETS = 10_000
+let lastSweepAt = 0
+
+function sweepBuckets(now: number): void {
+  if (now - lastSweepAt < 60_000 && buckets.size <= MAX_BUCKETS) return
+  lastSweepAt = now
+
+  if (buckets.size > MAX_BUCKETS) {
+    // Evicta do início (Map preserva ordem de inserção) até ficar abaixo do teto
+    // (deixa 1 slot livre para a chave sendo processada na chamada atual).
+    for (const key of buckets.keys()) {
+      if (buckets.size <= MAX_BUCKETS - 1) break
+      buckets.delete(key)
+    }
+  } else {
+    for (const [key, bucket] of buckets) {
+      if (bucket.resetAt <= now) buckets.delete(key)
+    }
+  }
+}
+
 export interface RateLimitOptions {
   limit: number
   windowMs?: number
@@ -31,6 +55,8 @@ export function rateLimit(ip: string, scope: string, options: RateLimitOptions):
   const windowMs = options.windowMs ?? WINDOW_MS
   const now = Date.now()
   const key = getKey(ip, scope)
+
+  sweepBuckets(now)
 
   const bucket = buckets.get(key)
   if (!bucket || bucket.resetAt <= now) {

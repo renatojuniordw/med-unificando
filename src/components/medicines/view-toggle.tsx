@@ -15,6 +15,7 @@ export function ViewToggle({ view, onChange }: ViewToggleProps) {
         variant={view === 'cards' ? 'primary' : 'ghost'}
         size="sm"
         data-testid="view-toggle-cards"
+        aria-pressed={view === 'cards'}
         onClick={() => onChange('cards')}
       >
         Cards
@@ -24,6 +25,7 @@ export function ViewToggle({ view, onChange }: ViewToggleProps) {
         variant={view === 'table' ? 'primary' : 'ghost'}
         size="sm"
         data-testid="view-toggle-table"
+        aria-pressed={view === 'table'}
         onClick={() => onChange('table')}
       >
         Tabela

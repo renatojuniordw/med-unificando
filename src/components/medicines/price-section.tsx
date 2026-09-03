@@ -52,8 +52,8 @@ export function PriceSection({ prices }: { prices: Price[] }) {
             {prices.map(p => (
               <tr key={p.id} className="border-t border-border">
                 <td className="p-2.5 font-medium">{p.presentation}</td>
-                <td className="p-2.5">{p.pf0Price ? `R$${p.pf0Price.toFixed(2)}` : '-'}</td>
-                <td className="p-2.5">{p.pf18Price ? `R$${p.pf18Price.toFixed(2)}` : '-'}</td>
+                <td className="p-2.5">{p.pf0Price != null ? `R$${p.pf0Price.toFixed(2)}` : '-'}</td>
+                <td className="p-2.5">{p.pf18Price != null ? `R$${p.pf18Price.toFixed(2)}` : '-'}</td>
                 <td className="p-2.5">{p.company}</td>
               </tr>
             ))}

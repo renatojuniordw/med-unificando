@@ -67,7 +67,8 @@ export function AtcCodeContent({ code, initialData }: AtcCodeContentProps) {
   }, [code, page])
 
   const totalPages = Math.ceil(data.total / data.pageSize)
-  const ativos = data.data.filter((m: MedicineResult) => m.status === 'Ativo').length
+  // Contagem global vinda da action (não da página atual).
+  const ativos = data.ativos ?? data.data.filter((m: MedicineResult) => m.status === 'Ativo').length
   const inativos = data.total - ativos
   
   function handlePageChange(p: number) {

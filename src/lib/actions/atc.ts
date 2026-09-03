@@ -44,7 +44,9 @@ export async function getMedicinesByAtc(code: string, page: number = 1, pageSize
   const where = { atcCode: { startsWith: code, mode: 'insensitive' as const } }
   const skip = (page - 1) * pageSize
 
-  const [medicines, total] = await Promise.all([
+  // `ativos` é contagem GLOBAL (não da página): o header "X ativos, Y inativos"
+  // misturava ativos da página atual com total global, errando o número.
+  const [medicines, total, ativos] = await Promise.all([
     prisma.medicine.findMany({
       where,
       orderBy: { tradeName: 'asc' },
@@ -52,6 +54,7 @@ export async function getMedicinesByAtc(code: string, page: number = 1, pageSize
       take: pageSize,
     }),
     prisma.medicine.count({ where }),
+    prisma.medicine.count({ where: { ...where, status: 'Ativo' } }),
   ])
-  return { data: medicines.map(normalizeMedicine), total, page, pageSize }
+  return { data: medicines.map(normalizeMedicine), total, ativos, page, pageSize }
 }

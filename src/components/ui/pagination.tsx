@@ -22,6 +22,7 @@ export function PaginationBar({ page, totalPages, total, pageSize, onPageChange,
         {onPageSizeChange && (
           <select
             data-testid="pagination-page-size-select"
+            aria-label="Itens por página"
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
             className="border border-border rounded-sm bg-[var(--color-bg)] p-1.5 text-xs text-[var(--color-text)]"

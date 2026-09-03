@@ -30,8 +30,12 @@ export function useAutocomplete({ itemCount, onSelect }: UseAutocompleteOptions)
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      e.preventDefault()
-      if (itemCount > 0 && activeIndex >= 0) {
+      // Só intercepta quando há uma sugestão selecionada para consumir. Sem
+      // sugestão/sel ação, deixa o Enter fluir para o submit do form (busca
+      // avançada usa form) — antes o Enter era sempre engolido e o form nunca
+      // submetia por teclado.
+      if (itemCount > ​0 && activeIndex >= 0) {
+        e.preventDefault()
         onSelect?.(activeIndex)
         inputRef.current?.focus()
       }

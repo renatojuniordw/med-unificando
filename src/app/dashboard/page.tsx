@@ -1,4 +1,4 @@
-import { getDashboardStats } from '@/lib/actions/search'
+import { getCachedDashboardStats } from '@/lib/data-cache'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DashboardFilters } from '@/components/dashboard/dashboard-filters'
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 }
 
 async function DashboardStats() {
-  const stats = await getDashboardStats()
+  const stats = await getCachedDashboardStats()
 
   return (
     <div className="space-y-12">

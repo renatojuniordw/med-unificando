@@ -10,30 +10,41 @@ vi.mock('https', () => {
   }
 })
 
+// Objeto compartilhado: o mesmo objeto é o `prisma` e o `tx` da transaction
+// (que executa o callback passando o próprio objeto). Assim asserts antigos em
+// prisma.medicine.deleteMany etc. continuam vendo as chamadas feitas via tx.
+const prismaMocks = vi.hoisted(() => ({
+  medicine: {
+    findFirst: vi.fn(),
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    count: vi.fn(),
+    deleteMany: vi.fn(),
+    createMany: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    groupBy: vi.fn(),
+  },
+  price: {
+    count: vi.fn(),
+    findMany: vi.fn(),
+    deleteMany: vi.fn(),
+    createMany: vi.fn(),
+  },
+  syncLog: { create: vi.fn(), findMany: vi.fn() },
+  $queryRaw: vi.fn().mockResolvedValue([]),
+  $queryRawUnsafe: vi.fn().mockResolvedValue([]),
+  $executeRaw: vi.fn().mockResolvedValue(1),
+}))
+
 vi.mock('@/lib/prisma', () => ({
   prisma: {
-    medicine: {
-      findFirst: vi.fn(),
-      findMany: vi.fn(),
-      findUnique: vi.fn(),
-      count: vi.fn(),
-      deleteMany: vi.fn(),
-      createMany: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      groupBy: vi.fn(),
-    },
-    price: {
-      count: vi.fn(),
-      findMany: vi.fn(),
-      deleteMany: vi.fn(),
-      createMany: vi.fn(),
-    },
-    syncLog: { create: vi.fn(), findMany: vi.fn() },
-    $queryRaw: vi.fn().mockResolvedValue([]),
-    $queryRawUnsafe: vi.fn().mockResolvedValue([]),
+    ...prismaMocks,
+    $transaction: vi.fn((fn: (tx: unknown) => unknown) => fn(prismaMocks)),
   },
 }))
+
+vi.mock('next/cache', () => ({ revalidatePath: vi.fn(), unaffected_cache: undefined }))
 
 vi.mock('@/auth', () => ({
   auth: vi.fn(),

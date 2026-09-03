@@ -25,7 +25,8 @@ export default defineConfig({
         'src/lib/pdf-parser.ts',
         'src/lib/prisma.ts',
         'src/lib/auth.config.ts',
-        'src/lib/hooks/**',
+        // Excluído por design: injeta modelo on-device (transformers) pesado na
+        // suíte; a cobertura reportada é dos caminhos restantes (documentado).
         'src/lib/actions/semantic-search.ts',
         'src/app/api/\[...nextauth\]/**',
       ],

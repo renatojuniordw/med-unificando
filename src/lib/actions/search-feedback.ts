@@ -44,9 +44,10 @@ export async function submitSearchFeedback(data: unknown): Promise<{ success: bo
     revalidatePath('/admin/search-feedback')
     return { success: true }
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Erro desconhecido'
-    console.error('Erro ao salvar feedback:', message)
-    return { success: false, error: message }
+    // Nunca devolver error.message ao client (pode conter detalhes internos do
+    // Prisma/SQL). Detalhes ficam apenas no log do servidor.
+    console.error('Erro ao salvar feedback:', error)
+    return { success: false, error: 'Erro ao salvar feedback. Tente novamente.' }
   }
 }
 

@@ -45,6 +45,18 @@ describe('rateLimit', () => {
     const other = rateLimit('1.1.1.1', 'rl-p5b', { limit: 1 })
     expect(other.allowed).toBe(true)
   })
+
+  it('evicta buckets antigos quando o Map estoura o teto (anti-leak com XFF forjável)', () => {
+    const scope = 'rl-evic'
+    // 10.002 chaves distintas — acima do teto (10.000) → os primeiros são evictados
+    for (let i = 0; i < 10_002; i++) {
+      rateLimit(`evict-ip-${i}`, scope, { limit: 1, windowMs: 60_000 })
+    }
+    // O primeiro IP inserido foi evictado: nova chamada volta a permitir (se o
+    // bucket ainda existisse, estaria bloqueado por count>limit).
+    const again = rateLimit('evict-ip-0', scope, { limit: 1, windowMs: 60_000 })
+    expect(again.allowed).toBe(true)
+  })
 })
 
 describe('getClientIp', () => {

@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { getAtcLevels } from '@/lib/actions/atc'
+import { getCachedAtcLevels } from '@/lib/data-cache'
 import { AtcTree } from '@/components/medicines/atc-tree'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 }
 
 async function AtcTreeContainer() {
-  const levels = await getAtcLevels()
+  const levels = await getCachedAtcLevels()
   return <AtcTree level1={levels.level1} level2={levels.level2} level3={levels.level3} />
 }
 

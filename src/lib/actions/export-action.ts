@@ -5,6 +5,7 @@ import { buildWhere } from "@/lib/build-where"
 import { normalizeMedicine } from "@/lib/format"
 import {
   MEDICINE_EXPORT_HEADERS,
+  EXPORT_MEDICINE_SELECT,
   medicineToExportObject,
   medicineToExportRow,
   toCsv,
@@ -23,6 +24,7 @@ export async function exportToExcel(filters?: SearchFilters): Promise<{ filename
   const data = await prisma.medicine.findMany({
     where,
     orderBy: { reference: 'asc' },
+    select: EXPORT_MEDICINE_SELECT,
   })
 
   const worksheet = XLSX.utils.json_to_sheet(
@@ -47,6 +49,7 @@ export async function exportToCsv(filters?: SearchFilters): Promise<{ filename: 
   const data = await prisma.medicine.findMany({
     where,
     orderBy: { reference: 'asc' },
+    select: EXPORT_MEDICINE_SELECT,
   })
 
   const rows = (data as unknown as MedicineResult[])

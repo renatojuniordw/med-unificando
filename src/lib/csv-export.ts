@@ -1,5 +1,24 @@
 import type { MedicineResult } from "@/types"
 
+// Select mínimo dos campos de exportação — evita trafegar embedding (768d) e
+// search_document nas consultas de export (payload pesado desnecessário).
+export const EXPORT_MEDICINE_SELECT = {
+  reference: true,
+  activeIngredient: true,
+  tradeName: true,
+  similarHolder: true,
+  pharmaceuticalForm: true,
+  concentration: true,
+  inclusionDate: true,
+  category: true,
+  referenceMedicine: true,
+  atcCode: true,
+  prescriptionType: true,
+  status: true,
+  authorization: true,
+  presentationCount: true,
+} as const
+
 // Fonte única de verdade para a exportação de medicamentos.
 // Tanto o CSV (medicineToExportRow) quanto o Excel/XLSX (medicineToExportObject)
 // derivam desta tabela, evitando que os dois mapeadores divirjam.

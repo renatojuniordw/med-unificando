@@ -37,16 +37,20 @@ export async function syncPrices() {
         })
       }
 
-      await prisma.price.deleteMany()
+      await prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('unificando_sync'))`
 
-      const batchSize = BATCH.PRICE_IMPORT
-      for (let i = 0; i < prices.length; i += batchSize) {
-        await prisma.price.createMany({ data: prices.slice(i, i + batchSize) as never })
-      }
+        await tx.price.deleteMany()
 
-      await prisma.syncLog.create({
-        data: { type: 'prices', count: prices.length, status: 'success' },
-      })
+        const batchSize = BATCH.PRICE_IMPORT
+        for (let i = 0; i < prices.length; i += batchSize) {
+          await tx.price.createMany({ data: prices.slice(i, i + batchSize) as never })
+        }
+
+        await tx.syncLog.create({
+          data: { type: 'prices', count: prices.length, status: 'success' },
+        })
+      }, { timeout: 120_000 })
 
       return { success: true, count: prices.length, message: `${prices.length} preços importados!` }
     } catch (error) {

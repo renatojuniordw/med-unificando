@@ -1,7 +1,7 @@
 'use client'
 
 import { useSearchParams, useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { getHolderMedicines } from '@/lib/actions/search'
 import { searchAutocomplete } from '@/lib/actions/search'
 import { StatusFilter } from '@/components/medicines/status-filter'
@@ -45,7 +45,33 @@ export function HolderContent({ holder, initialData, totalMedicines, ativos, cat
     setSearchInput(q)
   }, [q])
 
+  const searchCommittedRef = useRef(q)
   useEffect(() => {
+    searchCommittedRef.current = q
+  }, [q])
+
+  // Debounce de digitação: o input atualiza localmente a cada tecla; a navegação
+  // (busca no servidor) só acontece 400ms após parar de digitar, e apenas quando o
+  // valor difere do que está comitado na URL (evita fetch a cada keystroke).
+  useEffect(() => {
+    if (searchInput === searchCommittedRef.current) return
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString())
+      if (searchInput) params.set('q', searchInput)
+      else params.delete('q')
+      params.set('page', '1')
+      router.push(`?${params.toString()}`)
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [searchInput, searchParams, router])
+
+  // Guard de resposta obsoleta: só aplica a última requisição disparada (pelo
+  // debounce de cima ou por seleção de sugestão/paginação).
+  const fetchKeyRef = useRef('')
+  useEffect(() => {
+    const key = `${holder}-${page}-${pageSize}-${q}-${status}`
+    fetchKeyRef.current = key
+
     async function fetch() {
       setLoading(true)
       setError(null)
@@ -57,11 +83,11 @@ export function HolderContent({ holder, initialData, totalMedicines, ativos, cat
           q || undefined,
           status || undefined
         )
-        setData(result)
+        if (fetchKeyRef.current === key) setData(result)
       } catch {
-        setError('Não foi possível carregar os medicamentos. Tente novamente.')
+        if (fetchKeyRef.current === key) setError('Não foi possível carregar os medicamentos. Tente novamente.')
       } finally {
-        setLoading(false)
+        if (fetchKeyRef.current === key) setLoading(false)
       }
     }
     fetch()
@@ -77,6 +103,11 @@ export function HolderContent({ holder, initialData, totalMedicines, ativos, cat
     else params.delete('q')
     params.set('page', '1')
     router.push(`?${params.toString()}`)
+  }
+
+  // onSelect de uma sugestão navega imediatamente (sem esperar o debounce).
+  function handleSelectSuggestion(value: string) {
+    handleSearch(value)
   }
 
   function handleStatusChange(s: string) {
@@ -128,8 +159,8 @@ export function HolderContent({ holder, initialData, totalMedicines, ativos, cat
           label=""
           placeholder="Buscar por nome comercial ou princípio ativo..."
           value={searchInput}
-          onChange={handleSearch}
-          onSelect={handleSearch}
+          onChange={(value) => setSearchInput(value)}
+          onSelect={handleSelectSuggestion}
           fieldKey="holderSearch"
           fetchSuggestions={(query) => searchAutocomplete('tradeName', query)}
         />

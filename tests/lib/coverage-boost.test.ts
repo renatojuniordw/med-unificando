@@ -7,24 +7,35 @@ vi.mock('https', () => ({
   get: vi.fn(),
 }))
 
+// Objeto compartilhado: o mesmo objeto é o `prisma` e o `tx` da transaction
+// (que executa o callback passando o próprio objeto), preservando asserts antigos.
+const prismaMocks = vi.hoisted(() => ({
+  medicine: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    count: vi.fn(),
+    groupBy: vi.fn(),
+    update: vi.fn(),
+    findFirst: vi.fn(),
+    deleteMany: vi.fn(),
+    createMany: vi.fn(),
+  },
+  price: { count: vi.fn(), findMany: vi.fn(), deleteMany: vi.fn(), createMany: vi.fn() },
+  syncLog: { create: vi.fn(), findMany: vi.fn() },
+  $queryRaw: vi.fn().mockResolvedValue([]),
+  $queryRawUnsafe: vi.fn().mockResolvedValue([]),
+  $executeRawUnsafe: vi.fn().mockResolvedValue([{ count: 0 }]),
+  $executeRaw: vi.fn().mockResolvedValue(1),
+}))
+
 vi.mock('@/lib/prisma', () => ({
   prisma: {
-    medicine: {
-      findMany: vi.fn(),
-      findUnique: vi.fn(),
-      count: vi.fn(),
-      groupBy: vi.fn(),
-      update: vi.fn(),
-      findFirst: vi.fn(),
-      deleteMany: vi.fn(),
-      createMany: vi.fn(),
-    },
-    price: { count: vi.fn(), findMany: vi.fn(), deleteMany: vi.fn(), createMany: vi.fn() },
-    syncLog: { create: vi.fn(), findMany: vi.fn() },
-    $queryRaw: vi.fn().mockResolvedValue([]),
-    $queryRawUnsafe: vi.fn().mockResolvedValue([]),
+    ...prismaMocks,
+    $transaction: vi.fn((fn: (tx: unknown) => unknown) => fn(prismaMocks)),
   },
 }))
+
+vi.mock('next/cache', () => ({ revalidatePath: vi.fn(), unaffected_cache: undefined }))
 
 vi.mock('@/auth', () => ({ auth: vi.fn() }))
 
@@ -54,7 +65,8 @@ describe('admin - full sync path', () => {
   it('syncs and creates sync log', async () => {
     mockAuth(auth).mockResolvedValue(MOCK_SESSION)
     vi.mocked(prisma.medicine.findFirst).mockResolvedValue({ anvisaFileDate: new Date('2020-01-01') } as never)
-    vi.mocked(prisma.medicine.deleteMany).mockResolvedValue({ count: 0 })
+    // Diff preservando ids: sem registros existentes → tudo é create
+    vi.mocked(prisma.medicine.findMany).mockResolvedValue([])
     vi.mocked(prisma.medicine.createMany).mockResolvedValue({ count: 1 })
     vi.mocked(prisma.syncLog.create).mockResolvedValue({} as never)
 

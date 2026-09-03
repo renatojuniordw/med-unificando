@@ -1,5 +1,4 @@
 import { getCachedMedicineDetail } from '@/lib/data-cache'
-import { prisma } from '@/lib/prisma'
 import { safeJsonLd } from '@/lib/safe-json-ld'
 import { Badge } from '@/components/ui/badge'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
@@ -15,7 +14,10 @@ export const dynamic = 'force-dynamic'
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
-  const med = await prisma.medicine.findUnique({ where: { id: parseInt(id) } })
+  const parsedId = parseInt(id)
+  // Reusa o mesmo cache de 1h do corpo da página (evita query duplicada no DB).
+  const detail = Number.isNaN(parsedId) ? null : await getCachedMedicineDetail(parsedId)
+  const med = detail?.medicine
   if (!med) return { title: 'Medicamento não encontrado' }
 
   const title = `${med.tradeName} — ${med.activeIngredient} | Med Unificando`

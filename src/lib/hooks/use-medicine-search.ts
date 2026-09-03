@@ -11,6 +11,7 @@ export function useMedicineSearch(initialData: SearchResponse) {
   const [data, setData] = useState<SearchResponse>(initialData)
   const [loading, setLoading] = useState(false)
   const latestKeyRef = useRef('')
+  const skipFirstRef = useRef(true)
 
   const page = Number(searchParams.get('page')) || 1
   const pageSize = Number(searchParams.get('pageSize')) || 10
@@ -37,6 +38,14 @@ export function useMedicineSearch(initialData: SearchResponse) {
   }), [query, reference, activeIngredient, tradeName, category, status, similarHolder, pharmaceuticalForm, farmaciaPopular])
 
   useEffect(() => {
+    // O SSR/já serviu o initialData para a URL atual — pular a 1ª execução evita
+    // uma chamada dupla no mount (que trocava o resultado server por skeleton).
+    if (skipFirstRef.current) {
+      skipFirstRef.current = false
+      setLoading(false)
+      return
+    }
+
     const key = `${page}-${pageSize}-${JSON.stringify(currentFilters)}`
     latestKeyRef.current = key
 

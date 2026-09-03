@@ -18,6 +18,7 @@ export function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
   const { theme, toggle } = useTheme()
   const menuRef = useRef<HTMLDivElement>(null)
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
   const pathname = usePathname()
 
   function isActive(href: string) {
@@ -35,6 +36,16 @@ export function Header() {
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
   }, [menuOpen, closeMenu])
+
+  useEffect(() => {
+    if (!menuOpen) return
+    // Foco vai para o primeiro link do menu; ao fechar, devolve ao botão que abriu.
+    // (trap de Tab dentro do nav mobile: o backdrop + Escape fecham; os links
+    // navegam e fecham via onClick=closeMenu)
+    const firstLink = document.querySelector<HTMLAnchorElement>('#header-mobile-nav a')
+    firstLink?.focus()
+    return () => { menuButtonRef.current?.focus() }
+  }, [menuOpen])
 
   useEffect(() => {
     if (!menuOpen) return
@@ -99,10 +110,12 @@ export function Header() {
             </button>
 
             <button
+              ref={menuButtonRef}
               data-testid="header-menu-button"
               className="lg:hidden w-11 h-11 flex items-center justify-center text-[var(--color-text)] border border-[var(--color-border)] rounded-sm hover:bg-[var(--color-bg-secondary)] transition-colors"
               onClick={() => setMenuOpen(!menuOpen)}
               aria-label={menuOpen ? 'Fechar menu' : 'Abrir menu'}
+              aria-controls="header-mobile-nav"
               aria-expanded={menuOpen}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -124,6 +137,7 @@ export function Header() {
           <>
             <div className="fixed inset-0 bg-black/20 z-40 lg:hidden" onClick={closeMenu} />
             <nav
+              id="header-mobile-nav"
               data-testid="header-mobile-nav"
               className="relative z-50 lg:hidden pb-4 border-t border-[var(--color-border)] pt-3 bg-[var(--color-bg)]"
               aria-label="Navegação mobile"

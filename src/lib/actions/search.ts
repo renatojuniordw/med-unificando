@@ -7,6 +7,7 @@ import { normalizeMedicine } from "@/lib/format"
 import * as Prisma from "@/generated/prisma/internal/prismaNamespace"
 import type { SearchFilters, SearchResponse, DistinctValue, DashboardStats } from "@/types"
 import { SEARCH } from "@/lib/config"
+import { MEDICINE_LIMITS } from "@/lib/constants"
 import { assertActionRateLimit } from "@/lib/rate-limit-action"
 
 // Fragmento SQL único para extrair o ano da coluna "inclusionDate" (string).
@@ -24,20 +25,23 @@ export async function searchMedicines(
 ): Promise<SearchResponse> {
   await assertActionRateLimit('search-actions', SEARCH_ACTION_LIMIT)
 
+  // Clamp igual ao da API route: evita pageSize=100000 esgotando o banco.
+  const safePage = Math.max(1, page)
+  const safePageSize = Math.min(Math.max(1, pageSize), MEDICINE_LIMITS.MAX_PAGE_SIZE)
   const where = buildWhere(filters)
-  const skip = (page - 1) * pageSize
+  const skip = (safePage - 1) * safePageSize
 
   const [data, total] = await Promise.all([
     prisma.medicine.findMany({
       where,
       skip,
-      take: pageSize,
+      take: safePageSize,
       orderBy: { reference: 'asc' },
     }),
     prisma.medicine.count({ where }),
   ])
 
-  return { data: data.map(normalizeMedicine), total, page, pageSize }
+  return { data: data.map(normalizeMedicine), total, page: safePage, pageSize: safePageSize }
 }
 
 export async function getHolderMedicines(
@@ -58,19 +62,22 @@ export async function getHolderMedicines(
   }
   if (status) where.status = { equals: status, mode: 'insensitive' }
 
-  const skip = (page - 1) * pageSize
+  // Clamp igual ao da API route: evita pageSize gigante esgotando o banco.
+  const safePage = Math.max(1, page)
+  const safePageSize = Math.min(Math.max(1, pageSize), MEDICINE_LIMITS.MAX_PAGE_SIZE)
+  const skip = (safePage - 1) * safePageSize
 
   const [data, total] = await Promise.all([
     prisma.medicine.findMany({
       where,
       skip,
-      take: pageSize,
+      take: safePageSize,
       orderBy: { tradeName: 'asc' },
     }),
     prisma.medicine.count({ where }),
   ])
 
-  return { data: data.map(normalizeMedicine), total, page, pageSize }
+  return { data: data.map(normalizeMedicine), total, page: safePage, pageSize: safePageSize }
 }
 
 /** Server-side autocomplete: busca valores que correspondem ao termo digitado */
