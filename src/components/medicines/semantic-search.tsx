@@ -114,7 +114,8 @@ export function SemanticSearch() {
       const data = await hybridSearch(searchQuery, 20);
       setResults(data.results);
       setSearchSuggestions(data.suggestions);
-    } catch {
+    } catch (err) {
+      console.error("[BUSCA DESCRIÇÃO] [Client] Erro ao chamar hybridSearch:", err);
       setResults([]);
       setSearchSuggestions([]);
     } finally {

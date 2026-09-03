@@ -21,14 +21,19 @@ export async function trigramSearch(
     LIMIT $2
   `
 
-  const rows = await prisma.$queryRawUnsafe<{ id: number; trigram_score: number }[]>(
-    sql,
-    query,
-    topK,
-  )
+  try {
+    const rows = await prisma.$queryRawUnsafe<{ id: number; trigram_score: number }[]>(
+      sql,
+      query,
+      topK,
+    )
 
-  return rows.map(r => ({
-    medicineId: r.id,
-    trigramScore: Number(r.trigram_score),
-  }))
+    return rows.map(r => ({
+      medicineId: r.id,
+      trigramScore: Number(r.trigram_score),
+    }))
+  } catch (error) {
+    console.error(`[BUSCA DESCRIÇÃO] [Trigram] ❌ Erro ao executar busca trigram (extensão pg_trgm ativa no PostgreSQL?):`, error)
+    return []
+  }
 }

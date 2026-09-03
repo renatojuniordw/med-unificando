@@ -34,14 +34,19 @@ export async function keywordSearch(
     LIMIT $2
   `
 
-  const rows = await prisma.$queryRawUnsafe<{ id: number; keyword_score: number }[]>(
-    sql,
-    searchQuery,
-    topK,
-  )
+  try {
+    const rows = await prisma.$queryRawUnsafe<{ id: number; keyword_score: number }[]>(
+      sql,
+      searchQuery,
+      topK,
+    )
 
-  return rows.map(r => ({
-    medicineId: r.id,
-    keywordScore: Number(r.keyword_score),
-  }))
+    return rows.map(r => ({
+      medicineId: r.id,
+      keywordScore: Number(r.keyword_score),
+    }))
+  } catch (error) {
+    console.error(`[BUSCA DESCRIÇÃO] [Keyword] ❌ Erro ao executar busca FTS (tsquery: "${searchQuery}"):`, error)
+    return []
+  }
 }
