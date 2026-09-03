@@ -1,7 +1,7 @@
 'use server'
 
 import { prisma } from "@/lib/prisma"
-import { withAuth, withAuthReturn } from "@/lib/auth-guard"
+import { withAdmin, withAdminReturn } from "@/lib/auth-guard"
 import { downloadCsv, parseCsvToRows } from "@/lib/csv-utils"
 import https from 'https'
 import { BATCH } from "@/lib/constants"
@@ -9,7 +9,10 @@ import { ANVISA } from "@/lib/config"
 import type { ImportInfo } from "@/types"
 
 const CSV_URL = ANVISA.MEDICINES_URL
-const agent = new https.Agent({ rejectUnauthorized: false })
+// TLS verificado por padrão. Desabilitar só explicitamente (mitigação MITM).
+const agent = process.env.ALLOW_INSECURE_TLS === 'true'
+  ? new https.Agent({ rejectUnauthorized: false })
+  : undefined
 
 const VALID_CATEGORIES = new Set([
   'SIMILAR', 'GENÉRICO', 'REFERÊNCIA', 'NOVO', 'ESPECÍFICO',
@@ -22,7 +25,7 @@ function parseCSV(csvText: string) {
 }
 
 export async function importPdf(formData: FormData) {
-  return withAuth(async () => {
+  return withAdmin(async () => {
     const file = formData.get('file') as File | null
     if (!file) {
       return { success: false, error: 'Nenhum arquivo enviado' }
@@ -57,9 +60,10 @@ export async function importPdf(formData: FormData) {
         message: `${count} medicamentos importados com sucesso! (dados anteriores substituídos)`,
       }
     } catch (error) {
+      console.error('Erro ao processar PDF:', error)
       return {
         success: false,
-        error: `Erro ao processar PDF: ${error instanceof Error ? error.message : 'erro desconhecido'}`,
+        error: 'Erro ao processar PDF. Verifique o arquivo e tente novamente.',
       }
     }
   })
@@ -172,7 +176,7 @@ async function fetchTherapeuticClassWithRetry(url: string, retries = 2): Promise
 }
 
 export async function syncWithAnvisa() {
-  return withAuth(async () => {
+  return withAdmin(async () => {
     try {
       const remoteDate = await getHeader(CSV_URL)
       const remoteTimestamp = remoteDate ?? new Date()
@@ -231,19 +235,20 @@ export async function syncWithAnvisa() {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'erro desconhecido'
+      console.error('Erro ao sincronizar:', error)
       await prisma.syncLog.create({
         data: { type: 'medicines', count: 0, status: 'error', message },
       })
       return {
         success: false,
-        error: `Erro ao sincronizar: ${message}`,
+        error: 'Erro ao sincronizar com a ANVISA. Tente novamente.',
       }
     }
   })
 }
 
 export async function getSyncLogs() {
-  return withAuthReturn([], async () => {
+  return withAdminReturn([], async () => {
     return prisma.syncLog.findMany({
       orderBy: { createdAt: 'desc' },
       take: 20,
@@ -252,7 +257,7 @@ export async function getSyncLogs() {
 }
 
 export async function getImportInfo(): Promise<ImportInfo | null> {
-  return withAuthReturn(null, async () => {
+  return withAdminReturn(null, async () => {
     const total = await prisma.medicine.count()
     const lastMedicine = await prisma.medicine.findFirst({
       orderBy: { lastImportAt: 'desc' },

@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma'
 // Retorna estatísticas de busca para o dashboard admin
 export async function GET() {
   const session = await auth()
-  if (!session?.user) {
+  if (!session?.user || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
   }
 

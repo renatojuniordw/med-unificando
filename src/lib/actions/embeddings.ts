@@ -1,11 +1,11 @@
 'use server'
 
 import { prisma } from '@/lib/prisma'
-import { withAuth } from '@/lib/auth-guard'
+import { withAdmin } from '@/lib/auth-guard'
 import { generateEmbeddings } from '@/lib/embeddings-generator'
 
 export async function regenerateEmbeddings() {
-  return withAuth(async () => {
+  return withAdmin(async () => {
     try {
       const medicines = await prisma.medicine.findMany({
         orderBy: { id: 'asc' },

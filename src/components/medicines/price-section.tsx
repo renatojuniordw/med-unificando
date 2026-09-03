@@ -1,5 +1,11 @@
 import { Card } from '@/components/ui/card'
-import { PriceChart } from '@/components/medicines/price-chart'
+import dynamic from 'next/dynamic'
+
+// recharts (~500KB) só carrega no client e apenas quando a seção renderiza
+const PriceChart = dynamic(
+  () => import('@/components/medicines/price-chart').then(m => m.PriceChart),
+  { ssr: false, loading: () => null }
+)
 
 interface Price {
   id: number

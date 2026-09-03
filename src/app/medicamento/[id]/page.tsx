@@ -1,4 +1,6 @@
+import { getMedicineDetail } from '@/lib/actions/medicine-detail'
 import { prisma } from '@/lib/prisma'
+import { safeJsonLd } from '@/lib/safe-json-ld'
 import { Badge } from '@/components/ui/badge'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { Card } from '@/components/ui/card'
@@ -9,7 +11,7 @@ import { SimilarSection } from '@/components/medicines/similar-section'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 
-export const dynamic = "force-dynamic"
+export const revalidate = 3600
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
@@ -34,22 +36,10 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function MedicineDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const med = await prisma.medicine.findUnique({ where: { id: parseInt(id) } })
-  if (!med) notFound()
+  const detail = await getMedicineDetail(parseInt(id))
+  if (!detail) notFound()
 
-  const prices = await prisma.price.findMany({
-    where: { reference: med.reference },
-    take: 20,
-    orderBy: { pf0Price: 'asc' },
-  })
-
-  const similares = med.referenceMedicine
-    ? await prisma.medicine.findMany({
-        where: { referenceMedicine: med.referenceMedicine, id: { not: med.id } },
-        take: 10,
-        orderBy: { tradeName: 'asc' },
-      })
-    : []
+  const { medicine: med, prices, similares } = detail
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -91,7 +81,7 @@ export default async function MedicineDetailPage({ params }: { params: Promise<{
     <section className="py-12 md:py-20 bg-[var(--color-bg)]">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
       <div className="max-w-4xl mx-auto px-6 lg:px-12">
         <Breadcrumbs items={[

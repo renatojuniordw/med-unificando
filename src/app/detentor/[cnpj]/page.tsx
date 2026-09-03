@@ -1,12 +1,14 @@
 import { Badge } from '@/components/ui/badge'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { HolderContent } from '@/components/medicines/holder-content'
-import { getHolderMedicines } from '@/lib/actions/search'
+import { Skeleton } from '@/components/ui/skeleton'
+import { getHolderMedicines, getHolderSummary } from '@/lib/actions/search'
 import { MEDICINE_LIMITS } from '@/lib/constants'
 import { notFound } from 'next/navigation'
+import { Suspense } from 'react'
 import type { Metadata } from 'next'
 
-export const dynamic = "force-dynamic"
+export const revalidate = 3600
 
 export async function generateMetadata({ params }: { params: Promise<{ cnpj: string }> }): Promise<Metadata> {
   const { cnpj } = await params
@@ -25,17 +27,20 @@ export default async function HolderPage({ params }: { params: Promise<{ cnpj: s
   const { cnpj } = await params
   const decoded = decodeURIComponent(cnpj)
 
-  const all = await getHolderMedicines(decoded, 1, MEDICINE_LIMITS.MAX_HOLDER_RESULTS)
+  const [{ data, total }, summary] = await Promise.all([
+    getHolderMedicines(decoded, 1, MEDICINE_LIMITS.HOLDER_PAGE_SIZE),
+    getHolderSummary(decoded),
+  ])
 
-  if (all.data.length === 0) notFound()
+  if (data.length === 0) notFound()
 
-  const holderName = all.data[0].similarHolder
-  const totalAtivos = all.data.filter(m => m.status === 'Ativo').length
-  const totalCategorias = new Set(all.data.map(m => m.category).filter(Boolean)).size
+  const { holderName, total: totalMedicines, ativos: totalAtivos, categoriasCount } = summary
 
   const initialData = {
-    ...all,
-    data: all.data.slice(0, MEDICINE_LIMITS.HOLDER_PAGE_SIZE),
+    data,
+    total,
+    page: 1,
+    pageSize: MEDICINE_LIMITS.HOLDER_PAGE_SIZE,
   }
 
   return (
@@ -51,13 +56,15 @@ export default async function HolderPage({ params }: { params: Promise<{ cnpj: s
           <h1 className="text-3xl md:text-4xl font-black tracking-tighter text-[var(--color-text)]">
             {holderName}
           </h1>
-          <HolderContent
-            holder={decoded}
-            initialData={initialData}
-            totalMedicines={all.total}
-            ativos={totalAtivos}
-            categoriasCount={totalCategorias}
-          />
+          <Suspense fallback={<div className="mt-6"><Skeleton className="h-24 w-full mb-4" /><Skeleton className="h-64 w-full" /></div>}>
+            <HolderContent
+              holder={decoded}
+              initialData={initialData}
+              totalMedicines={totalMedicines}
+              ativos={totalAtivos}
+              categoriasCount={categoriasCount}
+            />
+          </Suspense>
         </div>
       </div>
     </section>

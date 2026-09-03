@@ -11,6 +11,13 @@ set -e
 export DATABASE_URL="postgresql://admin:${DB_PASSWORD:?DB_PASSWORD não definida}@db:5432/medicamentos"
 echo "📌 DATABASE_URL forçado para host 'db' do Docker"
 
+# ── 0b. TLS: seguro por padrão. Só desabilita se explicitamente pedido ────
+# (workaround p/ ANVISA; prefira manter HTTPS verificado sempre que possível)
+if [ "${ALLOW_INSECURE_TLS:-false}" = "true" ]; then
+  export NODE_TLS_REJECT_UNAUTHORIZED=0
+  echo "⚠️  ALLOW_INSECURE_TLS=true — verificação de TLS desabilitada"
+fi
+
 # ── 1. Aguardar PostgreSQL ─────────────────────────────────────────────────
 echo "⏳ Aguardando PostgreSQL..."
 until pg_isready -h db -U admin -d medicamentos 2>/dev/null; do
@@ -32,19 +39,19 @@ if [ "$MED_COUNT" != "0" ]; then
   echo "⏩ Banco já populado — pulando init."
 else
   echo "📥 Banco vazio — seed ANVISA + dados auxiliares..."
-  NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx prisma/seed.ts 2>&1
+  npx tsx prisma/seed.ts 2>&1
   echo "✅ Seed concluído!"
 
   echo "🏪 Sincronizando Farmácia Popular..."
-  NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx scripts/sync-farmacia-popular.ts 2>&1
+  npx tsx scripts/sync-farmacia-popular.ts 2>&1
   echo "✅ Farmácia Popular OK!"
 
   echo "📋 Preenchendo indications a partir da classe terapêutica..."
-  NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx scripts/backfill-indications.ts 2>&1
+  npx tsx scripts/backfill-indications.ts 2>&1
   echo "✅ Indicações OK!"
 
   echo "🧠 Gerando embeddings de busca semântica..."
-  NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx scripts/generate-search-index.ts 2>&1
+  npx tsx scripts/generate-search-index.ts 2>&1
   echo "✅ Embeddings OK!"
 
   echo "📑 Gerando tsvector..."

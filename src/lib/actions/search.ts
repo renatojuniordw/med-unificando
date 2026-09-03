@@ -117,6 +117,31 @@ export async function searchAutocomplete(field: string, q: string): Promise<Dist
     .filter((item) => item.value)
 }
 
+/** Agregados do detentor (total/ativos/categorias) sem carregar todas as linhas */
+export async function getHolderSummary(holder: string): Promise<{ holderName: string; total: number; ativos: number; categoriasCount: number }> {
+  const where: Prisma.MedicineWhereInput = {
+    similarHolder: { contains: holder, mode: 'insensitive' },
+  }
+
+  const [first, total, ativos, categoriasCount] = await Promise.all([
+    prisma.medicine.findFirst({ where, select: { similarHolder: true } }),
+    prisma.medicine.count({ where }),
+    prisma.medicine.count({ where: { ...where, status: 'Ativo' } }),
+    prisma.medicine.groupBy({
+      by: ['category'],
+      where: { ...where, category: { not: null } },
+      _count: { category: true },
+    }).then(r => r.length),
+  ])
+
+  return {
+    holderName: first?.similarHolder ?? holder,
+    total,
+    ativos,
+    categoriasCount,
+  }
+}
+
 /** Contagem rápida de medicamentos com os filtros atuais */
 export async function countMedicines(filters: SearchFilters): Promise<number> {
   const where = buildWhere(filters)
@@ -124,19 +149,15 @@ export async function countMedicines(filters: SearchFilters): Promise<number> {
 }
 
 async function computeTimeline() {
-  const allInclusionDates = await prisma.medicine.findMany({ select: { inclusionDate: true } })
-  const yearCounts: Record<string, number> = {}
-  for (const { inclusionDate } of allInclusionDates) {
-    if (inclusionDate && inclusionDate.length >= 4) {
-      const year = inclusionDate.substring(6, 10)
-      if (year >= YEARS.MIN && year <= YEARS.MAX) {
-        yearCounts[year] = (yearCounts[year] || 0) + 1
-      }
-    }
-  }
-  return Object.entries(yearCounts)
-    .map(([year, count]) => ({ year, count }))
-    .sort((a, b) => a.year.localeCompare(b.year))
+  const rows = await prisma.$queryRaw<{ year: string; count: number }[]>`
+    SELECT substring("inclusionDate" from 7 for 4) AS year, COUNT(*)::int AS count
+    FROM medicines
+    WHERE "inclusionDate" IS NOT NULL
+      AND substring("inclusionDate" from 7 for 4) BETWEEN ${YEARS.MIN} AND ${YEARS.MAX}
+    GROUP BY year
+    ORDER BY year ASC
+  `
+  return rows
 }
 
 async function computeTopReferences(count: number) {
@@ -163,10 +184,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
   const [totalMedicines, totalTradeNames, topReferences, topActiveIngredients, groupByStatus, groupByCategory] = await Promise.all([
     prisma.medicine.count(),
-    prisma.medicine.groupBy({
-      by: ['tradeName'],
-      _count: { tradeName: true },
-    }).then(r => r.length),
+    prisma.$queryRaw<{ count: number }[]>`SELECT COUNT(DISTINCT "tradeName")::int AS count FROM medicines`
+      .then(r => r[0]?.count ?? 0),
     computeTopReferences(topK),
     computeTopActiveIngredients(topK),
     prisma.medicine.groupBy({
@@ -205,45 +224,48 @@ export interface FilteredStats {
   topIngredient: { name: string; count: number }[]
 }
 
-function applyFilters(params: { year?: string; category?: string; status?: string }) {
-  const where: Record<string, unknown> = {}
-  if (params.category) where.category = params.category
-  if (params.status) where.status = params.status
-  return where
-}
-
 export async function getFilteredStats(filters: { year?: string; category?: string; status?: string }): Promise<FilteredStats> {
-  const where = applyFilters(filters)
-
-  const raw = await prisma.medicine.findMany({
-    where,
-    select: { inclusionDate: true, tradeName: true, activeIngredient: true, status: true },
-  })
-
-  let filtered = raw
+  const conditions: string[] = []
+  const params: string[] = []
+  if (filters.category) {
+    params.push(filters.category)
+    conditions.push(`"category" = $${params.length}`)
+  }
+  if (filters.status) {
+    params.push(filters.status)
+    conditions.push(`"status" = $${params.length}`)
+  }
   if (filters.year) {
-    filtered = raw.filter(m => m.inclusionDate?.endsWith(filters.year!))
+    params.push(filters.year)
+    conditions.push(`substring("inclusionDate" from 7 for 4) = $${params.length}`)
   }
 
-  const total = filtered.length
-  const ativos = filtered.filter(m => m.status === 'Ativo').length
+  const commonWhere = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
-  const tradeCount: Record<string, number> = {}
-  const ingredientCount: Record<string, number> = {}
-  for (const m of filtered) {
-    tradeCount[m.tradeName] = (tradeCount[m.tradeName] || 0) + 1
-    ingredientCount[m.activeIngredient] = (ingredientCount[m.activeIngredient] || 0) + 1
-  }
+  const [totalResult, ativosResult, topTrade, topIngredient] = await Promise.all([
+    prisma.$queryRawUnsafe<{ total: number }[]>(`SELECT COUNT(*)::int AS total FROM medicines ${commonWhere}`, ...params),
+    prisma.$queryRawUnsafe<{ count: number }[]>(`SELECT COUNT(*)::int AS count FROM medicines ${commonWhere} AND "status" = 'Ativo'`, ...params)
+      .then(r => r[0]?.count ?? 0),
+    prisma.$queryRawUnsafe<{ name: string; count: number }[]>(
+      `SELECT "tradeName" AS name, COUNT(*)::int AS count
+       FROM medicines ${commonWhere}
+       GROUP BY "tradeName"
+       ORDER BY count DESC
+       LIMIT 10`,
+      ...params
+    ),
+    prisma.$queryRawUnsafe<{ name: string; count: number }[]>(
+      `SELECT "activeIngredient" AS name, COUNT(*)::int AS count
+       FROM medicines ${commonWhere}
+       GROUP BY "activeIngredient"
+       ORDER BY count DESC
+       LIMIT 10`,
+      ...params
+    ),
+  ])
 
-  const topTrade = Object.entries(tradeCount)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
-    .map(([name, count]) => ({ name, count }))
-
-  const topIngredient = Object.entries(ingredientCount)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
-    .map(([name, count]) => ({ name, count }))
+  const total = totalResult[0]?.total ?? 0
+  const ativos = ativosResult
 
   return { total, ativos, inativos: total - ativos, topTrade, topIngredient }
 }

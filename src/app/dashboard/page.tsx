@@ -5,7 +5,7 @@ import { DashboardFilters } from '@/components/dashboard/dashboard-filters'
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
 
-export const dynamic = "force-dynamic"
+export const revalidate = 3600
 
 export const metadata: Metadata = {
   title: "Estatísticas",

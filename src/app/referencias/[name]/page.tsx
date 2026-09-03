@@ -6,7 +6,7 @@ import { notFound } from 'next/navigation'
 import type { MedicineResult } from '@/types'
 import type { Metadata } from 'next'
 
-export const dynamic = "force-dynamic"
+export const revalidate = 3600
 
 export async function generateMetadata({ params }: { params: Promise<{ name: string }> }): Promise<Metadata> {
   const { name } = await params

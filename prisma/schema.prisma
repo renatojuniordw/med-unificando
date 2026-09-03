@@ -58,6 +58,9 @@ model Medicine {
   @@index([category])
   @@index([status])
   @@index([farmaciaPopular])
+  @@index([referenceMedicine])
+  @@index([atcCode])
+  @@index([inclusionDate])
   @@map("medicines")
 }
 

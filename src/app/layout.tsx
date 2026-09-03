@@ -9,6 +9,7 @@ import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { ToastProvider } from "@/components/ui/toast";
 import { ConsoleCredits } from "@/components/ui/console-credits";
 import { SITE } from "@/lib/config";
+import { safeJsonLd } from "@/lib/safe-json-ld";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -79,14 +80,12 @@ export default function RootLayout({
         <meta name="theme-color" content="#ffffff" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="apple-touch-icon" href="/icon-192.svg" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
         <link rel="dns-prefetch" href="https://medicamentos.unificando.com.br" />
         <link rel="dns-prefetch" href="https://data.unificando.com.br" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
+            __html: safeJsonLd({
               "@context": "https://schema.org",
               "@type": "WebSite",
               name: "Med Unificando",
@@ -117,7 +116,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="antialiased min-h-screen flex flex-col">
+      <body className="antialiased min-h-screen flex flex-col" suppressHydrationWarning>
         <ThemeProvider>
           <ToastProvider>
           <ConsoleCredits />

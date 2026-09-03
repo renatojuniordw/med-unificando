@@ -2,8 +2,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { MEDICINE_LIMITS } from '@/lib/constants'
 import { normalizeMedicine } from '@/lib/format'
+import { buildWhere } from '@/lib/build-where'
+import { rateLimit, getClientIp } from '@/lib/rate-limit'
 
 export async function GET(request: NextRequest) {
+  const ip = getClientIp(request)
+  const rl = rateLimit(ip, 'medicines-api', { limit: 60 })
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Muitas requisições. Tente novamente em alguns instantes.' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSeconds) } }
+    )
+  }
+
   try {
     const { searchParams } = new URL(request.url)
     const page = Math.max(parseInt(searchParams.get('page') ?? '1', 10), 1)
@@ -15,12 +26,13 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
     const format = searchParams.get('format')
 
-    const where: Record<string, unknown> = {}
-    if (reference) where.reference = { contains: reference, mode: 'insensitive' }
-    if (activeIngredient) where.activeIngredient = { contains: activeIngredient, mode: 'insensitive' }
-    if (tradeName) where.tradeName = { contains: tradeName, mode: 'insensitive' }
-    if (category) where.category = category
-    if (status) where.status = status
+    const where = buildWhere({
+      reference: reference ?? undefined,
+      activeIngredient: activeIngredient ?? undefined,
+      tradeName: tradeName ?? undefined,
+      category: category ?? undefined,
+      status: status ?? undefined,
+    })
 
     const skip = (page - 1) * pageSize
 
@@ -59,8 +71,9 @@ export async function GET(request: NextRequest) {
       pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
     })
   } catch (error) {
+    console.error('Erro ao buscar medicamentos:', error)
     return NextResponse.json(
-      { error: `Erro ao buscar medicamentos: ${error instanceof Error ? error.message : 'desconhecido'}` },
+      { error: 'Erro ao buscar medicamentos' },
       { status: 500 }
     )
   }

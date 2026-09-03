@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
+import { rateLimit, getClientIp } from '@/lib/rate-limit'
 import { submitSearchFeedback, getFeedbackStats, getLowQualityQueries } from '@/lib/actions/search-feedback'
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  const rl = rateLimit(ip, 'search-feedback', { limit: 20 })
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Muitas requisições. Tente novamente em alguns instantes.' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSeconds) } }
+    )
+  }
+
   try {
     const body = await request.json()
     const { query, medicineId, medicineName, feedback } = body
@@ -43,7 +53,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   const session = await auth()
-  if (!session?.user) {
+  if (!session?.user || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
   }
 

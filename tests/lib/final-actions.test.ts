@@ -26,6 +26,8 @@ vi.mock('@/lib/prisma', () => ({
       createMany: vi.fn(),
     },
     syncLog: { create: vi.fn(), findMany: vi.fn() },
+    $queryRaw: vi.fn().mockResolvedValue([]),
+    $queryRawUnsafe: vi.fn().mockResolvedValue([]),
   },
 }))
 

@@ -17,13 +17,12 @@ export async function GET() {
         prices: priceCount,
       },
     })
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       {
         status: 'unhealthy',
         timestamp: new Date().toISOString(),
         database: 'disconnected',
-        error: error instanceof Error ? error.message : 'unknown',
       },
       { status: 503 }
     )

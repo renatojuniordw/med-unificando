@@ -1,9 +1,9 @@
 'use server'
 
 import PdfPrinter from 'pdfmake'
-import { prisma } from '@/lib/prisma'
 import { PDF_COLORS } from '@/lib/constants'
 import { normalizeMedicine } from '@/lib/format'
+import { getMedicineDetail } from '@/lib/actions/medicine-detail'
 
 const fonts = {
   Helvetica: {
@@ -213,24 +213,10 @@ function buildDocDefinition(
 }
 
 export async function generateMedicinePdf(id: number): Promise<number[]> {
-  const med = await prisma.medicine.findUnique({ where: { id } })
-  if (!med) throw new Error('Medicamento não encontrado')
+  const detail = await getMedicineDetail(id)
+  if (!detail) throw new Error('Medicamento não encontrado')
+  const { medicine: med, prices, similares } = detail
   const normalizedMed = normalizeMedicine(med)
-
-  const prices = await prisma.price.findMany({
-    where: { reference: med.reference },
-    take: 10,
-    orderBy: { pf0Price: 'asc' },
-  })
-
-  const similares = med.referenceMedicine
-    ? await prisma.medicine.findMany({
-        where: { referenceMedicine: med.referenceMedicine, id: { not: med.id } },
-        take: 10,
-        orderBy: { tradeName: 'asc' },
-        select: { tradeName: true, similarHolder: true, status: true },
-      })
-    : []
 
   const docDefinition = buildDocDefinition(normalizedMed, prices, similares)
   const pdfDoc = printer.createPdfKitDocument(docDefinition, {})

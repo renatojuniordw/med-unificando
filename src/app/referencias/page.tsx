@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import type { ReferenceItem } from '@/components/medicines/reference-search'
 import type { Metadata } from 'next'
 
-export const dynamic = "force-dynamic"
+export const revalidate = 3600
 
 export const metadata: Metadata = {
   title: "Medicamentos de Referência",

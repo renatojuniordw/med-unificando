@@ -11,8 +11,7 @@ export const ANVISA = {
 export const EMBEDDING = {
   MODEL: process.env.EMBEDDING_MODEL ?? 'Xenova/multilingual-e5-base',
   DIMS: parseInt(process.env.EMBEDDING_DIMS ?? '768', 10),
-  // Coluna ativa: troque para 'embedding' quando a migracao estiver completa
-  COLUMN: (process.env.EMBEDDING_COLUMN ?? 'embedding_new') as 'embedding' | 'embedding_new',
+  COLUMN: 'embedding' as const,
 } as const
 
 export const SEARCH = {
@@ -40,6 +39,22 @@ export const SEARCH = {
 
   // Penalidade quando resultado vem de uma única fonte (sem suporte cruzado)
   SINGLE_SOURCE_PENALTY: 0.80,
+
+  // Componentes do score honesto
+  KEYWORD_SATURATION: 0.15,
+  TRIGRAM_COMPONENT_DIVISOR: 0.5,
+
+  // Penalidades de pós-processamento
+  SUBSTRING_FALSE_POSITIVE_PENALTY: 0.05,
+  NO_SUPPORT_PENALTY: 0.1,
+
+  // Boosts por match de nome
+  NAME_MATCH_BOOSTS: {
+    exact: 0.15,
+    prefix: 0.10,
+    ingredient: 0.12,
+    ingredientWord: 0.08,
+  } as const,
 
   // Refinamento por embedding: só reclassifica quando a heurística de
   // classifyQuery cai no fallback genérico (baixíssima confiança)

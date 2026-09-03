@@ -30,6 +30,8 @@ vi.mock('@/lib/prisma', () => ({
       createMany: vi.fn(),
     },
     syncLog: { create: vi.fn(), findMany: vi.fn() },
+    $queryRaw: vi.fn().mockResolvedValue([]),
+    $queryRawUnsafe: vi.fn().mockResolvedValue([]),
   },
 }))
 
@@ -144,6 +146,7 @@ describe('prices - getPriceStats', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns stats', async () => {
+    mockAuth(auth).mockResolvedValue(MOCK_SESSION)
     vi.mocked(prisma.price.count).mockResolvedValueOnce(100).mockResolvedValueOnce(80)
     const { getPriceStats } = await import('@/lib/actions/prices')
     const result = await getPriceStats()
@@ -198,6 +201,7 @@ describe('search - getDashboardStats', () => {
     vi.mocked(prisma.medicine.groupBy).mockResolvedValue([])
     vi.mocked(prisma.medicine.findMany).mockResolvedValue([])
     vi.mocked(prisma.price.count).mockResolvedValue(50)
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([{ year: '2024', count: 5 }])
     const { getDashboardStats } = await import('@/lib/actions/search')
     const result = await getDashboardStats()
     expect(result).toHaveProperty('totalMedicines')
@@ -217,9 +221,11 @@ describe('search - getFilteredStats', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns filtered stats', async () => {
-    vi.mocked(prisma.medicine.findMany).mockResolvedValue([
-      { inclusionDate: '2024-01', status: 'Ativo', activeIngredient: 'A', tradeName: 'T' },
-    ] as never)
+    vi.mocked(prisma.$queryRawUnsafe)
+      .mockResolvedValueOnce([{ total: 1 }])
+      .mockResolvedValueOnce([{ count: 1 }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
     const { getFilteredStats } = await import('@/lib/actions/search')
     const result = await getFilteredStats({})
     expect(result.ativos).toBe(1)

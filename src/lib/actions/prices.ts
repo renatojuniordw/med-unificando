@@ -1,7 +1,7 @@
 'use server'
 
 import { prisma } from "@/lib/prisma"
-import { withAuth } from "@/lib/auth-guard"
+import { withAdmin, withAdminReturn } from "@/lib/auth-guard"
 import { downloadCsv, parseCsvToRows } from "@/lib/csv-utils"
 import { BATCH } from "@/lib/constants"
 import { ANVISA } from "@/lib/config"
@@ -9,7 +9,7 @@ import { ANVISA } from "@/lib/config"
 const PRICES_URL = ANVISA.PRICES_URL
 
 export async function syncPrices() {
-  return withAuth(async () => {
+  return withAdmin(async () => {
     try {
       const csvText = await downloadCsv(PRICES_URL)
       const rows = parseCsvToRows(csvText)
@@ -60,7 +60,9 @@ export async function syncPrices() {
 }
 
 export async function getPriceStats() {
-  const total = await prisma.price.count()
-  const withPrice = await prisma.price.count({ where: { pf0Price: { not: null } } })
-  return { total, withPrice }
+  return withAdminReturn({ total: 0, withPrice: 0 }, async () => {
+    const total = await prisma.price.count()
+    const withPrice = await prisma.price.count({ where: { pf0Price: { not: null } } })
+    return { total, withPrice }
+  })
 }

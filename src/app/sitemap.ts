@@ -2,7 +2,7 @@ import { prisma } from '@/lib/prisma'
 import type { MetadataRoute } from 'next'
 import { SITE } from '@/lib/config'
 
-export const dynamic = "force-dynamic"
+export const revalidate = 86400
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = SITE.BASE_URL
@@ -10,6 +10,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [medicines, references, atcCodes] = await Promise.all([
     prisma.medicine.findMany({
       select: { id: true, updatedAt: true, referenceMedicine: true, atcCode: true },
+      orderBy: { id: 'asc' },
       take: 50000,
     }),
     prisma.medicine.findMany({

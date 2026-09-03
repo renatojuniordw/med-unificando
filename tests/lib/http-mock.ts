@@ -64,7 +64,7 @@ export function mockHttpsGet(getFn: unknown) {
 }
 
 export const MOCK_SESSION: Session = {
-  user: { id: '1', role: 'admin' },
+  user: { id: '1', role: 'ADMIN' },
   expires: new Date(Date.now() + 86_400_000).toISOString(),
 }
 

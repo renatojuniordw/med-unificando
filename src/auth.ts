@@ -26,10 +26,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           where: { email },
         })
 
-        if (!user) return null
+        // Hash dummy para usuário inexistente: iguala o tempo de resposta
+        // e evita enumeração de e-mails por timing attack.
+        const DUMMY_HASH = "$2b$10$SpEez0xYWXW6vzssA.My8.TCQzYQfLsLKZ3Kc4txcxATreEebZ9Pa"
+        const passwordMatches = user
+          ? await bcrypt.compare(password, user.password)
+          : await bcrypt.compare(password, DUMMY_HASH)
 
-        const hash = await bcrypt.hash(password, user.salt)
-        if (hash !== user.password) return null
+        if (!user || !passwordMatches) return null
 
         return {
           id: user.id,

@@ -138,6 +138,29 @@ export async function classifyByEmbedding(queryEmb: Float32Array): Promise<Embed
   return { type, confidence }
 }
 
+// Campos exibidos nos resultados de busca — evita transferir colunas
+// desnecessárias (synonyms/anvisaFileDate/lastImportAt) em listagens.
+const SEARCH_MEDICINE_SELECT = {
+  id: true,
+  reference: true,
+  activeIngredient: true,
+  tradeName: true,
+  similarHolder: true,
+  pharmaceuticalForm: true,
+  concentration: true,
+  inclusionDate: true,
+  category: true,
+  referenceMedicine: true,
+  atcCode: true,
+  prescriptionType: true,
+  status: true,
+  authorization: true,
+  presentationCount: true,
+  indications: true,
+  therapeuticClass: true,
+  farmaciaPopular: true,
+} as const
+
 export async function semanticSearch(
   query: string,
   topK: number = 60,
@@ -175,6 +198,7 @@ export async function semanticSearch(
   const ids = rows.map(r => r.id)
   const medicines = await prisma.medicine.findMany({
     where: { id: { in: ids } },
+    select: SEARCH_MEDICINE_SELECT,
   })
 
   const medMap = new Map(medicines.map(m => [m.id, m]))
@@ -199,10 +223,11 @@ const RRF_K = SEARCH.RRF_K
 const SEMANTIC_HARD_MIN = SEARCH.SEMANTIC_HARD_MIN
 const SEMANTIC_STRONG = SEARCH.SEMANTIC_STRONG
 const SEMANTIC_CEILING = SEARCH.SEMANTIC_CEILING
-const KEYWORD_SATURATION = 0.15
+const KEYWORD_SATURATION = SEARCH.KEYWORD_SATURATION
 const SEMANTIC_WEIGHT = SEARCH.SEMANTIC_WEIGHT
 const KEYWORD_WEIGHT = SEARCH.KEYWORD_WEIGHT
 const TRIGRAM_WEIGHT = SEARCH.TRIGRAM_WEIGHT
+const NAME_MATCH_BOOSTS = SEARCH.NAME_MATCH_BOOSTS
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
@@ -230,7 +255,7 @@ function keywordComponent(tsRank: number): number {
 }
 
 function trigramComponent(score: number): number {
-  return clamp(score / 0.5, 0, 1)
+  return clamp(score / SEARCH.TRIGRAM_COMPONENT_DIVISOR, 0, 1)
 }
 
 function honestScore(
@@ -372,13 +397,13 @@ function nameMatchBoost(
   const ingredient = stripAccents((medicine.activeIngredient || '').toLowerCase())
 
   // Match exato no tradeName
-  if (tradeName === normalizedQuery) return 0.15
+  if (tradeName === normalizedQuery) return NAME_MATCH_BOOSTS.exact
   // Prefixo do tradeName (query é prefixo do nome)
-  if (tradeName.startsWith(normalizedQuery)) return 0.10
+  if (tradeName.startsWith(normalizedQuery)) return NAME_MATCH_BOOSTS.prefix
   // Match exato no activeIngredient
-  if (ingredient === normalizedQuery) return 0.12
+  if (ingredient === normalizedQuery) return NAME_MATCH_BOOSTS.ingredient
   // activeIngredient contém query como palavra inteira
-  if (ingredient.split(/\s+/).includes(normalizedQuery)) return 0.08
+  if (ingredient.split(/\s+/).includes(normalizedQuery)) return NAME_MATCH_BOOSTS.ingredientWord
 
   return 0
 }
@@ -419,6 +444,20 @@ async function logSearch(
 export interface HybridSearchResult {
   results: SearchResultItem[]
   suggestions: string[]
+}
+
+// Fusão RRF única — usada tanto no caminho principal (3 fontes) quanto nos fallbacks
+function rrfFusion(
+  rankMaps: { rank: Map<number, number>; weight: number }[],
+  rrfK: number
+): Map<number, number> {
+  const scores = new Map<number, number>()
+  for (const { rank, weight } of rankMaps) {
+    for (const [id, position] of rank) {
+      scores.set(id, (scores.get(id) ?? 0) + weight / (rrfK + position))
+    }
+  }
+  return scores
 }
 
 export async function hybridSearch(
@@ -482,16 +521,18 @@ export async function hybridSearch(
     const trigramScoreMapFb = new Map(trigramResults.map(r => [r.medicineId, r.trigramScore]))
     const allFallbackIds = new Set([...keywordIds, ...trigramIds])
 
-    const fallbackScores = [...allFallbackIds].map(id => ({
-      id,
-      rrfScore:
-        (KEYWORD_WEIGHT / (RRF_K + (keywordRank.get(id) ?? Infinity))) +
-        (TRIGRAM_WEIGHT / (RRF_K + (trigramRank.get(id) ?? Infinity))),
-    }))
-    fallbackScores.sort((a, b) => b.rrfScore - a.rrfScore)
-    const topFallbackIds = fallbackScores.slice(0, topK).map(s => s.id)
+    const fallbackScores = rrfFusion([
+      { rank: keywordRank, weight: KEYWORD_WEIGHT },
+      { rank: trigramRank, weight: TRIGRAM_WEIGHT },
+    ], RRF_K)
+    const topFallbackIds = [...allFallbackIds]
+      .sort((a, b) => (fallbackScores.get(b) ?? 0) - (fallbackScores.get(a) ?? 0))
+      .slice(0, topK)
 
-    const medicines = await prisma.medicine.findMany({ where: { id: { in: topFallbackIds } } })
+    const medicines = await prisma.medicine.findMany({
+      where: { id: { in: topFallbackIds } },
+      select: SEARCH_MEDICINE_SELECT,
+    })
     const medMap = new Map(medicines.map(m => [m.id, m]))
     const fallbackResults = topFallbackIds
       .map(id => ({
@@ -505,7 +546,9 @@ export async function hybridSearch(
       }))
       .filter(r => r.medicine)
       .slice(0, topK)
-    return { results: fallbackResults, suggestions: [] }
+
+    const adjustedFallback = await applyScoreAdjustments(query, fallbackResults) as SearchResultItem[]
+    return { results: adjustedFallback, suggestions: [] }
   }
 
   // If no keyword/trigram results, use filtered semantic
@@ -518,7 +561,8 @@ export async function hybridSearch(
       }))
       .sort((a, b) => b.score - a.score)
       .slice(0, topK)
-    return { results: semanticOnlyResults, suggestions: [] }
+    const adjustedSemanticOnly = await applyScoreAdjustments(query, semanticOnlyResults) as SearchResultItem[]
+    return { results: adjustedSemanticOnly, suggestions: [] }
   }
 
   // RRF fusion com 3 fontes
@@ -532,16 +576,17 @@ export async function hybridSearch(
     ...trigramResults.map(r => r.medicineId),
   ])
 
-  const scores = [...allIds].map(id => ({
-    id,
-    rrfScore:
-      (SEMANTIC_WEIGHT / (RRF_K + (semanticRank.get(id) ?? Infinity))) +
-      (KEYWORD_WEIGHT / (RRF_K + (keywordRank.get(id) ?? Infinity))) +
-      (TRIGRAM_WEIGHT / (RRF_K + (trigramRank.get(id) ?? Infinity))),
-  }))
+  const scores = rrfFusion([
+    { rank: semanticRank, weight: SEMANTIC_WEIGHT },
+    { rank: keywordRank, weight: KEYWORD_WEIGHT },
+    { rank: trigramRank, weight: TRIGRAM_WEIGHT },
+  ], RRF_K)
 
-  scores.sort((a, b) => b.rrfScore - a.rrfScore)
-  const topIds = scores.slice(0, topK).map(s => s.id)
+  // Margem de 2x antes do corte final: permite que ajustes de feedback
+  // promovam candidatos que ficariam fora do topK inicial.
+  const topIds = [...allIds]
+    .sort((a, b) => (scores.get(b) ?? 0) - (scores.get(a) ?? 0))
+    .slice(0, topK * 2)
 
   const existingMedicines = filteredSemanticResults
     .filter(r => topIds.includes(r.medicine.id))
@@ -549,7 +594,10 @@ export async function hybridSearch(
 
   const remainingIds = topIds.filter(id => !existingMedicines.some(m => m.id === id))
   if (remainingIds.length > 0) {
-    const remaining = await prisma.medicine.findMany({ where: { id: { in: remainingIds } } })
+    const remaining = await prisma.medicine.findMany({
+      where: { id: { in: remainingIds } },
+      select: SEARCH_MEDICINE_SELECT,
+    })
     existingMedicines.push(...remaining.map(normalizeMedicine) as unknown as MedicineResult[])
   }
 
@@ -582,15 +630,15 @@ export async function hybridSearch(
 
     // Remover falsos positivos de substring curta
     if (isSubstringFalsePositive(query, r.medicine, hasKeyword, hasTrigram)) {
-      return { ...r, score: r.score * 0.05 }
+      return { ...r, score: r.score * SEARCH.SUBSTRING_FALSE_POSITIVE_PENALTY }
     }
 
     // Boost por match exato no nome
     const boost = nameMatchBoost(query, r.medicine)
     const reasons = [...r.matchReasons]
     if (boost > 0) {
-      if (boost >= 0.12) reasons.push({ type: 'name-exact', boost })
-      else if (boost >= 0.08) reasons.push({ type: 'ingredient-match', boost })
+      if (boost >= NAME_MATCH_BOOSTS.ingredient) reasons.push({ type: 'name-exact', boost })
+      else if (boost >= NAME_MATCH_BOOSTS.ingredientWord) reasons.push({ type: 'ingredient-match', boost })
       else reasons.push({ type: 'name-prefix', boost })
     }
     return { ...r, score: r.score + boost, matchReasons: reasons }
@@ -619,7 +667,7 @@ export async function hybridSearch(
     const hasTrigram = trigramIds.has(r.medicine.id)
     if (hasKeyword || hasTrigram) return r
     if (!medicineRelatesToQuery(r.medicine, queryTerms)) {
-      return { ...r, score: r.score * 0.1 }
+      return { ...r, score: r.score * SEARCH.NO_SUPPORT_PENALTY }
     }
     return r
   }).sort((a, b) => b.score - a.score)
@@ -628,12 +676,15 @@ export async function hybridSearch(
   // applyScoreAdjustments preserva matchReasons via spread, mas o tipo não reflete isso
   const adjustedResults = await applyScoreAdjustments(query, penalizedResults) as SearchResultItem[]
 
+  // Corte final no topK — depois dos ajustes, para permitir promoção via feedback
+  const finalResults = adjustedResults.slice(0, topK)
+
   // Gerar sugestões quando poucos resultados ou score baixo
-  const suggestions = await generateSuggestions(query, adjustedResults, isNameQuery)
+  const suggestions = await generateSuggestions(query, finalResults, isNameQuery)
 
   const totalMs = (performance.now() - t0).toFixed(0)
   console.log(
-    `[search] "${query}" → ${adjustedResults.length} results ` +
+    `[search] "${query}" → ${finalResults.length} results ` +
     `(${searchMs}ms search, ${totalMs}ms total) ` +
     `[${classification.type}] ` +
     `[sem:${semanticResults.length} kw:${keywordResults.length} tri:${trigramResults.length}]` +
@@ -641,11 +692,11 @@ export async function hybridSearch(
   )
 
   // Salvar no cache
-  const searchResult: HybridSearchResult = { results: adjustedResults, suggestions }
+  const searchResult: HybridSearchResult = { results: finalResults, suggestions }
   setCachedSearch(query, topK, searchResult)
 
   // Log analytics (fire-and-forget — não bloqueia a resposta)
-  logSearch(query, adjustedResults.length, adjustedResults[0]?.score ?? null, classification.type, Number(totalMs))
+  logSearch(query, finalResults.length, finalResults[0]?.score ?? null, classification.type, Number(totalMs))
 
   return searchResult
 }

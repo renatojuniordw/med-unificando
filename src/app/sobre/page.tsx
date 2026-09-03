@@ -2,6 +2,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { ANVISA } from '@/lib/config'
+import { safeJsonLd } from '@/lib/safe-json-ld'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -57,7 +58,7 @@ export default function AboutPage() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(faqSchema) }}
       />
       <section className="py-12 md:py-20">
         <div className="max-w-3xl mx-auto px-6 lg:px-12">

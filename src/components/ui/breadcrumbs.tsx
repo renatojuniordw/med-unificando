@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { SITE } from '@/lib/config'
+import { safeJsonLd } from '@/lib/safe-json-ld'
 
 interface Crumb {
   label: string
@@ -25,7 +26,7 @@ export function Breadcrumbs({ items }: { items: Crumb[] }) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(schema) }}
       />
       <nav className="flex items-center gap-2 text-xs text-[var(--color-text-secondary)] mb-6" aria-label="Breadcrumb">
         <Link href="/" className="hover:text-[var(--color-text)] transition-colors">Home</Link>
