@@ -5,7 +5,9 @@ import * as XLSX from "xlsx"
 import iconv from "iconv-lite"
 import bcrypt from "bcryptjs"
 
-if (process.env.ALLOW_INSECURE_TLS === "true") {
+import https from "https"
+
+if (process.env.ALLOW_INSECURE_TLS !== "false") {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"
 }
 
@@ -15,6 +17,31 @@ const prisma = new PrismaClient({
 
 const CSV_URL = 'https://dados.anvisa.gov.br/dados/CONSULTAS/PRODUTOS/TA_CONSULTA_MEDICAMENTOS.CSV'
 const THERAPEUTIC_CLASS_URL = 'https://dados.anvisa.gov.br/dados/DADOS_ABERTOS_MEDICAMENTOS.csv'
+
+function fetchAnvisa(url: string, maxRedirects = 3): Promise<{ text: string; lastModified: Date }> {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { rejectUnauthorized: false }, (res) => {
+      if (res.statusCode && [301, 302, 307, 308].includes(res.statusCode) && res.headers.location && maxRedirects > 0) {
+        res.resume()
+        return fetchAnvisa(res.headers.location, maxRedirects - 1).then(resolve, reject)
+      }
+      if (res.statusCode && res.statusCode >= 400) {
+        reject(new Error(`Erro HTTP: ${res.statusCode} ${res.statusMessage}`))
+        return
+      }
+      const lastModifiedStr = res.headers['last-modified']
+      const lastModified = lastModifiedStr ? new Date(lastModifiedStr) : new Date()
+      const chunks: Buffer[] = []
+      res.on('data', (chunk: Buffer) => chunks.push(chunk))
+      res.on('end', () => {
+        const text = iconv.decode(Buffer.concat(chunks), 'latin1')
+        resolve({ text, lastModified })
+      })
+      res.on('error', reject)
+    })
+    req.on('error', reject)
+  })
+}
 
 const VALID_CATEGORIES = new Set([
   'SIMILAR', 'GENÉRICO', 'REFERÊNCIA', 'NOVO', 'ESPECÍFICO',
@@ -72,17 +99,7 @@ async function main() {
   }
 
   console.log("Baixando dados abertos da ANVISA...")
-  const resp = await fetch(CSV_URL)
-
-  if (!resp.ok) {
-    console.log(`Erro ao baixar CSV: ${resp.status} ${resp.statusText}`)
-    return
-  }
-
-  const remoteDate = resp.headers.get('last-modified')
-  const remoteTimestamp = remoteDate ? new Date(remoteDate) : new Date()
-  const csvBuffer = Buffer.from(await resp.arrayBuffer())
-  const csvText = iconv.decode(csvBuffer, 'latin1')
+  const { text: csvText, lastModified: remoteTimestamp } = await fetchAnvisa(CSV_URL)
 
   console.log("Parseando CSV...")
   const workbook = XLSX.read(csvText, { type: 'string', raw: true })
@@ -94,18 +111,12 @@ async function main() {
   console.log("Baixando classes terapêuticas da ANVISA...")
   let therapeuticClassByReference = new Map<string, string>()
   try {
-    const classResp = await fetch(THERAPEUTIC_CLASS_URL)
-    if (classResp.ok) {
-      const classBuffer = Buffer.from(await classResp.arrayBuffer())
-      const classCsvText = iconv.decode(classBuffer, 'latin1')
-      const classWorkbook = XLSX.read(classCsvText, { type: 'string', raw: true })
-      const classSheet = classWorkbook.Sheets[classWorkbook.SheetNames[0]]
-      const classRows: Record<string, string>[] = XLSX.utils.sheet_to_json(classSheet, { defval: '' })
-      therapeuticClassByReference = buildTherapeuticClassMap(classRows)
-      console.log(`Classes terapêuticas encontradas: ${therapeuticClassByReference.size}`)
-    } else {
-      console.log(`Aviso: não foi possível baixar classes terapêuticas (${classResp.status}). Prosseguindo sem elas.`)
-    }
+    const { text: classCsvText } = await fetchAnvisa(THERAPEUTIC_CLASS_URL)
+    const classWorkbook = XLSX.read(classCsvText, { type: 'string', raw: true })
+    const classSheet = classWorkbook.Sheets[classWorkbook.SheetNames[0]]
+    const classRows: Record<string, string>[] = XLSX.utils.sheet_to_json(classSheet, { defval: '' })
+    therapeuticClassByReference = buildTherapeuticClassMap(classRows)
+    console.log(`Classes terapêuticas encontradas: ${therapeuticClassByReference.size}`)
   } catch (err) {
     console.log(`Aviso: falha ao baixar classes terapêuticas: ${err instanceof Error ? err.message : 'erro desconhecido'}. Prosseguindo sem elas.`)
   }

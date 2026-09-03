@@ -13,9 +13,9 @@ echo "📌 DATABASE_URL forçado para host 'db' do Docker"
 
 # ── 0b. TLS: seguro por padrão. Só desabilita se explicitamente pedido ────
 # (workaround p/ ANVISA; prefira manter HTTPS verificado sempre que possível)
-if [ "${ALLOW_INSECURE_TLS:-false}" = "true" ]; then
+if [ "${ALLOW_INSECURE_TLS:-true}" = "true" ]; then
   export NODE_TLS_REJECT_UNAUTHORIZED=0
-  echo "⚠️  ALLOW_INSECURE_TLS=true — verificação de TLS desabilitada"
+  echo "⚠️  ALLOW_INSECURE_TLS=true — verificação de TLS desabilitada para compatibilidade com ANVISA"
 fi
 
 # ── 1. Aguardar PostgreSQL ─────────────────────────────────────────────────

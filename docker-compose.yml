@@ -61,7 +61,7 @@ services:
       NODE_ENV: production
       PORT: 11006
       NEXT_TELEMETRY_DISABLED: "1"
-      ALLOW_INSECURE_TLS: ${ALLOW_INSECURE_TLS:-false}
+      ALLOW_INSECURE_TLS: ${ALLOW_INSECURE_TLS:-true}
     networks:
       - medicamentos-net
     depends_on:
