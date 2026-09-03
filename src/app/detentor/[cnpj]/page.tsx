@@ -8,7 +8,7 @@ import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
 
-export const revalidate = 3600
+export const dynamic = 'force-dynamic'
 
 export async function generateMetadata({ params }: { params: Promise<{ cnpj: string }> }): Promise<Metadata> {
   const { cnpj } = await params
