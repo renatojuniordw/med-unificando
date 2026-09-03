@@ -257,7 +257,7 @@ Sitemap: https://medicamentos.unificando.com.br/sitemap.xml
 | `/api/medicines` | 60 req/min |
 | `/api/autocomplete` | 120 req/min |
 | `POST /api/search-feedback` | 20 req/min |
-| `POST /admin/login` | 10 req/min (middleware) |
+| `POST /admin/login` | 10 req/min (proxy) |
 
 Implementação: `src/lib/rate-limit.ts` — `Map<string, { count, resetAt }>` em memória (janela fixa de 60s), adequado para instância única; para multi-instância, migrar para Redis. Em excesso, retorna `429 Too Many Requests` com header `Retry-After`.
 

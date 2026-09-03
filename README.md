@@ -316,7 +316,7 @@ Veja o detalhamento completo em [DESIGN_SYSTEM.md](./docs/DESIGN_SYSTEM.md).
 
 - **Docker**: read-only rootfs, `no-new-privileges`, `cap_drop ALL`, non-root
 - **HTTP**: security headers (X-Frame-Options, X-Content-Type-Options, CSP com fontes específicas — fontes self-hosted via next/font)
-- **Rate Limit**: por rota via `src/lib/rate-limit.ts` (medicines 60/min, autocomplete 120/min, feedback 20/min) + login 10/min via middleware
+- **Rate Limit**: por rota via `src/lib/rate-limit.ts` (medicines 60/min, autocomplete 120/min, feedback 20/min) + login 10/min via proxy
 - **Auth**: páginas `/admin/*` protegidas por sessão (layout), actions admin com `withAdmin`, APIs de analytics/feedback exigem role `ADMIN`
 - **Sanitização**: Escape de CSV, validação de inputs, SearchFeedback sanitizado
 
