@@ -617,8 +617,16 @@ async function fallbackNoSemantic(
 ): Promise<HybridSearchResult> {
   const { keywordResults, trigramResults } = sources
 
-  if (keywordResults.length === 0 && trigramResults.length === 0 && semanticCandidates.length === 0) {
-    console.warn(`❌ [BUSCA DESCRIÇÃO] Nenhum resultado em nenhuma fonte (Semântica: ${sources.semanticResults.length} [0 aprovados pelo gate], Keyword: 0, Trigram: 0).`)
+  // Fallback vazio quando não há evidência para sustentar resultados:
+  //  - Nenhuma fonte (nem semântico >= SEMANTIC_FALLBACK_MIN); ou
+  //  - Sem evidência lexical (Keyword/Trigram = 0) e sem semântico APROVADO no
+  //    gate — os candidatos fracos já foram reprovados e mesclá-los via RRF com
+  //    fontes vazias apenas os re-ordena, sem evidência nova (ex: query sem
+  //    correspondência devolve 3 ruídos ~0.81 em vez de "Nenhum resultado").
+  // Casos legítimos de semântica pura passam pelo gate (fallbackSemanticOnly),
+  // ex: antiácidos em "queimação e dor no estômago" (score >= hardMin 0.80).
+  if (keywordResults.length === 0 && trigramResults.length === 0 || semanticCandidates.length === 0) {
+    console.warn(`❌ [BUSCA DESCRIÇÃO] Sem evidência lexical (Keyword: ${keywordResults.length}, Trigram: ${trigramResults.length}) e sem semântico aprovado no gate (Semântica: ${sources.semanticResults.length}, candidatos fallback: ${semanticCandidates.length}).`)
     console.log(`================== [BUSCA DESCRIÇÃO] FIM (0 resultados) ==================\n`)
     const empty: HybridSearchResult = { results: [], suggestions: [] }
     // Persiste também o caso vazio para o analytics de "queries sem resultado".

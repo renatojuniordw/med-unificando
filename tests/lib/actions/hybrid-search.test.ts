@@ -86,4 +86,16 @@ describe('hybridSearch', () => {
     expect(sql).toContain('<=> $1::vector')
     expect(sql).toContain('semantic_score')
   })
+
+  it('returns empty when semantic fails the gate and there is no lexical evidence', async () => {
+    vi.mocked(prisma.$queryRawUnsafe).mockResolvedValue([
+      { id: 1, semantic_score: 0.85 },
+      { id: 2, semantic_score: 0.83 },
+    ])
+    vi.mocked(keywordSearch).mockResolvedValue([])
+
+    const result = await hybridSearch('zzqqxxtermoinexistente', 5)
+    expect(result.results).toEqual([])
+    expect(result.suggestions).toEqual([])
+  })
 })
