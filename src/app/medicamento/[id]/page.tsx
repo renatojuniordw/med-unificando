@@ -73,8 +73,8 @@ export default async function MedicineDetailPage({ params }: { params: Promise<{
     { label: 'Data de Inclusão', value: med.inclusionDate },
     { label: 'Sinônimos', value: med.synonyms },
     { label: 'Indicações', value: med.indications },
-    { label: 'Data ANVISA', value: med.anvisaFileDate?.toLocaleDateString('pt-BR') ?? null },
-    { label: 'Última Importação', value: med.lastImportAt?.toLocaleString('pt-BR') ?? null },
+    { label: 'Data ANVISA', value: med.anvisaFileDate ? new Date(med.anvisaFileDate).toLocaleDateString('pt-BR') : null },
+    { label: 'Última Importação', value: med.lastImportAt ? new Date(med.lastImportAt).toLocaleString('pt-BR') : null },
   ]
 
   return (
