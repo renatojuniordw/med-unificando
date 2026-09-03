@@ -166,7 +166,7 @@ Outros utilitários (não npm scripts) em `scripts/`: `reindex-embeddings.ts`, `
 | `/referencias/[name]` | Similares de uma referência específica |
 | `/atc` | Navegação por árvore ATC |
 | `/atc/[code]` | Medicamentos por código ATC |
-| `/detentor/[cnpj]` | Medicamentos de um detentor |
+| `/detentor/[holder]` | Medicamentos de um detentor |
 | `/compare` | Comparação lado a lado (sincroniza com `?ids=`) |
 | `/dashboard` | Estatísticas com filtros interativos (cacheado) |
 | `/sobre` | Sobre o projeto e fontes de dados |

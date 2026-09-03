@@ -8,7 +8,7 @@ import { MedicineInfoCard } from '@/components/medicines/medicine-info-card'
 import { ActionBar } from '@/components/medicines/action-bar'
 import { PriceSection } from '@/components/medicines/price-section'
 import { SimilarSection } from '@/components/medicines/similar-section'
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 
@@ -23,8 +23,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!med) return { title: 'Medicamento não encontrado' }
 
   const canonical = medicineUrl(med.id, med.tradeName)
-  const full = `${med.tradeName} — ${med.activeIngredient} | Med Unificando`
-  const title = full.length > 60 ? `${med.tradeName} | Med Unificando` : full
+  // O template do layout anexa "| Med Unificando" — não repetir o sufixo aqui.
+  const full = `${med.tradeName} — ${med.activeIngredient}`
+  const title = full.length > 60 ? med.tradeName : full
   const description = `${med.tradeName} (${med.activeIngredient}) — ${med.category || 'Medicamento'} ${med.status === 'Ativo' ? 'com registro ativo' : 'com registro inativo'} na ANVISA. ${med.similarHolder}.`
 
   return {
@@ -50,8 +51,11 @@ export default async function MedicineDetailPage({ params }: { params: Promise<{
 
   const { medicine: med, prices, similares } = detail
 
-  // URLs legadas /medicamento/{id} → redirect permanente para o slug canônico.
-  if (/^\d+$/.test(slug)) redirect(medicineUrl(med.id, med.tradeName))
+  // Slugs legados puramente numéricos (/medicamento/123) continuam renderizando o
+// conteúdo — o <link rel="canonical"> (abaixo) aponta para o slug canônico, que é
+// como o Google consolida. `redirect()` no corpo de páginas force-dynamic é
+// engolido pelo streaming do Next (200 vazio), então NÃO usamos redirect aqui —
+// melhor uma URL legada funcional + canonical do que um 200 vazio.
 
   const canonical = medicineUrl(med.id, med.tradeName)
 

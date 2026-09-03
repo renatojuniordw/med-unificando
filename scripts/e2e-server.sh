@@ -2,7 +2,7 @@
 # e2e-server.sh — sobe o dev server para os testes E2E e pré-compila rotas-chave.
 #
 # Motivo do warm-up: o `next dev` compila rotas on-demand. Na primeira rodada da
-# suíte com vários workers, a rota dinâmica /medicamento/[id] é compilada sob carga
+# suíte com vários workers, a rota dinâmica /medicamento/[slug] é compilada sob carga
 # e a navegação client-side para ela pode estourar o timeout do teste (cold compile).
 # Aqui forçamos a compilação dessas rotas ANTES do Playwright iniciar, tornando a
 # suíte estável. Em CI (build de produção pré-compilado) isso não é necessário,

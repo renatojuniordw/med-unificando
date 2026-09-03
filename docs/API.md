@@ -224,7 +224,7 @@ Sitemap gerado dinamicamente com todas as URLs da aplicação (32K+ URLs):
 /referencias
 /atc
 /sobre
-/detentor/[cnpj]
+/detentor/[holder]
 /medicamento/1
 /medicamento/2
 ...
