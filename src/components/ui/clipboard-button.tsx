@@ -16,6 +16,7 @@ export function ClipboardButton({ text }: { text: string }) {
 
   return (
     <button
+      data-testid="clipboard-button"
       onClick={copy}
       className="inline-flex items-center gap-1 border border-border rounded-sm px-2 py-1 text-xs font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition-colors"
       aria-label={`Copiar ${text}`}

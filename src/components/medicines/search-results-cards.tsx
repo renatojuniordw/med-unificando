@@ -69,12 +69,14 @@ function FeedbackButton({ query, medicineId, medicineName }: {
     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
       <button
         type="button"
+        data-testid="feedback-helpful-button"
         onClick={(e) => { e.preventDefault(); handleClick('helpful'); }}
         className="text-xs text-muted/40 hover:text-green-500 transition-colors"
         title="Útil"
       >👍</button>
       <button
         type="button"
+        data-testid="feedback-not-helpful-button"
         onClick={(e) => { e.preventDefault(); handleClick('not_helpful'); }}
         className="text-xs text-muted/40 hover:text-red-500 transition-colors"
         title="Não útil"
@@ -90,6 +92,7 @@ export function SearchResultsCards({ results, searchQuery }: SearchResultsCardsP
           <Link
             key={r.medicine.id}
             href={`/medicamento/${r.medicine.id}`}
+            data-testid="semantic-search-result"
             className="group flex items-start gap-3 border border-border rounded-sm px-3 py-2.5 hover:bg-brand-yellow/10 hover:border-brand-yellow transition-colors"
             role="listitem"
           >

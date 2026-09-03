@@ -119,10 +119,11 @@ export function SearchForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="relative">
+    <form onSubmit={handleSubmit} data-testid="search-form" className="relative">
       {/* Busca textual — sempre visível */}
       <div className="mb-6">
         <Input
+          data-testid="search-query-input"
           label="Buscar por nome, princípio ativo ou referência"
           placeholder='Ex: "paracetamol", "dorflex", "losartana potássica"'
           value={query}
@@ -228,10 +229,10 @@ export function SearchForm() {
       </label>
 
       <div className="flex items-center gap-3 flex-wrap">
-        <Button type="submit" variant="primary">
+        <Button type="submit" variant="primary" data-testid="search-submit-button">
           Filtrar
         </Button>
-        <Button type="button" variant="ghost" onClick={handleReset}>
+        <Button type="button" variant="ghost" onClick={handleReset} data-testid="search-reset-button">
           Limpar
         </Button>
 

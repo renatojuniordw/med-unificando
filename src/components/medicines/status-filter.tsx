@@ -13,6 +13,7 @@ export function StatusFilter({ value, onChange }: StatusFilterProps) {
         <button
           key={s}
           type="button"
+          data-testid={`status-filter-${s ? s.toLowerCase() : 'todos'}`}
           onClick={() => onChange(s)}
           className={`px-3 min-h-[44px] flex items-center text-xs font-medium rounded-sm border transition-colors ${
             value === s

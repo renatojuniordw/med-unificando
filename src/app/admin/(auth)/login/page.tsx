@@ -53,12 +53,13 @@ export default function AdminLoginPage() {
           className="bg-[var(--color-bg)] border border-border rounded-md shadow-card p-8 space-y-6"
         >
           {error && (
-            <div className="bg-error text-white rounded-sm p-3 text-sm font-medium" role="alert">
+            <div data-testid="login-error" className="bg-error text-white rounded-sm p-3 text-sm font-medium" role="alert">
               {error}
             </div>
           )}
 
           <Input
+            data-testid="login-email-input"
             label="Email"
             type="email"
             placeholder="seu@email.com"
@@ -75,6 +76,7 @@ export default function AdminLoginPage() {
               </label>
               <button
                 type="button"
+                data-testid="login-toggle-password"
                 onClick={() => setShowPassword(prev => !prev)}
                 className="text-xs text-muted hover:text-[var(--color-text)] transition-colors"
                 tabIndex={-1}
@@ -85,6 +87,7 @@ export default function AdminLoginPage() {
             <div className="relative">
               <input
                 id="password"
+                data-testid="login-password-input"
                 type={showPassword ? 'text' : 'password'}
                 placeholder="••••••••"
                 value={password}
@@ -100,6 +103,7 @@ export default function AdminLoginPage() {
             type="submit"
             variant="primary"
             size="lg"
+            data-testid="login-submit-button"
             className="w-full"
             disabled={loading}
           >

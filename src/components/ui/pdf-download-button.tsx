@@ -30,6 +30,7 @@ export function PdfDownloadButton({ medicineId }: { medicineId: number }) {
   return (
     <button
       type="button"
+      data-testid="pdf-download-button"
       onClick={handleDownload}
       disabled={loading}
       className="inline-flex items-center gap-2 border border-border rounded-sm bg-[var(--color-bg)] px-4 min-h-[44px] text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition-colors disabled:opacity-50"

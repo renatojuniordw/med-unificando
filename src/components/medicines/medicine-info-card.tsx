@@ -15,7 +15,7 @@ const LONG_FIELDS = ['Sinônimos', 'Indicações']
 
 export function MedicineInfoCard({ fields }: { fields: Field[] }) {
   return (
-    <Card className="mb-8">
+    <Card data-testid="medicine-info-card" className="mb-8">
       <div className="grid md:grid-cols-2 gap-4">
         {fields.filter(f => f.value !== null && f.value !== '').map(f => (
           <FieldRow key={f.label} field={f} />

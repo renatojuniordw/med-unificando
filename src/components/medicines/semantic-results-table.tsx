@@ -18,7 +18,7 @@ export function SemanticResultsTable({ results }: SemanticResultsTableProps) {
   const mobileColumns = columns.filter(col => col.mobile)
   return (
     <div className="overflow-x-auto border border-border rounded-sm">
-      <table className="w-full border-collapse">
+      <table data-testid="semantic-results-table" className="w-full border-collapse">
         <thead>
           <tr className="bg-[var(--color-bg-secondary)] border-b border-border">
             {mobileColumns.map((col) => (
@@ -43,6 +43,7 @@ export function SemanticResultsTable({ results }: SemanticResultsTableProps) {
             return (
               <tr
                 key={medicine.id}
+                data-testid="semantic-results-row"
                 className={`border-b border-border hover:bg-brand-yellow/5 transition-colors ${
                   index % 2 === 0 ? 'bg-[var(--color-bg)]' : 'bg-[var(--color-bg-secondary)]/50'
                 }`}

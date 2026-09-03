@@ -35,7 +35,7 @@ interface CompareTableProps {
 export function CompareTable({ medicines }: CompareTableProps) {
   if (medicines.length === 0) {
     return (
-      <div className="text-center py-12 bg-[var(--color-bg)] border border-border rounded-md shadow-card">
+      <div data-testid="compare-empty-state" className="text-center py-12 bg-[var(--color-bg)] border border-border rounded-md shadow-card">
         <p className="font-semibold text-lg text-[var(--color-text)]">
           Nenhum medicamento selecionado
         </p>
@@ -76,7 +76,7 @@ export function CompareTable({ medicines }: CompareTableProps) {
 
       {/* Desktop: Table */}
       <div className="hidden md:block overflow-x-auto border border-border rounded-md bg-[var(--color-bg)] shadow-card">
-        <table className="w-full border-collapse">
+        <table data-testid="compare-table" className="w-full border-collapse">
           <thead>
             <tr className="bg-[var(--color-bg-secondary)] border-b border-border">
               <th className="text-left p-3 text-xs font-semibold text-muted w-48">Campo</th>

@@ -37,6 +37,7 @@ export function ExportButton({ filters }: ExportButtonProps) {
       <Button
         variant="secondary"
         size="sm"
+        data-testid="export-excel-button"
         disabled={loading !== null}
         onClick={() => handleExport('xlsx')}
       >
@@ -45,6 +46,7 @@ export function ExportButton({ filters }: ExportButtonProps) {
       <Button
         variant="secondary"
         size="sm"
+        data-testid="export-csv-button"
         disabled={loading !== null}
         onClick={() => handleExport('csv')}
       >

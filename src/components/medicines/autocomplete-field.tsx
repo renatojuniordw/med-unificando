@@ -137,6 +137,7 @@ export function AutocompleteField({
       />
       {suggestions.length > 0 && (
         <div
+          data-testid="autocomplete-listbox"
           className="absolute z-10 w-full bg-[var(--color-bg)] border border-border rounded-sm shadow-dropdown mt-1 max-h-60 overflow-y-auto"
           role="listbox"
           aria-label={`Sugestões de ${fieldKey}`}
@@ -150,6 +151,7 @@ export function AutocompleteField({
             <button
               key={i}
               id={`autocomplete-${fieldKey}-${i}`}
+              data-testid="autocomplete-option"
               type="button"
               role="option"
               aria-selected={i === activeIndex}

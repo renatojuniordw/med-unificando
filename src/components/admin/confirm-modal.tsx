@@ -26,10 +26,10 @@ export function ConfirmModal({
         <p className="font-semibold text-lg text-[var(--color-text)] mb-2">{title}</p>
         <p className="text-sm text-muted mb-6">{description}</p>
         <div className="flex gap-3 justify-end">
-          <Button variant="ghost" size="sm" onClick={onCancel} disabled={loading}>
+          <Button variant="ghost" size="sm" data-testid="confirm-modal-cancel-button" onClick={onCancel} disabled={loading}>
             Cancelar
           </Button>
-          <Button variant="primary" size="sm" onClick={onConfirm} disabled={loading}>
+          <Button variant="primary" size="sm" data-testid="confirm-modal-confirm-button" onClick={onConfirm} disabled={loading}>
             {loading ? 'Executando...' : 'Confirmar'}
           </Button>
         </div>

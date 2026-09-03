@@ -121,6 +121,7 @@ export function AtcCodeContent({ code, initialData }: AtcCodeContentProps) {
               <Link
                 key={med.id}
                 href={`/medicamento/${med.id}`}
+                data-testid="atc-medicine-item"
                 className="block border border-border rounded-sm bg-[var(--color-bg)] p-4 hover:bg-brand-yellow/10 hover:border-brand-yellow transition-all group"
               >
                 <div className="flex items-start justify-between gap-2">
@@ -161,7 +162,7 @@ export function AtcCodeContent({ code, initialData }: AtcCodeContentProps) {
             </thead>
             <tbody>
               {data.data.map((med: MedicineResult, i: number) => (
-                <tr key={med.id} className={`border-b border-border ${i % 2 === 0 ? 'bg-[var(--color-bg)]' : 'bg-[var(--color-bg-secondary)]/50'} hover:bg-brand-yellow/5 transition-colors`}>
+                <tr key={med.id} data-testid="atc-medicine-row" className={`border-b border-border ${i % 2 === 0 ? 'bg-[var(--color-bg)]' : 'bg-[var(--color-bg-secondary)]/50'} hover:bg-brand-yellow/5 transition-colors`}>
                   <td className="p-3 text-sm font-medium">
                     <Link href={`/medicamento/${med.id}`} className="text-[var(--color-text)] hover:underline">{med.tradeName}</Link>
                   </td>

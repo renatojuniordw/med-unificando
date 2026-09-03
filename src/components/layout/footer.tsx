@@ -56,6 +56,7 @@ export function Footer() {
             </a>
             <Link
               href="/privacidade"
+              data-testid="footer-privacy-link"
               className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors"
             >
               Política de Privacidade

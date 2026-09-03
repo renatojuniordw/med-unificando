@@ -15,6 +15,7 @@ export function ScrollToTop() {
 
   return (
     <button
+      data-testid="scroll-top-button"
       onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
       className="fixed bottom-6 right-6 z-50 w-11 h-11 bg-brand-black text-white rounded-sm shadow-modal hover:bg-primary-light transition-colors flex items-center justify-center"
       aria-label="Voltar ao topo"

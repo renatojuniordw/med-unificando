@@ -14,6 +14,7 @@ export function ViewToggle({ view, onChange }: ViewToggleProps) {
         type="button"
         variant={view === 'cards' ? 'primary' : 'ghost'}
         size="sm"
+        data-testid="view-toggle-cards"
         onClick={() => onChange('cards')}
       >
         Cards
@@ -22,6 +23,7 @@ export function ViewToggle({ view, onChange }: ViewToggleProps) {
         type="button"
         variant={view === 'table' ? 'primary' : 'ghost'}
         size="sm"
+        data-testid="view-toggle-table"
         onClick={() => onChange('table')}
       >
         Tabela

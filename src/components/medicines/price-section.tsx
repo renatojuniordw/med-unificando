@@ -15,7 +15,7 @@ export function PriceSection({ prices }: { prices: Price[] }) {
   const maxPrice = Math.max(...prices.map(p => p.pf0Price ?? p.pf18Price ?? 0))
 
   return (
-    <Card>
+    <Card data-testid="price-section">
       <p className="text-xs font-semibold text-muted mb-4">Preços CMED</p>
 
       {/* Gráfico de barras */}

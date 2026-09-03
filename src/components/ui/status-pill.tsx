@@ -11,7 +11,7 @@ export function StatusPill({ status }: StatusPillProps) {
   const style = styles[status ?? ''] ?? 'text-slate-500 bg-white border-2 border-brutalist-black'
 
   return (
-    <span className={`inline-block text-[10px] font-black uppercase px-2 py-1 ${style}`}>
+    <span data-testid="status-pill" className={`inline-block text-[10px] font-black uppercase px-2 py-1 ${style}`}>
       {status || '-'}
     </span>
   )

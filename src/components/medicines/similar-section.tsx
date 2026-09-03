@@ -17,7 +17,7 @@ export function SimilarSection({ similares, referenceMedicine, currentMedicineId
     : -1
 
   return (
-    <Card className="mb-8">
+    <Card data-testid="similar-section" className="mb-8">
       <p className="text-xs font-semibold text-muted mb-4">
         {similares.length} similar{similares.length !== 1 ? 'es' : ''} de {referenceMedicine}
       </p>

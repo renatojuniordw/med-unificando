@@ -8,6 +8,7 @@ export function ActionBar({ medicineId }: { medicineId: number }) {
     <div className="flex gap-3 mb-8 flex-wrap items-center">
       <a
         href={bulaSearchUrl}
+        data-testid="action-bar-anvisa-link"
         target="_blank"
         rel="noopener noreferrer"
         className="inline-flex items-center gap-2 border border-border rounded-sm bg-[var(--color-bg)] px-4 min-h-[44px] text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition-colors"

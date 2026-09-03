@@ -21,6 +21,7 @@ export function SyncCard({ title, children, action, loading, onAction }: SyncCar
         {action && onAction && (
           <Button
             type="button" variant="primary" size="lg" className="w-full"
+            data-testid="sync-card-action-button"
             disabled={loading}
             onClick={onAction}
           >

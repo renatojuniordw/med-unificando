@@ -21,6 +21,7 @@ export function PaginationBar({ page, totalPages, total, pageSize, onPageChange,
         </span>
         {onPageSizeChange && (
           <select
+            data-testid="pagination-page-size-select"
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
             className="border border-border rounded-sm bg-[var(--color-bg)] p-1.5 text-xs text-[var(--color-text)]"
@@ -32,13 +33,13 @@ export function PaginationBar({ page, totalPages, total, pageSize, onPageChange,
         )}
       </div>
       <div className="flex gap-2 items-center">
-        <Button variant="ghost" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)} aria-label="Página anterior">
+        <Button variant="ghost" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)} aria-label="Página anterior" data-testid="pagination-prev-button">
           Anterior
         </Button>
-        <span className="px-2 text-sm font-medium text-[var(--color-text)]">
+        <span data-testid="pagination-info" className="px-2 text-sm font-medium text-[var(--color-text)]">
           {page} / {totalPages}
         </span>
-        <Button variant="ghost" size="sm" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)} aria-label="Próxima página">
+        <Button variant="ghost" size="sm" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)} aria-label="Próxima página" data-testid="pagination-next-button">
           Próxima
         </Button>
       </div>

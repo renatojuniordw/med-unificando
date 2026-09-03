@@ -39,7 +39,7 @@ function MedicineCard({ medicine, selected, onToggle }: {
   onToggle: () => void
 }) {
   return (
-    <div className={`border border-border rounded-sm p-4 ${selected ? 'bg-brand-yellow/10 border-brand-yellow' : 'bg-[var(--color-bg)]'}`}>
+    <div data-testid="medicine-card" className={`border border-border rounded-sm p-4 ${selected ? 'bg-brand-yellow/10 border-brand-yellow' : 'bg-[var(--color-bg)]'}`}>
       <div className="flex items-start gap-3">
         <input
           type="checkbox"
@@ -142,7 +142,7 @@ function MedicineTableContent({ data, selectedIds, toggleSelect, toggleSelectAll
 
       {/* Desktop: Table */}
       <div className="hidden md:block overflow-x-auto">
-        <table className="w-full border-collapse">
+        <table data-testid="medicine-table" className="w-full border-collapse">
           <thead>
             <tr className="bg-[var(--color-bg-secondary)] border-b border-border">
               <th className="text-center p-3 text-xs font-semibold text-muted w-12">
@@ -166,6 +166,7 @@ function MedicineTableContent({ data, selectedIds, toggleSelect, toggleSelectAll
             {data.map((medicine: MedicineResult) => (
               <tr
                 key={medicine.id}
+                data-testid="medicine-row"
                 className={`border-b border-border hover:bg-brand-yellow/5 transition-colors ${
                   selectedIds.includes(medicine.id) ? 'bg-brand-yellow/10' : ''
                 }`}

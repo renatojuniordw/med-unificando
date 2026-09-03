@@ -140,10 +140,11 @@ export function HolderContent({ holder, initialData, totalMedicines, ativos, cat
       </div>
 
       {error && (
-        <div className="mt-4 flex items-center justify-between gap-3 rounded-sm border border-error/30 bg-red-50/50 dark:bg-red-950/20 p-3 text-sm text-error">
+        <div data-testid="holder-error-banner" className="mt-4 flex items-center justify-between gap-3 rounded-sm border border-error/30 bg-red-50/50 dark:bg-red-950/20 p-3 text-sm text-error">
           <span>{error}</span>
           <button
             type="button"
+            data-testid="holder-retry-button"
             onClick={() => setReload(r => r + 1)}
             className="text-xs font-semibold underline shrink-0"
           >
@@ -163,6 +164,7 @@ export function HolderContent({ holder, initialData, totalMedicines, ativos, cat
             <Link
               key={med.id}
               href={`/medicamento/${med.id}`}
+              data-testid="holder-medicine-item"
               className="block border border-border rounded-sm bg-[var(--color-bg)] p-4 hover:bg-brand-yellow/10 hover:border-brand-yellow transition-all group"
             >
               <div className="flex items-start justify-between gap-2">
@@ -230,6 +232,7 @@ export function HolderContent({ holder, initialData, totalMedicines, ativos, cat
               data.data.map((med: MedicineResult, i: number) => (
                 <tr
                   key={med.id}
+                  data-testid="holder-medicine-row"
                   className={`border-b border-border ${i % 2 === 0 ? 'bg-[var(--color-bg)]' : 'bg-[var(--color-bg-secondary)]/50'} hover:bg-brand-yellow/5 transition-colors`}
                 >
                   <td className="p-3 text-sm font-medium">

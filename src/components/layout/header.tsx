@@ -51,7 +51,7 @@ export function Header() {
     <header className="bg-[var(--color-bg)] border-b border-[var(--color-border)] sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-6 lg:px-12" ref={menuRef}>
         <div className="flex items-center justify-between h-16">
-          <Link href="/" className="flex items-center gap-3 min-h-[44px]" aria-label="Página inicial">
+          <Link href="/" data-testid="header-logo-link" className="flex items-center gap-3 min-h-[44px]" aria-label="Página inicial">
             <div className="bg-brand-yellow rounded-sm px-2 py-1">
               <span className="text-brand-black font-black tracking-tighter text-base">
                 MED
@@ -67,6 +67,7 @@ export function Header() {
               <Link
                 key={l.href}
                 href={l.href}
+                data-testid="header-nav-link"
                 className={`text-sm font-medium px-3 py-2 min-h-[44px] flex items-center rounded-sm transition-colors ${
                   isActive(l.href)
                     ? 'text-[var(--color-text)] bg-[var(--color-bg-secondary)] font-semibold'
@@ -80,6 +81,7 @@ export function Header() {
 
           <div className="flex items-center gap-2">
             <button
+              data-testid="header-theme-toggle"
               onClick={toggle}
               className="w-11 h-11 flex items-center justify-center rounded-sm border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition-colors"
               aria-label={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
@@ -97,6 +99,7 @@ export function Header() {
             </button>
 
             <button
+              data-testid="header-menu-button"
               className="lg:hidden w-11 h-11 flex items-center justify-center text-[var(--color-text)] border border-[var(--color-border)] rounded-sm hover:bg-[var(--color-bg-secondary)] transition-colors"
               onClick={() => setMenuOpen(!menuOpen)}
               aria-label={menuOpen ? 'Fechar menu' : 'Abrir menu'}
@@ -121,6 +124,7 @@ export function Header() {
           <>
             <div className="fixed inset-0 bg-black/20 z-40 lg:hidden" onClick={closeMenu} />
             <nav
+              data-testid="header-mobile-nav"
               className="relative z-50 lg:hidden pb-4 border-t border-[var(--color-border)] pt-3 bg-[var(--color-bg)]"
               aria-label="Navegação mobile"
             >

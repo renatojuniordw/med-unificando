@@ -26,6 +26,7 @@ export function CompareSearch({ query, onQueryChange, results, searching, onAdd 
     <div className="relative" ref={containerRef}>
       <Input
         ref={inputRef}
+        data-testid="compare-search-input"
         label="Adicionar medicamento para comparação"
         placeholder="Digite referência, princípio ativo ou nome comercial..."
         value={query}
@@ -50,6 +51,7 @@ export function CompareSearch({ query, onQueryChange, results, searching, onAdd 
             <button
               key={item.id}
               type="button"
+              data-testid="compare-search-option"
               role="option"
               aria-selected={i === activeIndex}
               className={`block w-full text-left px-4 py-2.5 text-sm text-[var(--color-text)] border-b border-border last:border-b-0 transition-colors ${

@@ -19,6 +19,7 @@ export function FavoriteButton({ medicineId }: { medicineId: number }) {
   return (
     <button
       type="button"
+      data-testid="favorite-button"
       onClick={handleClick}
       className={`inline-flex items-center gap-2 border rounded-sm px-4 min-h-[44px] text-sm font-medium transition-colors ${
         active

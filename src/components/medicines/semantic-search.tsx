@@ -175,6 +175,7 @@ export function SemanticSearch() {
           <div className="flex-1 min-w-0 relative">
             <Input
               ref={inputElRef}
+              data-testid="semantic-search-input"
               label=""
               aria-label="Buscar medicamento"
               placeholder='Ex: "anti-inflamatório" ou "remédio para pressão"'
@@ -253,6 +254,7 @@ export function SemanticSearch() {
           <Button
             type="button"
             variant="primary"
+            data-testid="semantic-search-submit-button"
             onClick={() => handleSearch()}
             disabled={loading || !query.trim()}
             className="self-stretch sm:self-end min-h-[44px]"

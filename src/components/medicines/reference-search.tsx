@@ -81,6 +81,7 @@ export function ReferenceSearch({ initialReferences }: ReferenceSearchProps) {
       {/* Busca textual */}
       <div className="mb-4">
         <Input
+          data-testid="reference-search-input"
           label="Buscar Referência"
           placeholder="Digite o nome do medicamento de referência..."
           value={query}
@@ -176,6 +177,7 @@ export function ReferenceSearch({ initialReferences }: ReferenceSearchProps) {
               <Link
                 key={ref.name}
                 href={`/referencias/${encodeURIComponent(ref.name)}`}
+                data-testid="reference-search-item"
                 className="block border border-border rounded-sm bg-[var(--color-bg)] p-4 hover:bg-brand-yellow/10 hover:border-brand-yellow transition-all group"
                 role="listitem"
               >
@@ -203,6 +205,7 @@ export function ReferenceSearch({ initialReferences }: ReferenceSearchProps) {
             <Link
               key={ref.name}
               href={`/referencias/${encodeURIComponent(ref.name)}`}
+              data-testid="reference-search-item"
               className="block border border-border rounded-sm bg-[var(--color-bg)] p-4 hover:bg-brand-yellow/10 hover:border-brand-yellow transition-all group"
               role="listitem"
             >

@@ -44,6 +44,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         {toasts.map(t => (
           <button
             key={t.id}
+            data-testid="toast-message"
             onClick={() => remove(t.id)}
             className={`pointer-events-auto px-4 py-2.5 rounded-sm text-sm font-medium shadow-modal animate-in slide-in-from-bottom-2 transition-all ${
               t.type === 'success'

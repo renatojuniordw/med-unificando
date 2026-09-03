@@ -15,7 +15,7 @@ export function BarChart({ items, maxCount, barColor = 'bg-neon-yellow', label, 
   const max = maxCount ?? items[0]?.count ?? 1
 
   return (
-    <div className={`space-y-2 ${className}`}>
+    <div data-testid="bar-chart" className={`space-y-2 ${className}`}>
       {label && <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">{label}</p>}
       {items.map((item) => {
         const width = (item.count / max) * 100

@@ -26,7 +26,7 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback
       return (
-        <div className="flex items-center justify-center min-h-[40vh] p-8">
+        <div data-testid="error-boundary" className="flex items-center justify-center min-h-[40vh] p-8">
           <div className="bg-[var(--color-bg)] border border-border rounded-md shadow-card p-8 max-w-md text-center">
             <p className="font-semibold text-lg text-[var(--color-text)] mb-2">
               Algo deu errado
@@ -35,6 +35,7 @@ export class ErrorBoundary extends Component<Props, State> {
               Ocorreu um erro inesperado. Tente recarregar a página.
             </p>
             <button
+              data-testid="error-boundary-reload-button"
               onClick={() => window.location.reload()}
               className="bg-brand-black text-white px-4 py-2 text-sm font-medium rounded-sm hover:bg-primary-light transition-colors"
             >

@@ -20,6 +20,7 @@ export function SelectedTags({ medicines, selectedIds, onRemove }: SelectedTagsP
           >
             {med?.tradeName || `ID ${id}`}
             <button
+              data-testid="selected-tag-remove"
               onClick={() => onRemove(id)}
               className="text-[var(--color-text)]/60 hover:text-error ml-0.5"
               aria-label={`Remover ${med?.tradeName || id}`}
