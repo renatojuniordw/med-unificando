@@ -10,9 +10,15 @@ import {
   toCsv,
 } from "@/lib/csv-export"
 import * as XLSX from 'xlsx'
+import { assertActionRateLimit } from '@/lib/rate-limit-action'
 import type { SearchFilters, MedicineResult } from "@/types"
 
+// Exports varrem todo o resultado filtrado do banco — limite por IP evita abuso.
+const EXPORT_ACTION_LIMIT = 30
+
 export async function exportToExcel(filters?: SearchFilters): Promise<{ filename: string; buffer: number[] }> {
+  await assertActionRateLimit('export-actions', EXPORT_ACTION_LIMIT)
+
   const where = buildWhere(filters)
   const data = await prisma.medicine.findMany({
     where,
@@ -35,6 +41,8 @@ export async function exportToExcel(filters?: SearchFilters): Promise<{ filename
 }
 
 export async function exportToCsv(filters?: SearchFilters): Promise<{ filename: string; text: string }> {
+  await assertActionRateLimit('export-actions', EXPORT_ACTION_LIMIT)
+
   const where = buildWhere(filters)
   const data = await prisma.medicine.findMany({
     where,

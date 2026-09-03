@@ -195,13 +195,21 @@ crontab -e
 0 2 * * 1 docker exec medicamentos-app npx tsx scripts/generate-search-index.ts >> /var/log/sync.log 2>&1
 
 # ANVISA — todo domingo às 3h
-0 3 * * 0 docker exec medicamentos-app sh -c "NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx prisma/seed.ts" >> /var/log/sync.log 2>&1
+0 3 * * 0 docker exec medicamentos-app sh -c "npx tsx prisma/seed.ts" >> /var/log/sync.log 2>&1
 
 # Farmácia Popular — todo domingo às 3h30 (após ANVISA)
 30 3 * * 0 docker exec medicamentos-app npx tsx scripts/sync-farmacia-popular.ts >> /var/log/sync.log 2>&1
 
+# LGPD — purge de logs/feedback antigos (> 365 dias) — todo domingo às 5h
+0 5 * * 0 docker exec medicamentos-app npm run purge:logs >> /var/log/sync.log 2>&1
+
 # Backup do banco — todo domingo às 4h
 0 4 * * 0 docker exec medicamentos-db pg_dump -U admin medicamentos | gzip > /backups/medicamentos-$(date +\%Y\%m\%d).sql.gz
+
+# Monitoramento — diário: healthcheck da API + verificação de frescor do backup
+# (falhas saem com exit code != 0; ajuste o destino do alerta conforme o seu setup)
+17 6 * * * curl -fsS http://localhost:11006/api/health > /dev/null || echo "API unhealthy" | mail -s "Alerta: API" root
+37 6 * * * /opt/med-unificando/scripts/check-backup-freshness.sh /backups 8 || echo "Backup velho" | mail -s "Alerta: backup" root
 ```
 
 > O container `medicamentos-app` precisa estar rodando para `docker exec` funcionar.

@@ -4,6 +4,7 @@ import { PrismaPg } from "@prisma/adapter-pg"
 import * as XLSX from "xlsx"
 import iconv from "iconv-lite"
 import https from "https"
+import { anvisaAgent } from "../src/lib/anvisa-https"
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
@@ -14,7 +15,7 @@ const URL = "https://dados.anvisa.gov.br/dados/TA_PRECOS_MEDICAMENTOS.csv"
 async function main() {
   console.log("Baixando preços CMED...")
   const csvText = await new Promise<string>((resolve, reject) => {
-    https.get(URL, { rejectUnauthorized: false }, (res) => {
+    https.get(URL, { agent: anvisaAgent }, (res) => {
       const chunks: Buffer[] = []
       res.on("data", (c: Buffer) => chunks.push(c))
       res.on("end", () => resolve(iconv.decode(Buffer.concat(chunks), "latin1")))

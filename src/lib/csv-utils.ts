@@ -1,12 +1,11 @@
 import https from 'https'
 import iconv from 'iconv-lite'
 import * as XLSX from 'xlsx'
-
-const agent = new https.Agent({ rejectUnauthorized: false })
+import { anvisaAgent } from '@/lib/anvisa-https'
 
 export function downloadCsv(url: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    https.get(url, { agent }, (res) => {
+    https.get(url, { agent: anvisaAgent }, (res) => {
       const chunks: Buffer[] = []
       res.on('data', (chunk: Buffer) => chunks.push(chunk))
       res.on('end', () => resolve(iconv.decode(Buffer.concat(chunks), 'latin1')))

@@ -6,10 +6,7 @@ import iconv from "iconv-lite"
 import bcrypt from "bcryptjs"
 
 import https from "https"
-
-if (process.env.ALLOW_INSECURE_TLS !== "false") {
-  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"
-}
+import { anvisaAgent } from "../src/lib/anvisa-https"
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
@@ -20,7 +17,7 @@ const THERAPEUTIC_CLASS_URL = 'https://dados.anvisa.gov.br/dados/DADOS_ABERTOS_M
 
 function fetchAnvisa(url: string, maxRedirects = 3): Promise<{ text: string; lastModified: Date }> {
   return new Promise((resolve, reject) => {
-    const req = https.get(url, { rejectUnauthorized: false }, (res) => {
+    const req = https.get(url, { agent: anvisaAgent }, (res) => {
       if (res.statusCode && [301, 302, 307, 308].includes(res.statusCode) && res.headers.location && maxRedirects > 0) {
         res.resume()
         return fetchAnvisa(res.headers.location, maxRedirects - 1).then(resolve, reject)
@@ -73,8 +70,7 @@ async function main() {
   })
 
   if (!adminExists) {
-    const salt = bcrypt.genSaltSync(10)
-    const password = bcrypt.hashSync(adminPassword, salt)
+    const password = bcrypt.hashSync(adminPassword, 10)
 
     await prisma.user.create({
       data: {
@@ -82,7 +78,6 @@ async function main() {
         name: "Admin",
         role: "ADMIN",
         password,
-        salt,
       },
     })
 

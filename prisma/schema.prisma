@@ -15,7 +15,6 @@ model User {
   name              String
   role              String   @default("USER")
   password          String
-  salt              String
   confirmationToken String?
   recoverToken      String?
   createdAt         DateTime @default(now())

@@ -25,13 +25,17 @@ crontab -e
 
 ```cron
 # ANVISA — todo domingo às 3h
-0 3 * * 0 docker exec medicamentos-app sh -c "NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx prisma/seed.ts && npm run search-index && npm run tsvector" >> /var/log/sync.log 2>&1
+0 3 * * 0 docker exec medicamentos-app sh -c "npx tsx prisma/seed.ts && npm run search-index && npm run tsvector" >> /var/log/sync.log 2>&1
 
 # Farmácia Popular — todo domingo às 4h (após ANVISA + índices)
 0 4 * * 0 docker exec medicamentos-app npx tsx scripts/sync-farmacia-popular.ts >> /var/log/sync.log 2>&1
+
+# LGPD — purge de search_logs/search_feedback (> 365 dias) — todo domingo às 5h
+0 5 * * 0 docker exec medicamentos-app npx tsx scripts/purge-search-logs.ts >> /var/log/sync.log 2>&1
 ```
 
 > ⚠️ O container `medicamentos-app` precisa estar rodando para o `docker exec` funcionar.
+> O purge respeita a política de retenção (padrão 365 dias) — ver `scripts/purge-search-logs.ts` e a página `/privacidade`.
 
 ## Scripts disponíveis para cron
 
@@ -41,6 +45,7 @@ crontab -e
 | `npm run farmacia-popular` | Sincronizar Farmácia Popular |
 | `npm run search-index` | Gerar embeddings (apenas novos) |
 | `npm run tsvector` | Gerar tsvector |
+| `npm run purge:logs` | Purge de logs/feedback antigos (retenção LGPD) |
 
 ## URLs dos dados
 

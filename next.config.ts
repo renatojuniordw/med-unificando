@@ -8,8 +8,8 @@ const cspHeader = [
   `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
   `font-src 'self' https://fonts.gstatic.com data:`,
   // Next.js App Router requer 'unsafe-inline' para scripts de hidratação/chunks.
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://static.cloudflareinsights.com`,
-  `connect-src 'self' https://dados.anvisa.gov.br https://cloudflareinsights.com`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  `connect-src 'self' https://dados.anvisa.gov.br`,
   `frame-ancestors 'none'`,
   `base-uri 'self'`,
   `form-action 'self'`,

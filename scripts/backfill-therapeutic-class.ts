@@ -5,8 +5,8 @@ import * as XLSX from "xlsx"
 import iconv from "iconv-lite"
 import https from "https"
 import { ANVISA } from "../src/lib/config"
+import { anvisaAgent } from "../src/lib/anvisa-https"
 
-const agent = new https.Agent({ rejectUnauthorized: false })
 const BATCH_SIZE = 500
 
 const prisma = new PrismaClient({
@@ -15,7 +15,7 @@ const prisma = new PrismaClient({
 
 function downloadCSV(url: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    https.get(url, { agent }, (res) => {
+    https.get(url, { agent: anvisaAgent }, (res) => {
       const chunks: Buffer[] = []
       res.on("data", (chunk: Buffer) => chunks.push(chunk))
       res.on("end", () => resolve(iconv.decode(Buffer.concat(chunks), "latin1")))

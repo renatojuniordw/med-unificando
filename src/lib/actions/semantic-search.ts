@@ -11,6 +11,7 @@ import {
   type EmbeddingClassification,
 } from '@/lib/search-preprocessor'
 import { EMBEDDING, SEARCH } from '@/lib/config'
+import { assertActionRateLimit } from '@/lib/rate-limit-action'
 import { normalizeMedicine } from "@/lib/format"
 import { applyScoreAdjustments } from "@/lib/score-adjustments"
 import { stripAccents } from '@/lib/text-utils'
@@ -880,6 +881,9 @@ export async function hybridSearch(
   topK: number = SEARCH.HYBRID_TOP_K
 ): Promise<HybridSearchResult> {
   if (!query.trim()) return { results: [], suggestions: [] }
+
+  // Busca semântica é a action mais cara (embeddings + 3 fontes de DB): limita por IP.
+  await assertActionRateLimit('hybrid-search-actions', 120)
 
   // Verificar cache
   const cached = getCachedSearch(query, topK)

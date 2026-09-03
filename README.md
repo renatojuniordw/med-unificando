@@ -106,7 +106,7 @@ npx prisma generate
 npx prisma migrate deploy
 
 # 4. Seed dos dados ANVISA
-NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx prisma/seed.ts
+npx tsx prisma/seed.ts
 
 # 5. Gerar embeddings (busca semântica)
 npm run search-index

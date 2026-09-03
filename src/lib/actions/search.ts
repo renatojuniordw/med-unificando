@@ -7,16 +7,23 @@ import { normalizeMedicine } from "@/lib/format"
 import * as Prisma from "@/generated/prisma/internal/prismaNamespace"
 import type { SearchFilters, SearchResponse, DistinctValue, DashboardStats } from "@/types"
 import { SEARCH } from "@/lib/config"
+import { assertActionRateLimit } from "@/lib/rate-limit-action"
 
 // Fragmento SQL único para extrair o ano da coluna "inclusionDate" (string).
 // Usado em $queryRaw (via Prisma.raw) e $queryRawUnsafe (concatenação).
 const INCLUSION_YEAR_SQL = 'substring("inclusionDate" from 7 for 4)'
+
+// Limites por IP (janela 60s) para actions públicas — espelham as rotas /api.
+const SEARCH_ACTION_LIMIT = 120
+const AUTOCOMPLETE_ACTION_LIMIT = 120
 
 export async function searchMedicines(
   page: number = 1,
   pageSize: number = 10,
   filters: SearchFilters = {}
 ): Promise<SearchResponse> {
+  await assertActionRateLimit('search-actions', SEARCH_ACTION_LIMIT)
+
   const where = buildWhere(filters)
   const skip = (page - 1) * pageSize
 
@@ -68,6 +75,8 @@ export async function getHolderMedicines(
 
 /** Server-side autocomplete: busca valores que correspondem ao termo digitado */
 export async function searchAutocomplete(field: string, q: string): Promise<DistinctValue[]> {
+  await assertActionRateLimit('autocomplete-actions', AUTOCOMPLETE_ACTION_LIMIT)
+
   const fieldToPrismaEnum: Record<string, Prisma.MedicineScalarFieldEnum> = {
     reference: Prisma.MedicineScalarFieldEnum.reference,
     activeIngredient: Prisma.MedicineScalarFieldEnum.activeIngredient,

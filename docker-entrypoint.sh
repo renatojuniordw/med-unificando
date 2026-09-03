@@ -11,13 +11,6 @@ set -e
 export DATABASE_URL="postgresql://admin:${DB_PASSWORD:?DB_PASSWORD não definida}@db:5432/medicamentos"
 echo "📌 DATABASE_URL forçado para host 'db' do Docker"
 
-# ── 0b. TLS: seguro por padrão. Só desabilita se explicitamente pedido ────
-# (workaround p/ ANVISA; prefira manter HTTPS verificado sempre que possível)
-if [ "${ALLOW_INSECURE_TLS:-true}" = "true" ]; then
-  export NODE_TLS_REJECT_UNAUTHORIZED=0
-  echo "⚠️  ALLOW_INSECURE_TLS=true — verificação de TLS desabilitada para compatibilidade com ANVISA"
-fi
-
 # ── 1. Aguardar PostgreSQL ─────────────────────────────────────────────────
 echo "⏳ Aguardando PostgreSQL..."
 until pg_isready -h db -U admin -d medicamentos 2>/dev/null; do

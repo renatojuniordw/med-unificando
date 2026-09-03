@@ -28,7 +28,7 @@ npx prisma generate
 npx prisma migrate deploy
 
 # 6. Seed (importa dados da ANVISA)
-NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx prisma/seed.ts
+npx tsx prisma/seed.ts
 
 # 7. Embeddings para busca semântica (multilingual-e5-base, 768d)
 npm run search-index
@@ -222,13 +222,9 @@ const text = buffer.toString()
 
 ## SSL
 
-O servidor da ANVISA (`dados.anvisa.gov.br`) usa certificado não verificado:
+Os servidores da ANVISA usam certificados ICP-Brasil que não constam nas CAs padrão do Node, causando `UNABLE_TO_VERIFY_LEAF_SIGNATURE`. O projeto resolve isso com um agente HTTPS **escopado ao host ANVISA** (`src/lib/anvisa-https.ts`) — usado por `prisma/seed.ts`, `prisma/import-prices.ts`, `scripts/backfill-therapeutic-class.ts`, `src/lib/csv-utils.ts` e `src/lib/actions/admin.ts`.
 
-```bash
-NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx prisma/seed.ts
-```
-
-Em produção, o Dockerfile usa o CA bundle do Alpine sem necessidade de flags.
+Não é necessário (nem recomendado) exportar `NODE_TLS_REJECT_UNAUTHORIZED=0` globalmente — isso desabilitaria a verificação TLS de todas as conexões de saída do processo.
 
 ## Porta
 

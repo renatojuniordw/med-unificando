@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 export function Footer() {
   return (
     <footer className="bg-[var(--color-bg-secondary)] border-t border-[var(--color-border)] mt-auto">
@@ -52,6 +54,12 @@ export function Footer() {
             >
               Unificando
             </a>
+            <Link
+              href="/privacidade"
+              className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors"
+            >
+              Política de Privacidade
+            </Link>
             <span className="text-xs text-[var(--color-text-secondary)]">
               © {new Date().getFullYear()} UNIFICANDO DIGITAL · Med Unificando — Consulta de medicamentos intercambiáveis e referências ANVISA.
             </span>

@@ -4,15 +4,12 @@ import { prisma } from "@/lib/prisma"
 import { withAdmin, withAdminReturn } from "@/lib/auth-guard"
 import { downloadCsv, parseCsvToRows } from "@/lib/csv-utils"
 import https from 'https'
+import { anvisaAgent } from '@/lib/anvisa-https'
 import { BATCH } from "@/lib/constants"
 import { ANVISA } from "@/lib/config"
 import type { ImportInfo } from "@/types"
 
 const CSV_URL = ANVISA.MEDICINES_URL
-// TLS verificado por padrão. Desabilitar só explicitamente (mitigação MITM).
-const agent = process.env.ALLOW_INSECURE_TLS === 'true'
-  ? new https.Agent({ rejectUnauthorized: false })
-  : undefined
 
 const VALID_CATEGORIES = new Set([
   'SIMILAR', 'GENÉRICO', 'REFERÊNCIA', 'NOVO', 'ESPECÍFICO',
@@ -71,7 +68,7 @@ export async function importPdf(formData: FormData) {
 
 function getHeader(url: string): Promise<Date | null> {
   return new Promise((resolve, reject) => {
-    const req = https.get(url, { agent, method: 'HEAD' }, (res) => {
+    const req = https.get(url, { agent: anvisaAgent, method: 'HEAD' }, (res) => {
       resolve(res.headers['last-modified'] ? new Date(res.headers['last-modified']) : null)
       res.resume()
     })

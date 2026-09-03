@@ -5,6 +5,7 @@ import { withAdminReturn } from '@/lib/auth-guard'
 import { normalizeQuery } from '@/lib/text-utils'
 import { revalidatePath } from 'next/cache'
 import { feedbackSchema } from '@/lib/feedback-schema'
+import { checkActionRateLimit, RATE_LIMIT_ERROR } from '@/lib/rate-limit-action'
 
 export type { FeedbackType, FeedbackData } from '@/lib/feedback-schema'
 
@@ -18,6 +19,13 @@ export interface FeedbackStats {
 }
 
 export async function submitSearchFeedback(data: unknown): Promise<{ success: boolean; error?: string }> {
+  // Mesmo limite da rota POST /api/search-feedback (20/min) — a action não pode
+  // desviar do rate limit simplesmente chamando a action em vez da API.
+  const { allowed } = await checkActionRateLimit('search-feedback', 20)
+  if (!allowed) {
+    return { success: false, error: RATE_LIMIT_ERROR }
+  }
+
   const parsed = feedbackSchema.safeParse(data)
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Dados inválidos' }
