@@ -7,7 +7,14 @@ export const revalidate = 86400
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = SITE.BASE_URL
 
-  const { medicines, references, atcCodes, holders } = await getCachedSitemapData()
+  let sitemapData = { medicines: [] as { id: number; updatedAt: Date | null }[], references: [] as { referenceMedicine: string | null }[], atcCodes: [] as { atcCode: string | null }[], holders: [] as { similarHolder: string }[] }
+  try {
+    sitemapData = await getCachedSitemapData()
+  } catch {
+    // DB unreachable during build (e.g. Docker build)
+  }
+
+  const { medicines, references, atcCodes, holders } = sitemapData
 
   const now = new Date()
 
