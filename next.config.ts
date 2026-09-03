@@ -6,11 +6,10 @@ const cspHeader = [
   `default-src 'self'`,
   `img-src 'self' https: data:`,
   `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
-  `font-src 'self' https://fonts.gstatic.com`,
-  // Em dev, Next.js exige unsafe-inline/unsafe-eval para HMR.
-  // Em produção, restringimos a 'self' (App Router não precisa de eval).
-  `script-src 'self'${isDev ? " 'unsafe-inline' 'unsafe-eval'" : ""}`,
-  `connect-src 'self' https://dados.anvisa.gov.br`,
+  `font-src 'self' https://fonts.gstatic.com data:`,
+  // Next.js App Router requer 'unsafe-inline' para scripts de hidratação/chunks.
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://static.cloudflareinsights.com`,
+  `connect-src 'self' https://dados.anvisa.gov.br https://cloudflareinsights.com`,
   `frame-ancestors 'none'`,
   `base-uri 'self'`,
   `form-action 'self'`,
