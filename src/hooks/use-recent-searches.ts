@@ -2,30 +2,19 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { STORAGE_KEYS } from '@/lib/constants'
+import { loadFromStorage, saveToStorage } from '@/lib/storage'
 
 const MAX_ITEMS = 5
 
-function loadRecent(): string[] {
-  if (typeof window === 'undefined') return []
-  try {
-    const stored = localStorage.getItem(STORAGE_KEYS.RECENT_SEARCHES)
-    if (stored) return JSON.parse(stored)
-  } catch { console.warn('Failed to read recent searches from localStorage') }
-  return []
-}
-
-function saveRecent(items: string[]) {
-  try {
-    localStorage.setItem(STORAGE_KEYS.RECENT_SEARCHES, JSON.stringify(items))
-  } catch { console.warn('Failed to save recent searches to localStorage') }
-}
+const RECENT_READ_ERROR = 'Falha ao ler buscas recentes do localStorage'
+const RECENT_WRITE_ERROR = 'Falha ao salvar buscas recentes no localStorage'
 
 export function useRecentSearches() {
   const [recent, setRecent] = useState<string[]>([])
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
-    setRecent(loadRecent())
+    setRecent(loadFromStorage<string[]>(STORAGE_KEYS.RECENT_SEARCHES, RECENT_READ_ERROR) ?? [])
     setLoaded(true)
   }, [])
 
@@ -34,7 +23,7 @@ export function useRecentSearches() {
     if (!trimmed) return
     setRecent(prev => {
       const next = [trimmed, ...prev.filter(s => s !== trimmed)].slice(0, MAX_ITEMS)
-      saveRecent(next)
+      saveToStorage(STORAGE_KEYS.RECENT_SEARCHES, next, RECENT_WRITE_ERROR)
       return next
     })
   }, [])

@@ -4,9 +4,13 @@ import { prisma } from "@/lib/prisma"
 import { buildWhere } from "@/lib/build-where"
 import { YEARS } from "@/lib/constants"
 import { normalizeMedicine } from "@/lib/format"
-import type { Medicine } from "@/generated/prisma/client"
 import * as Prisma from "@/generated/prisma/internal/prismaNamespace"
 import type { SearchFilters, SearchResponse, DistinctValue, DashboardStats } from "@/types"
+import { SEARCH } from "@/lib/config"
+
+// Fragmento SQL único para extrair o ano da coluna "inclusionDate" (string).
+// Usado em $queryRaw (via Prisma.raw) e $queryRawUnsafe (concatenação).
+const INCLUSION_YEAR_SQL = 'substring("inclusionDate" from 7 for 4)'
 
 export async function searchMedicines(
   page: number = 1,
@@ -26,7 +30,7 @@ export async function searchMedicines(
     prisma.medicine.count({ where }),
   ])
 
-  return { data: data.map(normalizeMedicine) as Medicine[], total, page, pageSize }
+  return { data: data.map(normalizeMedicine), total, page, pageSize }
 }
 
 export async function getHolderMedicines(
@@ -45,7 +49,7 @@ export async function getHolderMedicines(
       { activeIngredient: { contains: search, mode: 'insensitive' } },
     ]
   }
-  if (status) where.status = { contains: status, mode: 'insensitive' }
+  if (status) where.status = { equals: status, mode: 'insensitive' }
 
   const skip = (page - 1) * pageSize
 
@@ -59,7 +63,7 @@ export async function getHolderMedicines(
     prisma.medicine.count({ where }),
   ])
 
-  return { data: data.map(normalizeMedicine) as Medicine[], total, page, pageSize }
+  return { data: data.map(normalizeMedicine), total, page, pageSize }
 }
 
 /** Server-side autocomplete: busca valores que correspondem ao termo digitado */
@@ -83,7 +87,7 @@ export async function searchAutocomplete(field: string, q: string): Promise<Dist
     where: {
       [field]: { contains: q.trim(), mode: 'insensitive' },
     },
-    take: 8,
+    take: SEARCH.AUTOCOMPLETE_TAKE,
     orderBy: { [field]: 'asc' },
   })
 
@@ -125,10 +129,10 @@ export async function countMedicines(filters: SearchFilters): Promise<number> {
 
 async function computeTimeline() {
   const rows = await prisma.$queryRaw<{ year: string; count: number }[]>`
-    SELECT substring("inclusionDate" from 7 for 4) AS year, COUNT(*)::int AS count
+    SELECT ${Prisma.raw(INCLUSION_YEAR_SQL)} AS year, COUNT(*)::int AS count
     FROM medicines
     WHERE "inclusionDate" IS NOT NULL
-      AND substring("inclusionDate" from 7 for 4) BETWEEN ${YEARS.MIN} AND ${YEARS.MAX}
+      AND ${Prisma.raw(INCLUSION_YEAR_SQL)} BETWEEN ${YEARS.MIN} AND ${YEARS.MAX}
     GROUP BY year
     ORDER BY year ASC
   `
@@ -155,7 +159,7 @@ async function computeTopActiveIngredients(count: number) {
 
 export async function getDashboardStats(): Promise<DashboardStats> {
   const timeline = await computeTimeline()
-  const topK = 10
+  const topK = SEARCH.DASHBOARD_TOP_K
 
   const [totalMedicines, totalTradeNames, topReferences, topActiveIngredients, groupByStatus, groupByCategory] = await Promise.all([
     prisma.medicine.count(),
@@ -171,7 +175,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       by: ['category'],
       _count: { category: true },
       orderBy: { _count: { category: 'desc' } },
-      take: 10,
+      take: SEARCH.DASHBOARD_TOP_K,
     }).then(r => r.map(item => ({ name: item.category ?? 'Sem categoria', count: item._count.category }))),
   ])
 
@@ -212,7 +216,7 @@ export async function getFilteredStats(filters: { year?: string; category?: stri
   }
   if (filters.year) {
     params.push(filters.year)
-    conditions.push(`substring("inclusionDate" from 7 for 4) = $${params.length}`)
+    conditions.push(`${INCLUSION_YEAR_SQL} = $${params.length}`)
   }
 
   const commonWhere = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
@@ -226,7 +230,7 @@ export async function getFilteredStats(filters: { year?: string; category?: stri
        FROM medicines ${commonWhere}
        GROUP BY "tradeName"
        ORDER BY count DESC
-       LIMIT 10`,
+       LIMIT ${SEARCH.DASHBOARD_TOP_K}`,
       ...params
     ),
     prisma.$queryRawUnsafe<{ name: string; count: number }[]>(
@@ -234,7 +238,7 @@ export async function getFilteredStats(filters: { year?: string; category?: stri
        FROM medicines ${commonWhere}
        GROUP BY "activeIngredient"
        ORDER BY count DESC
-       LIMIT 10`,
+       LIMIT ${SEARCH.DASHBOARD_TOP_K}`,
       ...params
     ),
   ])

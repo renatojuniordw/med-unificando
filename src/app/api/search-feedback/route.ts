@@ -1,35 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
-import { rateLimit, getClientIp } from '@/lib/rate-limit'
+import { rateLimit, getClientIp, rateLimitResponse } from '@/lib/rate-limit'
 import { submitSearchFeedback, getFeedbackStats, getLowQualityQueries } from '@/lib/actions/search-feedback'
+import { feedbackSchema } from '@/lib/feedback-schema'
+import { isAdmin } from '@/lib/auth-guard'
 
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request)
   const rl = rateLimit(ip, 'search-feedback', { limit: 20 })
   if (!rl.allowed) {
-    return NextResponse.json(
-      { error: 'Muitas requisições. Tente novamente em alguns instantes.' },
-      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSeconds) } }
-    )
+    return rateLimitResponse(rl)
   }
 
   try {
     const body = await request.json()
-    const { query, medicineId, medicineName, feedback } = body
+    const parsed = feedbackSchema.safeParse(body)
 
-    if (!query || typeof query !== 'string' || !feedback) {
+    if (!parsed.success) {
+      const detail = parsed.error.issues.map(i => i.message).join('; ')
       return NextResponse.json(
-        { error: 'Campos obrigatórios: query, feedback' },
+        { error: `Dados inválidos: ${detail}` },
         { status: 400 }
       )
     }
 
-    const result = await submitSearchFeedback({
-      query,
-      medicineId,
-      medicineName,
-      feedback,
-    })
+    const result = await submitSearchFeedback(parsed.data)
 
     if (result.success) {
       return NextResponse.json({
@@ -53,8 +48,11 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   const session = await auth()
-  if (!session?.user || session.user.role !== 'ADMIN') {
+  if (!session?.user) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  }
+  if (!isAdmin(session)) {
+    return NextResponse.json({ error: 'Proibido' }, { status: 403 })
   }
 
   try {

@@ -1,13 +1,17 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
+import { isAdmin } from '@/lib/auth-guard'
 
 // GET /api/search-analytics
 // Retorna estatísticas de busca para o dashboard admin
 export async function GET() {
   const session = await auth()
-  if (!session?.user || session.user.role !== 'ADMIN') {
+  if (!session?.user) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  }
+  if (!isAdmin(session)) {
+    return NextResponse.json({ error: 'Proibido' }, { status: 403 })
   }
 
   try {
@@ -63,9 +67,10 @@ export async function GET() {
       totalSearchesLast7Days: totalSearches[0]?.count ?? 0,
       byType,
     })
-  } catch {
+  } catch (error) {
+    console.error('Erro ao buscar estatísticas de busca:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch analytics' },
+      { error: 'Falha ao buscar estatísticas' },
       { status: 500 }
     )
   }

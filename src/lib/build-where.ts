@@ -18,7 +18,7 @@ export function buildWhere(filters?: SearchFilters): Record<string, unknown> {
   if (filters.similarHolder) where.similarHolder = { contains: filters.similarHolder, mode: 'insensitive' }
   if (filters.pharmaceuticalForm) where.pharmaceuticalForm = { contains: filters.pharmaceuticalForm, mode: 'insensitive' }
   if (filters.category) where.category = { contains: filters.category, mode: 'insensitive' }
-  if (filters.status) where.status = { contains: filters.status, mode: 'insensitive' }
+  if (filters.status) where.status = { equals: filters.status, mode: 'insensitive' }
   if (filters.farmaciaPopular) where.farmaciaPopular = true
 
   if (filters.query) {

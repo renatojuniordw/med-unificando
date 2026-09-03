@@ -18,6 +18,8 @@ export interface MedicineResult {
   similarHolder: string
   pharmaceuticalForm: string
   concentration: string
+  // inclusionDate é string porque vem do CSV/PDF da ANVISA (coluna de texto);
+  // anvisaFileDate/lastImportAt são Date por refletirem timestamps do banco.
   inclusionDate: string
   category: string | null
   referenceMedicine: string | null

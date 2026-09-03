@@ -76,7 +76,6 @@ async function main() {
       const q = r.query.padEnd(35)
       const t = String(r.total).padStart(4)
       const e = `${r.elapsed}ms`.padStart(6)
-      const status = r.total > 0 ? '✅' : '❌'
       console.log(`  ${q} | ${t} | ${e}`)
     }
   } catch (err) {

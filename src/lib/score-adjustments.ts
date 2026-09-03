@@ -1,37 +1,82 @@
 // Sistema de ajuste de scores baseado em feedback dos usuários
-// Coleta dados de feedback e gera ajustes para melhorar a relevância
+// Coleta dados de feedback e gera ajustes para melhorar a relevância.
+// Ajustes derivados de feedback são clampados em ±0.3; regras de tópico
+// (dor de cabeça/estômago) podem adicionar penalidades além desse limite.
 
 import { prisma } from '@/lib/prisma'
 import { normalizeQuery } from '@/lib/text-utils'
+import { SEARCH } from '@/lib/config'
 
 interface ScoreAdjustment {
   query: string
   medicineId: number
-  boost: number // -0.3 a +0.3: quanto ajustar o score
+  boost: number // ajuste derivado de feedback, clamp em ±0.3
   confidence: number // 0 a 1: quão confiável é o ajuste
 }
 
-// Cache de ajustes em memória (atualizado a cada consulta)
+// Cache de ajustes em memória a nível de módulo: intencional para deploy
+// self-hosted (VPS, processo único). O cache expira por TTL e é recarregado
+// na próxima consulta — não há invalidação a cada novo feedback (proposital:
+// o ajuste reflete o estado agregado no momento da leitura).
 let adjustmentsCache: ScoreAdjustment[] | null = null
 let lastAdjustmentUpdate: number = 0
-const ADJUSTMENT_TTL = 5 * 60 * 1000 // 5 minutos
 
-// Mapa de sinônimos problemáticos que geram falsos positivos
-// Adicionado manualmente com base em análises de feedback
-const MANUAL_ADJUSTMENTS: ScoreAdjustment[] = [
-  // Anti-inflamatórios clássicos que merecem boost para "articulação"
-  { query: 'articulação', medicineId: 0, boost: 0.15, confidence: 0.8 },
+// --- Parâmetros de agregação de feedback ---
+const MIN_FEEDBACKS = 3
+const FEEDBACK_CONFIDENCE_DIVISOR = 10
+const HIGH_APPROVAL_THRESHOLD = 0.8
+const LOW_APPROVAL_THRESHOLD = 0.3
+const BOOST_HIGH_APPROVAL_BASE = 0.1
+const BOOST_LOW_APPROVAL_BASE = -0.1
+const BOOST_APPROVAL_SLOPE = 0.5
+const MAX_FEEDBACK_ADJUSTMENT = 0.3
+
+// --- Penalidades de tópico (aplicadas após o ajuste por feedback) ---
+const TOPICAL_PENALTY = 0.3
+const NON_GASTRIC_PENALTY = 0.45
+const COLYRIUM_PENALTY = 0.6
+
+// Resultados com score <= MIN_RELEVANT_SCORE são removidos (falsos positivos
+// severos). O threshold de 0.15 era muito agressivo: resultados puramente
+// keyword (sem suporte semântico) têm scores típicos de 10-14%, sendo
+// cortados. Reduzido para 0.08 para preservar resultados keyword relevantes.
+const MIN_RELEVANT_SCORE = 0.08
+
+const TOPICAL_SIGNALS = ['topico', 'topica', 'top.', 'creme', 'pomada', 'gel', 'adesivo', 'uso topico', 'uso tópico']
+
+// Classes que NÃO são de estômago/sistema digestivo
+const NON_GASTRIC_SIGNALS = [
+  'oftalmologico', 'oftalmico', 'ocular', 'colirio', 'colírio', 'glaucoma', 'pressao intraocular', 'pressão intraocular',
+  'osseo', 'osso', 'bifosfonato', 'osteoporose', 'calcio', 'cálcio', 'densidade ossea', 'densidade óssea',
+  'ginecologico', 'ginecologia',
+  'dermatologico', 'pele',
+  'oncologico', 'antineoplasico', 'quimioterapia',
+  'cardiovascular', 'cardiaco', 'cardíaco',
+  'respiratorio', 'pulmao', 'pulmão', 'broncodilatador',
+  'neurologico', 'neurológico',
+  'psiquiatrico', 'psiquiátrico',
+  'urologico', 'urológico', 'urinario', 'urinário',
+  'antibiotico', 'antibiótico', 'antimicrobiano',
+  'vacina', 'imunizacao', 'imunização',
+  'motilidade intestinal', 'intestino irritavel', 'intestino irritável', 'constipacao', 'constipação',
+]
+
+// --- Nomes comerciais que "enganam o embedding" ---
+// Ex: Stomup parece "estômago" mas é colírio. Mecanismo de segurança que só
+// dispara em buscas relacionadas a estômago (guard de tópico abaixo).
+const DECEPTIVE_NAME_PATTERNS = [
+  { nome: 'stom', classe: 'oftalmico', penalty: 0.4 }, // Stomup = colírio
 ]
 
 // Buscar ajustes do banco de dados baseados em feedback
 async function loadAdjustmentsFromDb(): Promise<ScoreAdjustment[]> {
   const now = Date.now()
-  
+
   // Usar cache se ainda válido
-  if (adjustmentsCache && (now - lastAdjustmentUpdate) < ADJUSTMENT_TTL) {
+  if (adjustmentsCache && (now - lastAdjustmentUpdate) < SEARCH.CACHE_TTL_MS) {
     return adjustmentsCache
   }
-  
+
   // Buscar feedbacks do banco
   const feedbacks = await prisma.searchFeedback.findMany({
     select: {
@@ -41,10 +86,10 @@ async function loadAdjustmentsFromDb(): Promise<ScoreAdjustment[]> {
       feedback: true,
     },
   })
-  
+
   // Agrupar por query + medicineId
   const groupMap = new Map<string, { helpful: number; notHelpful: number }>()
-  
+
   for (const f of feedbacks) {
     const key = `${normalizeQuery(f.query)}:${f.medicineId}`
     const entry = groupMap.get(key) || { helpful: 0, notHelpful: 0 }
@@ -52,154 +97,120 @@ async function loadAdjustmentsFromDb(): Promise<ScoreAdjustment[]> {
     else entry.notHelpful++
     groupMap.set(key, entry)
   }
-  
+
   const adjustments: ScoreAdjustment[] = []
-  
+
   for (const [key, data] of groupMap.entries()) {
     const [query, medicineIdStr] = key.split(':')
     const medicineId = parseInt(medicineIdStr)
     const total = data.helpful + data.notHelpful
-    
+
     // Só gerar ajuste se tiver pelo menos 3 feedbacks
-    if (total < 3) continue
-    
+    if (total < MIN_FEEDBACKS) continue
+
     const approvalRate = data.helpful / total
-    const confidence = Math.min(total / 10, 1) // Mais feedbacks = mais confiança
-    
+    const confidence = Math.min(total / FEEDBACK_CONFIDENCE_DIVISOR, 1) // Mais feedbacks = mais confiança
+
     let boost = 0
-    
-    if (approvalRate >= 0.8) {
+
+    if (approvalRate >= HIGH_APPROVAL_THRESHOLD) {
       // Alta aprovação: aumentar score
-      boost = 0.1 + (approvalRate - 0.8) * 0.5
-    } else if (approvalRate <= 0.3) {
+      boost = BOOST_HIGH_APPROVAL_BASE + (approvalRate - HIGH_APPROVAL_THRESHOLD) * BOOST_APPROVAL_SLOPE
+    } else if (approvalRate <= LOW_APPROVAL_THRESHOLD) {
       // Baixa aprovação: reduzir score
-      boost = -0.1 - (0.3 - approvalRate) * 0.5
+      boost = BOOST_LOW_APPROVAL_BASE - (LOW_APPROVAL_THRESHOLD - approvalRate) * BOOST_APPROVAL_SLOPE
     }
-    
+
     if (boost !== 0) {
       adjustments.push({
         query,
         medicineId,
-        boost: Math.max(-0.3, Math.min(0.3, boost)),
+        boost: Math.max(-MAX_FEEDBACK_ADJUSTMENT, Math.min(MAX_FEEDBACK_ADJUSTMENT, boost)),
         confidence,
       })
     }
   }
-  
-  // Combinar com ajustes manuais
-  adjustments.push(...MANUAL_ADJUSTMENTS)
-  
+
   // Atualizar cache
   adjustmentsCache = adjustments
   lastAdjustmentUpdate = now
-  
+
   return adjustments
 }
 
 // Aplicar ajustes a um resultado de busca
-export async function applyScoreAdjustments<T extends { 
-  id: number; 
+export async function applyScoreAdjustments<T extends {
+  id: number;
   therapeuticClass?: string | null;
   indications?: string | null;
   activeIngredient?: string | null;
+  tradeName?: string | null;
 }>(
   query: string,
   results: { score: number; medicine: T }[]
 ): Promise<{ score: number; medicine: T }[]> {
   if (results.length === 0) return results
-  
+
   const adjustments = await loadAdjustmentsFromDb()
   const normalizedQuery = normalizeQuery(query)
+
+  const isStomachTopic =
+    normalizedQuery.includes('estomago') || normalizedQuery.includes('estômago') ||
+    normalizedQuery.includes('gastrico') || normalizedQuery.includes('gástrico') ||
+    normalizedQuery.includes('azia') || normalizedQuery.includes('refluxo')
 
   return results.map(r => {
     let totalBoost = 0
     const medicineTherapeuticClass = r.medicine.therapeuticClass?.toLowerCase() || ''
     const medicineIndications = r.medicine.indications?.toLowerCase() || ''
     const medicineIngredient = r.medicine.activeIngredient?.toLowerCase() || ''
+    const medicineTradeName = r.medicine.tradeName?.toLowerCase() || ''
     const combinedProfile = [
       medicineTherapeuticClass,
       medicineIndications,
       medicineIngredient,
     ].join(' ')
-    
+
     for (const adj of adjustments) {
       // Verificar se o ajuste se aplica (query normalizada contém a palavra-chave OU vice-versa)
-      const queryMatch = normalizedQuery.includes(adj.query) || adj.query.includes(normalizedQuery)
-      const exactMatch = adj.query === normalizedQuery
-      
-      if (!queryMatch && !exactMatch) continue
-      
-      // Se o ajuste é para um medicineId específico
-      if (adj.medicineId > 0 && adj.medicineId === r.medicine.id) {
-        totalBoost += adj.boost * adj.confidence
-        continue
-      }
-      
-      // Se o ajuste é para todos os medicamentos (medicineId = 0), aplicar baseado na classe
-      if (adj.medicineId === 0) {
-        // Aplicar boost/penalty baseado na análise
-        totalBoost += adj.boost * adj.confidence * 0.5
+      if (normalizedQuery.includes(adj.query) || adj.query.includes(normalizedQuery)) {
+        if (adj.medicineId === r.medicine.id) {
+          totalBoost += adj.boost * adj.confidence
+        }
       }
     }
-    
+
     // Aplicar penalidade para medicamentos tópicos em buscas de "dor de cabeça"
     if (normalizedQuery.includes('dor de cabeça') || normalizedQuery.includes('cefaleia')) {
-      const topicalSignals = ['topico', 'topica', 'top.', 'creme', 'pomada', 'gel', 'adesivo', 'uso topico', 'uso tópico']
-      const isTopical = topicalSignals.some(signal => combinedProfile.includes(signal))
+      const isTopical = TOPICAL_SIGNALS.some(signal => combinedProfile.includes(signal))
       if (isTopical) {
-        totalBoost -= 0.3
+        totalBoost -= TOPICAL_PENALTY
       }
     }
-    
+
     // --- Penalidades para "remédio para estômago" ---
-    if (normalizedQuery.includes('estomago') || normalizedQuery.includes('estômago') || 
-        normalizedQuery.includes('gastrico') || normalizedQuery.includes('gástrico') ||
-        normalizedQuery.includes('azia') || normalizedQuery.includes('refluxo')) {
-      
-      // Classes que NÃO são de estômago/sistema digestivo
-      const nonGastricSignals = [
-        'oftalmologico', 'oftalmico', 'ocular', 'colirio', 'colírio', 'glaucoma', 'pressao intraocular', 'pressão intraocular',
-        'osseo', 'osso', 'bifosfonato', 'osteoporose', 'calcio', 'cálcio', 'densidade ossea', 'densidade óssea',
-        'ginecologico', 'ginecologia',
-        'dermatologico', 'pele',
-        'oncologico', 'antineoplasico', 'quimioterapia',
-        'cardiovascular', 'cardiaco', 'cardíaco',
-        'respiratorio', 'pulmao', 'pulmão', 'broncodilatador',
-        'neurologico', 'neurológico',
-        'psiquiatrico', 'psiquiátrico',
-        'urologico', 'urológico', 'urinario', 'urinário',
-        'antibiotico', 'antibiótico', 'antimicrobiano',
-        'vacina', 'imunizacao', 'imunização',
-        'motilidade intestinal', 'intestino irritavel', 'intestino irritável', 'constipacao', 'constipação',
-      ]
-      
-      const isNonGastric = nonGastricSignals.some(signal => combinedProfile.includes(signal))
+    if (isStomachTopic) {
+      const isNonGastric = NON_GASTRIC_SIGNALS.some(signal => combinedProfile.includes(signal))
       if (isNonGastric) {
-        totalBoost -= 0.45
+        totalBoost -= NON_GASTRIC_PENALTY
       }
-      
-      // Penalidade extra para colírios que começam com "Stom" (engana o embedding)
+
+      // Penalidade extra para colírios (engana o embedding)
       if (medicineTherapeuticClass.includes('oftalmico') || medicineTherapeuticClass.includes('oftalmologico') || medicineTherapeuticClass.includes('colirio')) {
-        totalBoost -= 0.6
+        totalBoost -= COLYRIUM_PENALTY
+      }
+
+      for (const pattern of DECEPTIVE_NAME_PATTERNS) {
+        const nameMatches = medicineTradeName !== '' && medicineTradeName.includes(pattern.nome)
+        const classMatches = combinedProfile.includes(pattern.classe)
+        if (nameMatches || classMatches) {
+          totalBoost -= pattern.penalty
+        }
       }
     }
-    
-    // --- Penalidade geral para nomes que enganam o embedding ---
-    // Ex: Stomup parece "estômago" mas é colírio
-    // Este é um mecanismo de segurança para medicamentos cujo nome comercial
-    // soa como uma condição mas são de área completamente diferente
-    const deceptiveNamePatterns = [
-      { nome: 'stom', classe: 'oftalmico', penalty: 0.4 },  // Stomup = colírio
-    ]
-    
-    for (const pattern of deceptiveNamePatterns) {
-      if (combinedProfile.includes(pattern.classe)) {
-        totalBoost -= pattern.penalty
-      }
-    }
-    
+
     const adjustedScore = Math.max(0, Math.min(1, r.score + totalBoost))
-    
+
     return {
       ...r,
       score: adjustedScore,
@@ -208,8 +219,5 @@ export async function applyScoreAdjustments<T extends {
   // Reordenar com base no score ajustado (penalidades podem mudar a ordem)
   .sort((a, b) => b.score - a.score)
   // Remover resultados com score irrelevante (falsos positivos severos)
-  // O threshold de 0.15 era muito agressivo: resultados puramente keyword
-  // (sem support semântico) têm scores típicos de 10-14%, sendo cortados.
-  // Reduzido para 0.08 para preservar resultados keyword relevantes.
-  .filter(r => r.score > 0.08)
+  .filter(r => r.score > MIN_RELEVANT_SCORE)
 }

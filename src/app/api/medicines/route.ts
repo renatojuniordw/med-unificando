@@ -4,22 +4,25 @@ import { MEDICINE_LIMITS } from '@/lib/constants'
 import { normalizeMedicine } from '@/lib/format'
 import { buildWhere } from '@/lib/build-where'
 import { MEDICINE_EXPORT_HEADERS, medicineToExportRow, toCsv } from '@/lib/csv-export'
-import { rateLimit, getClientIp } from '@/lib/rate-limit'
+import { rateLimit, getClientIp, rateLimitResponse } from '@/lib/rate-limit'
+
+// Converte query string em inteiro positivo com fallback; evita NaN no Prisma.
+function parsePositiveInt(value: string | null, fallback: number): number {
+  const parsed = value ? Number.parseInt(value, 10) : NaN
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
+}
 
 export async function GET(request: NextRequest) {
   const ip = getClientIp(request)
   const rl = rateLimit(ip, 'medicines-api', { limit: 60 })
   if (!rl.allowed) {
-    return NextResponse.json(
-      { error: 'Muitas requisições. Tente novamente em alguns instantes.' },
-      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSeconds) } }
-    )
+    return rateLimitResponse(rl)
   }
 
   try {
     const { searchParams } = new URL(request.url)
-    const page = Math.max(parseInt(searchParams.get('page') ?? '1', 10), 1)
-    const pageSize = Math.min(Math.max(parseInt(searchParams.get('pageSize') ?? '20', 10), 1), MEDICINE_LIMITS.MAX_PAGE_SIZE)
+    const page = parsePositiveInt(searchParams.get('page'), 1)
+    const pageSize = Math.min(parsePositiveInt(searchParams.get('pageSize'), 20), MEDICINE_LIMITS.MAX_PAGE_SIZE)
     const reference = searchParams.get('reference')
     const activeIngredient = searchParams.get('activeIngredient')
     const tradeName = searchParams.get('tradeName')

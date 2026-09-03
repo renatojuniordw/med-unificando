@@ -2,28 +2,17 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { STORAGE_KEYS } from '@/lib/constants'
+import { loadFromStorage, saveToStorage } from '@/lib/storage'
 
-function loadFavorites(): number[] {
-  if (typeof window === 'undefined') return []
-  try {
-    const stored = localStorage.getItem(STORAGE_KEYS.FAVORITES)
-    if (stored) return JSON.parse(stored)
-  } catch { console.warn('Falha ao ler favoritos do localStorage') }
-  return []
-}
-
-function saveFavorites(ids: number[]) {
-  try {
-    localStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(ids))
-  } catch { console.warn('Falha ao salvar favoritos no localStorage') }
-}
+const FAVORITES_READ_ERROR = 'Falha ao ler favoritos do localStorage'
+const FAVORITES_WRITE_ERROR = 'Falha ao salvar favoritos no localStorage'
 
 export function useFavorites() {
   const [favorites, setFavorites] = useState<number[]>([])
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
-    setFavorites(loadFavorites())
+    setFavorites(loadFromStorage<number[]>(STORAGE_KEYS.FAVORITES, FAVORITES_READ_ERROR) ?? [])
     setLoaded(true)
   }, [])
 
@@ -32,7 +21,7 @@ export function useFavorites() {
       const next = prev.includes(id)
         ? prev.filter(i => i !== id)
         : [...prev, id]
-      saveFavorites(next)
+      saveToStorage(STORAGE_KEYS.FAVORITES, next, FAVORITES_WRITE_ERROR)
       return next
     })
   }, [])

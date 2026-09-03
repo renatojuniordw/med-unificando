@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { rateLimit, getClientIp } from '@/lib/rate-limit'
+import { rateLimit, getClientIp, rateLimitResponse } from '@/lib/rate-limit'
+import { SEARCH } from '@/lib/config'
 
 // GET /api/autocomplete?q=dip&limit=8
 // Retorna sugestões de medicamentos usando trigram (via pg_trgm GIN index)
@@ -8,14 +9,12 @@ export async function GET(request: NextRequest) {
   const ip = getClientIp(request)
   const rl = rateLimit(ip, 'autocomplete', { limit: 120 })
   if (!rl.allowed) {
-    return NextResponse.json(
-      { error: 'Muitas requisições. Tente novamente em alguns instantes.' },
-      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSeconds) } }
-    )
+    return rateLimitResponse(rl)
   }
 
   const q = request.nextUrl.searchParams.get('q')?.trim() ?? ''
-  const limit = Math.min(parseInt(request.nextUrl.searchParams.get('limit') ?? '8', 10), 20)
+  const parsedLimit = Number.parseInt(request.nextUrl.searchParams.get('limit') ?? '', 10)
+  const limit = Math.min(Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : SEARCH.AUTOCOMPLETE_TAKE, 20)
 
   if (q.length < 2) {
     return NextResponse.json({ suggestions: [] })

@@ -1,10 +1,11 @@
 'use server'
 
 import { prisma } from '@/lib/prisma'
+import { SEARCH } from '@/lib/config'
 
 export async function trigramSearch(
   query: string,
-  topK: number = 20
+  topK: number = SEARCH.HYBRID_TOP_K
 ): Promise<{ medicineId: number; trigramScore: number }[]> {
   if (!query.trim()) return []
 

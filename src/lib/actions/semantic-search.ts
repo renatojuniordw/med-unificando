@@ -19,8 +19,11 @@ import { THERAPEUTIC_CLASS_INDICATIONS } from '@/lib/dictionaries/therapeutic-cl
 import type { MedicineResult } from "@/types"
 import type { FeatureExtractionPipeline } from "@xenova/transformers"
 
-// Cache em memória para resultados de busca (TTL: 5 min)
-const SEARCH_CACHE_TTL_MS = 5 * 60 * 1000
+// Cache em memória a nível de módulo: intencional para deploy self-hosted
+// (VPS, processo único). Em serverless, cada instância teria sua própria cópia
+// e o estado atravessaria requisições — comportamento consistente entre
+// instâncias não é garantido. O cache é limitado (SEARCH.CACHE_MAX_ENTRIES) e
+// com TTL (SEARCH.CACHE_TTL_MS).
 const searchCache = new Map<string, { results: HybridSearchResult; expiresAt: number }>()
 
 function getCachedSearch(query: string, topK: number): HybridSearchResult | null {
@@ -36,12 +39,11 @@ function getCachedSearch(query: string, topK: number): HybridSearchResult | null
 
 function setCachedSearch(query: string, topK: number, results: HybridSearchResult): void {
   const key = `${query.toLowerCase().trim()}::${topK}`
-  // Limitar tamanho do cache (max 500 entradas)
-  if (searchCache.size > 500) {
+  if (searchCache.size > SEARCH.CACHE_MAX_ENTRIES) {
     const oldest = searchCache.keys().next().value
     if (oldest) searchCache.delete(oldest)
   }
-  searchCache.set(key, { results, expiresAt: Date.now() + SEARCH_CACHE_TTL_MS })
+  searchCache.set(key, { results, expiresAt: Date.now() + SEARCH.CACHE_TTL_MS })
 }
 
 let extractor: FeatureExtractionPipeline | null = null
@@ -51,7 +53,7 @@ async function getModel() {
     const t0 = performance.now()
     console.log(`[BUSCA DESCRIÇÃO] [Transformers] Carregando modelo "${EMBEDDING.MODEL}"...`)
     const { pipeline, env } = await import("@xenova/transformers")
-    env.cacheDir = "/tmp/.transformers-cache"
+    env.cacheDir = SEARCH.MODEL_CACHE_DIR
     try {
       extractor = await pipeline("feature-extraction", EMBEDDING.MODEL)
       console.log(`[BUSCA DESCRIÇÃO] [Transformers] Modelo pronto em ${(performance.now() - t0).toFixed(0)}ms`)
@@ -176,7 +178,7 @@ const SEARCH_MEDICINE_SELECT = {
 
 export async function semanticSearch(
   query: string,
-  topK: number = 60,
+  topK: number = SEARCH.SEMANTIC_TOP_K,
   precomputedEmbedding?: Float32Array
 ): Promise<{ score: number; medicine: MedicineResult }[]> {
   if (!query.trim()) return []
@@ -195,18 +197,17 @@ export async function semanticSearch(
       LIMIT $2
     `
 
-    // 30s timeout for large vector search
     const rows = await prisma.$transaction(async (tx) => {
       // ivfflat.probes só se aplica a índices IVFFLAT — ignora erro se for HNSW
       try {
-        await tx.$executeRawUnsafe(`SET LOCAL ivfflat.probes = 40`)
+        await tx.$executeRawUnsafe(`SET LOCAL ivfflat.probes = ${SEARCH.IVFFLAT_PROBES}`)
       } catch { /* HNSW ou outro tipo de índice — ignorar */ }
       return tx.$queryRawUnsafe<{ id: number; semantic_score: number }[]>(
         sql,
         vecStr,
         topK,
       )
-    }, { timeout: 30000 })
+    }, { timeout: SEARCH.PGVECTOR_TIMEOUT_MS })
 
     if (rows.length === 0) {
       console.log(`[BUSCA DESCRIÇÃO] [Semântica] 0 registros retornados do pgvector (coluna "${col}" tem dados no banco?)`)
@@ -266,7 +267,7 @@ function passesSemanticGate(
   hasKeywordSupport: boolean,
   classification: QueryClassification
 ): boolean {
-  const isNameQuery = classification.type === 'medicine-name' && classification.confidence >= 0.6
+  const isNameQuery = classification.type === 'medicine-name' && classification.confidence >= SEARCH.NAME_QUERY_MIN_CONFIDENCE
   const hardMin = isNameQuery ? SEARCH.SEMANTIC_HARD_MIN_NAME_QUERY : SEMANTIC_HARD_MIN
   const strong = isNameQuery ? SEARCH.SEMANTIC_STRONG_NAME_QUERY : SEMANTIC_STRONG
   if (score < hardMin) return false
@@ -410,7 +411,8 @@ async function generateSuggestions(
     }
 
     return suggestions
-  } catch {
+  } catch (err) {
+    console.warn(`[BUSCA DESCRIÇÃO] Falha ao gerar sugestões:`, err)
     return []
   }
 }
@@ -490,9 +492,392 @@ function rrfFusion(
   return scores
 }
 
+// ---------------------------------------------------------------------------
+// Pipeline da busca híbrida — cada etapa é uma função isolada para manter a
+// orquestração legível e testável. Nenhuma mudança de comportamento.
+// ---------------------------------------------------------------------------
+
+interface SourceCollection {
+  semanticResults: { score: number; medicine: MedicineResult }[]
+  keywordResults: { medicineId: number; keywordScore: number }[]
+  trigramResults: { medicineId: number; trigramScore: number }[]
+  keywordIds: Set<number>
+  trigramIds: Set<number>
+  queryTerms: string[]
+  searchMs: string
+}
+
+// Embedding da query — calculado uma única vez e reaproveitado na busca
+// semântica e no refinamento de classificação (evita rodar o modelo 2x)
+async function embedQueryForPipeline(query: string): Promise<Float32Array> {
+  try {
+    const tEmb = performance.now()
+    const queryEmb = await embedQuery(query)
+    console.log(`🧠 [BUSCA DESCRIÇÃO] Embedding calculado em ${(performance.now() - tEmb).toFixed(0)}ms (dim: ${queryEmb.length})`)
+    return queryEmb
+  } catch (err) {
+    console.error(`💥 [BUSCA DESCRIÇÃO] Falha ao gerar embedding para "${query}":`, err)
+    throw err
+  }
+}
+
+// Classificação da query para decisões adaptativas (com refinamento por embedding)
+async function classifyQueryForPipeline(
+  query: string,
+  queryEmb: Float32Array
+): Promise<{ classification: QueryClassification; isNameQuery: boolean }> {
+  let classification = classifyQuery(query)
+  const initialType = classification.type
+  if (classification.confidence <= SEARCH.CLASSIFICATION_REFINE_MAX_CONFIDENCE) {
+    try {
+      const embeddingClassification = await classifyByEmbedding(queryEmb)
+      classification = refineLowConfidenceClassification(classification, embeddingClassification, query)
+      if (classification.type !== initialType) {
+        console.log(`🏷️  [BUSCA DESCRIÇÃO] Classificação refinada por embedding: ${initialType} → ${classification.type} (confiança: ${classification.confidence.toFixed(2)})`)
+      }
+    } catch (err) {
+      console.warn(`⚠️ [BUSCA DESCRIÇÃO] Refinamento por embedding falhou (usando heurística):`, err)
+    }
+  }
+  const isNameQuery = classification.type === 'medicine-name' && classification.confidence >= SEARCH.NAME_QUERY_MIN_CONFIDENCE
+  console.log(`🏷️  [BUSCA DESCRIÇÃO] Tipo de query: "${classification.type}" (confiança: ${classification.confidence.toFixed(2)}, isNameQuery=${isNameQuery})`)
+  return { classification, isNameQuery }
+}
+
+// Coleta paralela das três fontes (semântica + keyword + trigram)
+async function collectSearchSources(
+  query: string,
+  queryEmb: Float32Array,
+  topK: number
+): Promise<SourceCollection> {
+  const t1 = performance.now()
+  const [semanticResults, keywordResults, trigramResults] = await Promise.all([
+    semanticSearch(query, topK * SEARCH.SOURCE_FETCH_MULTIPLIER, queryEmb),
+    keywordSearch(query, topK * SEARCH.SOURCE_FETCH_MULTIPLIER),
+    trigramSearch(query, topK * SEARCH.SOURCE_FETCH_MULTIPLIER),
+  ])
+  const searchMs = (performance.now() - t1).toFixed(0)
+
+  console.log(`📊 [BUSCA DESCRIÇÃO] Coleta paralela concluída em ${searchMs}ms:`)
+  console.log(`   ├─ Semântica: ${semanticResults.length} registros`)
+  console.log(`   ├─ Keyword (FTS): ${keywordResults.length} registros`)
+  console.log(`   └─ Trigram: ${trigramResults.length} registros`)
+
+  return {
+    semanticResults,
+    keywordResults,
+    trigramResults,
+    keywordIds: new Set(keywordResults.map(r => r.medicineId)),
+    trigramIds: new Set(trigramResults.map(r => r.medicineId)),
+    queryTerms: extractQueryTerms(query),
+    searchMs,
+  }
+}
+
+// Filtra os resultados semânticos pelo gate adaptativo (por tipo de query)
+function filterSemanticByGate(
+  sources: SourceCollection,
+  classification: QueryClassification,
+  isNameQuery: boolean
+): { filteredSemanticResults: { score: number; medicine: MedicineResult }[] } {
+  const filteredSemanticResults = sources.semanticResults.filter(r => {
+    const hasKeyword = sources.keywordIds.has(r.medicine.id)
+    return passesSemanticGate(r.score, hasKeyword, classification)
+  })
+
+  const hardMin = isNameQuery ? SEARCH.SEMANTIC_HARD_MIN_NAME_QUERY : SEARCH.SEMANTIC_HARD_MIN
+  const strong = isNameQuery ? SEARCH.SEMANTIC_STRONG_NAME_QUERY : SEARCH.SEMANTIC_STRONG
+  console.log(`🚪 [BUSCA DESCRIÇÃO] Gate Semântico: ${filteredSemanticResults.length}/${sources.semanticResults.length} aprovados (hardMin=${hardMin}, strong=${strong})`)
+
+  return { filteredSemanticResults }
+}
+
+// Fallback quando nenhum resultado semântico passa no gate: mescla keyword + trigram
+async function fallbackNoSemantic(
+  query: string,
+  sources: SourceCollection,
+  topK: number,
+  t0: number
+): Promise<HybridSearchResult> {
+  const { keywordResults, trigramResults, keywordIds, trigramIds } = sources
+
+  if (keywordResults.length === 0 && trigramResults.length === 0) {
+    console.warn(`❌ [BUSCA DESCRIÇÃO] Nenhum resultado em nenhuma fonte (Semântica: ${sources.semanticResults.length} [0 aprovados pelo gate], Keyword: 0, Trigram: 0).`)
+    console.log(`================== [BUSCA DESCRIÇÃO] FIM (0 resultados) ==================\n`)
+    return { results: [], suggestions: [] }
+  }
+
+  console.log(`🔄 [BUSCA DESCRIÇÃO] Ativando fallback: mesclando Keyword (${keywordResults.length}) + Trigram (${trigramResults.length}) via RRF`)
+  const keywordRank = new Map(keywordResults.map((r, i) => [r.medicineId, i + 1]))
+  const trigramRank = new Map(trigramResults.map((r, i) => [r.medicineId, i + 1]))
+  const keywordScoreMapFb = new Map(keywordResults.map(r => [r.medicineId, r.keywordScore]))
+  const trigramScoreMapFb = new Map(trigramResults.map(r => [r.medicineId, r.trigramScore]))
+  const allFallbackIds = new Set([...keywordIds, ...trigramIds])
+
+  const fallbackScores = rrfFusion([
+    { rank: keywordRank, weight: KEYWORD_WEIGHT },
+    { rank: trigramRank, weight: TRIGRAM_WEIGHT },
+  ], RRF_K)
+  const topFallbackIds = [...allFallbackIds]
+    .sort((a, b) => (fallbackScores.get(b) ?? 0) - (fallbackScores.get(a) ?? 0))
+    .slice(0, topK)
+
+  const medicines = await prisma.medicine.findMany({
+    where: { id: { in: topFallbackIds } },
+    select: SEARCH_MEDICINE_SELECT,
+  })
+  const medMap = new Map(medicines.map(m => [m.id, m]))
+  const fallbackResults = topFallbackIds
+    .map(id => ({
+      score: honestScore(
+        null,
+        keywordScoreMapFb.get(id) ?? null,
+        trigramScoreMapFb.get(id) ?? null
+      ),
+      medicine: medMap.get(id) as unknown as MedicineResult,
+      matchReasons: [] as MatchReason[],
+    }))
+    .filter(r => r.medicine)
+    .slice(0, topK)
+
+  const adjustedFallback = await applyScoreAdjustments(query, fallbackResults) as SearchResultItem[]
+  const totalMs = (performance.now() - t0).toFixed(0)
+  console.log(`✅ [BUSCA DESCRIÇÃO] [Fallback] Concluído em ${totalMs}ms | Retornando ${adjustedFallback.length} medicamentos`)
+  console.log(`================== [BUSCA DESCRIÇÃO] FIM ==================\n`)
+  return { results: adjustedFallback, suggestions: [] }
+}
+
+// Fallback semântico puro quando keyword e trigram vêm vazios
+async function fallbackSemanticOnly(
+  query: string,
+  filteredSemanticResults: { score: number; medicine: MedicineResult }[],
+  topK: number,
+  t0: number
+): Promise<HybridSearchResult> {
+  console.log(`ℹ️ [BUSCA DESCRIÇÃO] Sem Keyword ou Trigram. Usando apenas ${filteredSemanticResults.length} resultados Semânticos aprovados.`)
+  const semanticOnlyResults = filteredSemanticResults
+    .map(r => ({
+      score: honestScore(r.score, null, null),
+      medicine: normalizeMedicine(r.medicine),
+      matchReasons: [{ type: 'semantic' as const, score: r.score }],
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topK)
+  const adjustedSemanticOnly = await applyScoreAdjustments(query, semanticOnlyResults) as SearchResultItem[]
+  const totalMs = (performance.now() - t0).toFixed(0)
+  console.log(`✅ [BUSCA DESCRIÇÃO] [Apenas Semântica] Concluído em ${totalMs}ms | Retornando ${adjustedSemanticOnly.length} medicamentos`)
+  console.log(`================== [BUSCA DESCRIÇÃO] FIM ==================\n`)
+  return { results: adjustedSemanticOnly, suggestions: [] }
+}
+
+// Fusão RRF das 3 fontes + carregamento dos medicamentos restantes
+async function fuseAndFetch(
+  filteredSemanticResults: { score: number; medicine: MedicineResult }[],
+  sources: SourceCollection,
+  topK: number
+): Promise<{ initialResults: SearchResultItem[] }> {
+  const { keywordResults, trigramResults } = sources
+
+  const semanticRank = new Map(filteredSemanticResults.map((r, i) => [r.medicine.id, i + 1]))
+  const keywordRank = new Map(keywordResults.map((r, i) => [r.medicineId, i + 1]))
+  const trigramRank = new Map(trigramResults.map((r, i) => [r.medicineId, i + 1]))
+
+  const allIds = new Set([
+    ...filteredSemanticResults.map(r => r.medicine.id),
+    ...keywordResults.map(r => r.medicineId),
+    ...trigramResults.map(r => r.medicineId),
+  ])
+
+  const scores = rrfFusion([
+    { rank: semanticRank, weight: SEMANTIC_WEIGHT },
+    { rank: keywordRank, weight: KEYWORD_WEIGHT },
+    { rank: trigramRank, weight: TRIGRAM_WEIGHT },
+  ], RRF_K)
+
+  // Margem de 2x antes do corte final: permite que ajustes de feedback
+  // promovam candidatos que ficariam fora do topK inicial.
+  const topIds = [...allIds]
+    .sort((a, b) => (scores.get(b) ?? 0) - (scores.get(a) ?? 0))
+    .slice(0, topK * SEARCH.FINAL_CUT_MARGIN)
+
+  const existingMedicines = filteredSemanticResults
+    .filter(r => topIds.includes(r.medicine.id))
+    .map(r => r.medicine)
+
+  const remainingIds = topIds.filter(id => !existingMedicines.some(m => m.id === id))
+  if (remainingIds.length > 0) {
+    const remaining = await prisma.medicine.findMany({
+      where: { id: { in: remainingIds } },
+      select: SEARCH_MEDICINE_SELECT,
+    })
+    existingMedicines.push(...remaining.map(normalizeMedicine) as unknown as MedicineResult[])
+  }
+
+  const medMap = new Map(existingMedicines.map(m => [m.id, m]))
+  const semanticScoreMap = new Map(filteredSemanticResults.map(r => [r.medicine.id, r.score]))
+  const keywordScoreMap = new Map(keywordResults.map(r => [r.medicineId, r.keywordScore]))
+  const trigramScoreMap = new Map(trigramResults.map(r => [r.medicineId, r.trigramScore]))
+
+  const initialResults = topIds
+    .map(id => {
+      const semScore = semanticScoreMap.get(id) ?? null
+      const kwScore = keywordScoreMap.get(id) ?? null
+      const triScore = trigramScoreMap.get(id) ?? null
+      const matchReasons: MatchReason[] = []
+      if (semScore !== null) matchReasons.push({ type: 'semantic', score: semScore })
+      if (kwScore !== null) matchReasons.push({ type: 'keyword', score: kwScore })
+      if (triScore !== null) matchReasons.push({ type: 'trigram', score: triScore })
+      return {
+        score: honestScore(semScore, kwScore, triScore),
+        medicine: medMap.get(id)!,
+        matchReasons,
+      }
+    })
+    .filter(r => r.medicine)
+
+  return { initialResults }
+}
+
+// Pós-processamento: falsos positivos por substring, boost por nome,
+// verificação keyword (tsvector) e penalidade por falta de suporte.
+async function postProcessResults(
+  query: string,
+  initialResults: SearchResultItem[],
+  sources: SourceCollection,
+  hasKeywordResults: boolean
+): Promise<SearchResultItem[]> {
+  const { keywordIds, trigramIds, queryTerms } = sources
+
+  let boostedCount = 0
+  let falsePositiveCount = 0
+
+  const filteredResults = initialResults.map(r => {
+    const hasKeyword = keywordIds.has(r.medicine.id)
+    const hasTrigram = trigramIds.has(r.medicine.id)
+
+    // Remover falsos positivos de substring curta
+    if (isSubstringFalsePositive(query, r.medicine, hasKeyword, hasTrigram)) {
+      falsePositiveCount++
+      return { ...r, score: r.score * SEARCH.SUBSTRING_FALSE_POSITIVE_PENALTY }
+    }
+
+    // Boost por match exato no nome
+    const boost = nameMatchBoost(query, r.medicine)
+    const reasons = [...r.matchReasons]
+    if (boost > 0) {
+      boostedCount++
+      if (boost >= NAME_MATCH_BOOSTS.ingredient) reasons.push({ type: 'name-exact', boost })
+      else if (boost >= NAME_MATCH_BOOSTS.ingredientWord) reasons.push({ type: 'ingredient-match', boost })
+      else reasons.push({ type: 'name-prefix', boost })
+    }
+    return { ...r, score: r.score + boost, matchReasons: reasons }
+  }).sort((a, b) => b.score - a.score)
+
+  // Verificação keyword via tsvector — só penaliza quem não tem suporte real
+  let keywordVerifiedIds = new Set<number>()
+  if (hasKeywordResults) {
+    const tsquery = buildExpandedTsquery(query)
+    if (tsquery) {
+      const allResultIds = filteredResults.map(r => r.medicine.id)
+      if (allResultIds.length > 0) {
+        interface IdRow { id: number }
+        const verified = await prisma.$queryRawUnsafe<IdRow[]>(
+          `SELECT id FROM medicines WHERE id = ANY($1::int[]) AND "search_document" @@ to_tsquery('${SEARCH.TSQUERY_LANGUAGE}', $2::text)`,
+          allResultIds,
+          tsquery
+        )
+        keywordVerifiedIds = new Set(verified.map(r => r.id))
+      }
+    }
+  }
+
+  let penalizedCount = 0
+  const penalizedResults = filteredResults.map(r => {
+    const hasKeyword = keywordVerifiedIds.has(r.medicine.id)
+    const hasTrigram = trigramIds.has(r.medicine.id)
+    if (hasKeyword || hasTrigram) return r
+    if (!medicineRelatesToQuery(r.medicine, queryTerms)) {
+      penalizedCount++
+      return { ...r, score: r.score * SEARCH.NO_SUPPORT_PENALTY }
+    }
+    return r
+  }).sort((a, b) => b.score - a.score)
+
+  console.log(`⚖️  [BUSCA DESCRIÇÃO] Pós-processamento: ${boostedCount} com boost de nome, ${falsePositiveCount} com penalidade substring, ${penalizedCount} sem suporte`)
+
+  return penalizedResults
+}
+
+// Ajustes de feedback + corte final + sugestões + logs de resumo
+async function finalizeResults(
+  query: string,
+  penalizedResults: SearchResultItem[],
+  sources: SourceCollection,
+  isNameQuery: boolean,
+  queryType: string,
+  totalMs: string,
+  topK: number
+): Promise<{ finalResults: SearchResultItem[]; suggestions: string[] }> {
+  // Aplicar ajustes de score baseados em feedback dos usuários
+  const adjustedResults = await applyScoreAdjustments(query, penalizedResults) as SearchResultItem[]
+
+  // Corte final no topK — depois dos ajustes, para permitir promoção via feedback
+  const finalResults = adjustedResults.slice(0, topK)
+
+  // Gerar sugestões quando poucos resultados ou score baixo
+  const suggestions = await generateSuggestions(query, finalResults, isNameQuery)
+
+  console.log(
+    `[search] "${query}" → ${finalResults.length} results ` +
+    `(${sources.searchMs}ms search, ${totalMs}ms total) ` +
+    `[${queryType}] ` +
+    `[sem:${sources.semanticResults.length} kw:${sources.keywordResults.length} tri:${sources.trigramResults.length}]` +
+    (suggestions.length > 0 ? ` suggestions: [${suggestions.join(', ')}]` : '')
+  )
+
+  console.log(`✅ [BUSCA DESCRIÇÃO] Concluído em ${totalMs}ms | Retornando ${finalResults.length} medicamentos (topK=${topK})`)
+
+  if (finalResults.length > 0) {
+    console.log(`📋 [BUSCA DESCRIÇÃO] Top ${Math.min(finalResults.length, 5)} resultados:`)
+    finalResults.slice(0, 5).forEach((item, idx) => {
+      const reasons = item.matchReasons.map(r => {
+        if (r.type === 'semantic') return `sem:${r.score.toFixed(3)}`
+        if (r.type === 'keyword') return `kw:${r.score.toFixed(3)}`
+        if (r.type === 'trigram') return `tri:${r.score.toFixed(3)}`
+        return `${r.type}:+${r.boost.toFixed(2)}`
+      }).join(', ')
+      console.log(
+        `   ${idx + 1}. [Score ${item.score.toFixed(3)}] ${item.medicine.tradeName || '(Sem nome)'} ` +
+        `(${item.medicine.activeIngredient || '-'}) [${item.medicine.status || '-'}] - Motivos: [${reasons || 'ponderado'}]`
+      )
+    })
+  } else {
+    console.warn(`⚠️ [BUSCA DESCRIÇÃO] ATENÇÃO: Retornou ZERO resultados finais para "${query}"!`)
+  }
+
+  if (suggestions.length > 0) {
+    console.log(`💡 [BUSCA DESCRIÇÃO] Sugestões: [${suggestions.join(', ')}]`)
+  }
+  console.log(`================== [BUSCA DESCRIÇÃO] FIM ==================\n`)
+
+  return { finalResults, suggestions }
+}
+
+// Persistência: cache + log analytics (fire-and-forget)
+function persistSearch(
+  query: string,
+  topK: number,
+  searchResult: HybridSearchResult,
+  queryType: string,
+  totalMs: number
+): void {
+  setCachedSearch(query, topK, searchResult)
+  logSearch(query, searchResult.results.length, searchResult.results[0]?.score ?? null, queryType, totalMs)
+}
+
 export async function hybridSearch(
   query: string,
-  topK: number = 20
+  topK: number = SEARCH.HYBRID_TOP_K
 ): Promise<HybridSearchResult> {
   if (!query.trim()) return { results: [], suggestions: [] }
 
@@ -508,295 +893,30 @@ export async function hybridSearch(
   console.log(`🔍 [BUSCA DESCRIÇÃO] Query: "${query}" | topK: ${topK}`)
 
   try {
-    // Embedding da query — calculado uma única vez e reaproveitado na busca
-    // semântica e no refinamento de classificação (evita rodar o modelo 2x)
-    let queryEmb: Float32Array
-    try {
-      const tEmb = performance.now()
-      queryEmb = await embedQuery(query)
-      console.log(`🧠 [BUSCA DESCRIÇÃO] Embedding calculado em ${(performance.now() - tEmb).toFixed(0)}ms (dim: ${queryEmb.length})`)
-    } catch (err) {
-      console.error(`💥 [BUSCA DESCRIÇÃO] Falha ao gerar embedding para "${query}":`, err)
-      throw err
-    }
+    const queryEmb = await embedQueryForPipeline(query)
+    const { classification, isNameQuery } = await classifyQueryForPipeline(query, queryEmb)
+    const sources = await collectSearchSources(query, queryEmb, topK)
+    const { filteredSemanticResults } = filterSemanticByGate(sources, classification, isNameQuery)
 
-    // Classificar a query para decisões adaptativas
-    let classification = classifyQuery(query)
-    const initialType = classification.type
-    if (classification.confidence <= SEARCH.CLASSIFICATION_REFINE_MAX_CONFIDENCE) {
-      try {
-        const embeddingClassification = await classifyByEmbedding(queryEmb)
-        classification = refineLowConfidenceClassification(classification, embeddingClassification, query)
-        if (classification.type !== initialType) {
-          console.log(`🏷️  [BUSCA DESCRIÇÃO] Classificação refinada por embedding: ${initialType} → ${classification.type} (confiança: ${classification.confidence.toFixed(2)})`)
-        }
-      } catch (err) {
-        console.warn(`⚠️ [BUSCA DESCRIÇÃO] Refinamento por embedding falhou (usando heurística):`, err)
-      }
-    }
-    const isNameQuery = classification.type === 'medicine-name' && classification.confidence >= 0.6
-    console.log(`🏷️  [BUSCA DESCRIÇÃO] Tipo de query: "${classification.type}" (confiança: ${classification.confidence.toFixed(2)}, isNameQuery=${isNameQuery})`)
-
-    // Busca paralela: semântica + keyword + trigram
-    const t1 = performance.now()
-    const [semanticResults, keywordResults, trigramResults] = await Promise.all([
-      semanticSearch(query, topK * 5, queryEmb),
-      keywordSearch(query, topK * 5),
-      trigramSearch(query, topK * 5),
-    ])
-    const searchMs = (performance.now() - t1).toFixed(0)
-
-    console.log(`📊 [BUSCA DESCRIÇÃO] Coleta paralela concluída em ${searchMs}ms:`)
-    console.log(`   ├─ Semântica: ${semanticResults.length} registros`)
-    console.log(`   ├─ Keyword (FTS): ${keywordResults.length} registros`)
-    console.log(`   └─ Trigram: ${trigramResults.length} registros`)
-
-    const keywordIds = new Set(keywordResults.map(r => r.medicineId))
-    const trigramIds = new Set(trigramResults.map(r => r.medicineId))
-    const queryTerms = extractQueryTerms(query)
-
-    // Filter semantic results: pass through gate (com threshold adaptativo)
-    const filteredSemanticResults = semanticResults.filter(r => {
-      const hasKeyword = keywordIds.has(r.medicine.id)
-      return passesSemanticGate(r.score, hasKeyword, classification)
-    })
-
-    const hardMin = isNameQuery ? SEARCH.SEMANTIC_HARD_MIN_NAME_QUERY : SEARCH.SEMANTIC_HARD_MIN
-    const strong = isNameQuery ? SEARCH.SEMANTIC_STRONG_NAME_QUERY : SEARCH.SEMANTIC_STRONG
-    console.log(`🚪 [BUSCA DESCRIÇÃO] Gate Semântico: ${filteredSemanticResults.length}/${semanticResults.length} aprovados (hardMin=${hardMin}, strong=${strong})`)
-
-    // If no semantic results remain, fall back to keyword + trigram
+    // Sem resultados semânticos aprovados — fallback keyword + trigram
     if (filteredSemanticResults.length === 0) {
-      if (keywordResults.length === 0 && trigramResults.length === 0) {
-        console.warn(`❌ [BUSCA DESCRIÇÃO] Nenhum resultado em nenhuma fonte (Semântica: ${semanticResults.length} [0 aprovados pelo gate], Keyword: 0, Trigram: 0).`)
-        console.log(`================== [BUSCA DESCRIÇÃO] FIM (0 resultados) ==================\n`)
-        return { results: [], suggestions: [] }
-      }
-
-      console.log(`🔄 [BUSCA DESCRIÇÃO] Ativando fallback: mesclando Keyword (${keywordResults.length}) + Trigram (${trigramResults.length}) via RRF`)
-      // Merge keyword + trigram via RRF para fallback
-      const keywordRank = new Map(keywordResults.map((r, i) => [r.medicineId, i + 1]))
-      const trigramRank = new Map(trigramResults.map((r, i) => [r.medicineId, i + 1]))
-      const keywordScoreMapFb = new Map(keywordResults.map(r => [r.medicineId, r.keywordScore]))
-      const trigramScoreMapFb = new Map(trigramResults.map(r => [r.medicineId, r.trigramScore]))
-      const allFallbackIds = new Set([...keywordIds, ...trigramIds])
-
-      const fallbackScores = rrfFusion([
-        { rank: keywordRank, weight: KEYWORD_WEIGHT },
-        { rank: trigramRank, weight: TRIGRAM_WEIGHT },
-      ], RRF_K)
-      const topFallbackIds = [...allFallbackIds]
-        .sort((a, b) => (fallbackScores.get(b) ?? 0) - (fallbackScores.get(a) ?? 0))
-        .slice(0, topK)
-
-      const medicines = await prisma.medicine.findMany({
-        where: { id: { in: topFallbackIds } },
-        select: SEARCH_MEDICINE_SELECT,
-      })
-      const medMap = new Map(medicines.map(m => [m.id, m]))
-      const fallbackResults = topFallbackIds
-        .map(id => ({
-          score: honestScore(
-            null,
-            keywordScoreMapFb.get(id) ?? null,
-            trigramScoreMapFb.get(id) ?? null
-          ),
-          medicine: medMap.get(id) as unknown as MedicineResult,
-          matchReasons: [] as MatchReason[],
-        }))
-        .filter(r => r.medicine)
-        .slice(0, topK)
-
-      const adjustedFallback = await applyScoreAdjustments(query, fallbackResults) as SearchResultItem[]
-      const totalMs = (performance.now() - t0).toFixed(0)
-      console.log(`✅ [BUSCA DESCRIÇÃO] [Fallback] Concluído em ${totalMs}ms | Retornando ${adjustedFallback.length} medicamentos`)
-      console.log(`================== [BUSCA DESCRIÇÃO] FIM ==================\n`)
-      return { results: adjustedFallback, suggestions: [] }
+      return await fallbackNoSemantic(query, sources, topK, t0)
     }
 
-    // If no keyword/trigram results, use filtered semantic
-    if (keywordResults.length === 0 && trigramResults.length === 0) {
-      console.log(`ℹ️ [BUSCA DESCRIÇÃO] Sem Keyword ou Trigram. Usando apenas ${filteredSemanticResults.length} resultados Semânticos aprovados.`)
-      const semanticOnlyResults = filteredSemanticResults
-        .map(r => ({
-          score: honestScore(r.score, null, null),
-          medicine: normalizeMedicine(r.medicine) as MedicineResult,
-          matchReasons: [{ type: 'semantic' as const, score: r.score }],
-        }))
-        .sort((a, b) => b.score - a.score)
-        .slice(0, topK)
-      const adjustedSemanticOnly = await applyScoreAdjustments(query, semanticOnlyResults) as SearchResultItem[]
-      const totalMs = (performance.now() - t0).toFixed(0)
-      console.log(`✅ [BUSCA DESCRIÇÃO] [Apenas Semântica] Concluído em ${totalMs}ms | Retornando ${adjustedSemanticOnly.length} medicamentos`)
-      console.log(`================== [BUSCA DESCRIÇÃO] FIM ==================\n`)
-      return { results: adjustedSemanticOnly, suggestions: [] }
+    // Sem keyword/trigram — usa apenas o semântico aprovado
+    if (sources.keywordResults.length === 0 && sources.trigramResults.length === 0) {
+      return await fallbackSemanticOnly(query, filteredSemanticResults, topK, t0)
     }
 
-    // RRF fusion com 3 fontes
-    const semanticRank = new Map(filteredSemanticResults.map((r, i) => [r.medicine.id, i + 1]))
-    const keywordRank = new Map(keywordResults.map((r, i) => [r.medicineId, i + 1]))
-    const trigramRank = new Map(trigramResults.map((r, i) => [r.medicineId, i + 1]))
-
-    const allIds = new Set([
-      ...filteredSemanticResults.map(r => r.medicine.id),
-      ...keywordResults.map(r => r.medicineId),
-      ...trigramResults.map(r => r.medicineId),
-    ])
-
-    const scores = rrfFusion([
-      { rank: semanticRank, weight: SEMANTIC_WEIGHT },
-      { rank: keywordRank, weight: KEYWORD_WEIGHT },
-      { rank: trigramRank, weight: TRIGRAM_WEIGHT },
-    ], RRF_K)
-
-    // Margem de 2x antes do corte final: permite que ajustes de feedback
-    // promovam candidatos que ficariam fora do topK inicial.
-    const topIds = [...allIds]
-      .sort((a, b) => (scores.get(b) ?? 0) - (scores.get(a) ?? 0))
-      .slice(0, topK * 2)
-
-    const existingMedicines = filteredSemanticResults
-      .filter(r => topIds.includes(r.medicine.id))
-      .map(r => r.medicine)
-
-    const remainingIds = topIds.filter(id => !existingMedicines.some(m => m.id === id))
-    if (remainingIds.length > 0) {
-      const remaining = await prisma.medicine.findMany({
-        where: { id: { in: remainingIds } },
-        select: SEARCH_MEDICINE_SELECT,
-      })
-      existingMedicines.push(...remaining.map(normalizeMedicine) as unknown as MedicineResult[])
-    }
-
-    const medMap = new Map(existingMedicines.map(m => [m.id, m]))
-    const semanticScoreMap = new Map(filteredSemanticResults.map(r => [r.medicine.id, r.score]))
-    const keywordScoreMap = new Map(keywordResults.map(r => [r.medicineId, r.keywordScore]))
-    const trigramScoreMap = new Map(trigramResults.map(r => [r.medicineId, r.trigramScore]))
-
-    const initialResults = topIds
-      .map(id => {
-        const semScore = semanticScoreMap.get(id) ?? null
-        const kwScore = keywordScoreMap.get(id) ?? null
-        const triScore = trigramScoreMap.get(id) ?? null
-        const matchReasons: MatchReason[] = []
-        if (semScore !== null) matchReasons.push({ type: 'semantic', score: semScore })
-        if (kwScore !== null) matchReasons.push({ type: 'keyword', score: kwScore })
-        if (triScore !== null) matchReasons.push({ type: 'trigram', score: triScore })
-        return {
-          score: honestScore(semScore, kwScore, triScore),
-          medicine: medMap.get(id)!,
-          matchReasons,
-        }
-      })
-      .filter(r => r.medicine)
-
-    // Filtro de falsos positivos por substring + boost por match exato
-    let boostedCount = 0
-    let falsePositiveCount = 0
-
-    const filteredResults = initialResults.map(r => {
-      const hasKeyword = keywordIds.has(r.medicine.id)
-      const hasTrigram = trigramIds.has(r.medicine.id)
-
-      // Remover falsos positivos de substring curta
-      if (isSubstringFalsePositive(query, r.medicine, hasKeyword, hasTrigram)) {
-        falsePositiveCount++
-        return { ...r, score: r.score * SEARCH.SUBSTRING_FALSE_POSITIVE_PENALTY }
-      }
-
-      // Boost por match exato no nome
-      const boost = nameMatchBoost(query, r.medicine)
-      const reasons = [...r.matchReasons]
-      if (boost > 0) {
-        boostedCount++
-        if (boost >= NAME_MATCH_BOOSTS.ingredient) reasons.push({ type: 'name-exact', boost })
-        else if (boost >= NAME_MATCH_BOOSTS.ingredientWord) reasons.push({ type: 'ingredient-match', boost })
-        else reasons.push({ type: 'name-prefix', boost })
-      }
-      return { ...r, score: r.score + boost, matchReasons: reasons }
-    }).sort((a, b) => b.score - a.score)
-
-    // Penalidade para resultados sem keyword/trigram support nem relação textual
-    let keywordVerifiedIds = new Set<number>()
-    if (keywordResults.length > 0) {
-      const tsquery = buildExpandedTsquery(query)
-      if (tsquery) {
-        const allResultIds = filteredResults.map(r => r.medicine.id)
-        if (allResultIds.length > 0) {
-          interface IdRow { id: number }
-          const verified = await prisma.$queryRawUnsafe<IdRow[]>(
-            `SELECT id FROM medicines WHERE id = ANY($1::int[]) AND "search_document" @@ to_tsquery('portuguese', $2::text)`,
-            allResultIds,
-            tsquery
-          )
-          keywordVerifiedIds = new Set(verified.map(r => r.id))
-        }
-      }
-    }
-
-    let penalizedCount = 0
-    const penalizedResults = filteredResults.map(r => {
-      const hasKeyword = keywordVerifiedIds.has(r.medicine.id)
-      const hasTrigram = trigramIds.has(r.medicine.id)
-      if (hasKeyword || hasTrigram) return r
-      if (!medicineRelatesToQuery(r.medicine, queryTerms)) {
-        penalizedCount++
-        return { ...r, score: r.score * SEARCH.NO_SUPPORT_PENALTY }
-      }
-      return r
-    }).sort((a, b) => b.score - a.score)
-
-    console.log(`⚖️  [BUSCA DESCRIÇÃO] Pós-processamento: ${boostedCount} com boost de nome, ${falsePositiveCount} com penalidade substring, ${penalizedCount} sem suporte`)
-
-    // Aplicar ajustes de score baseados em feedback dos usuários
-    const adjustedResults = await applyScoreAdjustments(query, penalizedResults) as SearchResultItem[]
-
-    // Corte final no topK — depois dos ajustes, para permitir promoção via feedback
-    const finalResults = adjustedResults.slice(0, topK)
-
-    // Gerar sugestões quando poucos resultados ou score baixo
-    const suggestions = await generateSuggestions(query, finalResults, isNameQuery)
-
+    const { initialResults } = await fuseAndFetch(filteredSemanticResults, sources, topK)
+    const penalizedResults = await postProcessResults(query, initialResults, sources, sources.keywordResults.length > 0)
     const totalMs = (performance.now() - t0).toFixed(0)
-    console.log(
-      `[search] "${query}" → ${finalResults.length} results ` +
-      `(${searchMs}ms search, ${totalMs}ms total) ` +
-      `[${classification.type}] ` +
-      `[sem:${semanticResults.length} kw:${keywordResults.length} tri:${trigramResults.length}]` +
-      (suggestions.length > 0 ? ` suggestions: [${suggestions.join(', ')}]` : '')
+    const { finalResults, suggestions } = await finalizeResults(
+      query, penalizedResults, sources, isNameQuery, classification.type, totalMs, topK
     )
 
-    console.log(`✅ [BUSCA DESCRIÇÃO] Concluído em ${totalMs}ms | Retornando ${finalResults.length} medicamentos (topK=${topK})`)
-
-    if (finalResults.length > 0) {
-      console.log(`📋 [BUSCA DESCRIÇÃO] Top ${Math.min(finalResults.length, 5)} resultados:`)
-      finalResults.slice(0, 5).forEach((item, idx) => {
-        const reasons = item.matchReasons.map(r => {
-          if (r.type === 'semantic') return `sem:${r.score.toFixed(3)}`
-          if (r.type === 'keyword') return `kw:${r.score.toFixed(3)}`
-          if (r.type === 'trigram') return `tri:${r.score.toFixed(3)}`
-          return `${r.type}:+${r.boost.toFixed(2)}`
-        }).join(', ')
-        console.log(
-          `   ${idx + 1}. [Score ${item.score.toFixed(3)}] ${item.medicine.tradeName || '(Sem nome)'} ` +
-          `(${item.medicine.activeIngredient || '-'}) [${item.medicine.status || '-'}] - Motivos: [${reasons || 'ponderado'}]`
-        )
-      })
-    } else {
-      console.warn(`⚠️ [BUSCA DESCRIÇÃO] ATENÇÃO: Retornou ZERO resultados finais para "${query}"!`)
-    }
-
-    if (suggestions.length > 0) {
-      console.log(`💡 [BUSCA DESCRIÇÃO] Sugestões: [${suggestions.join(', ')}]`)
-    }
-    console.log(`================== [BUSCA DESCRIÇÃO] FIM ==================\n`)
-
-    // Salvar no cache
     const searchResult: HybridSearchResult = { results: finalResults, suggestions }
-    setCachedSearch(query, topK, searchResult)
-
-    // Log analytics (fire-and-forget — não bloqueia a resposta)
-    logSearch(query, finalResults.length, finalResults[0]?.score ?? null, classification.type, Number(totalMs))
+    persistSearch(query, topK, searchResult, classification.type, Number(totalMs))
 
     return searchResult
   } catch (error) {

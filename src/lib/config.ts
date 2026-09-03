@@ -23,16 +23,14 @@ export const SEARCH = {
   // Thresholds semânticos — queries de nome de medicamento (mais restritivos)
   SEMANTIC_HARD_MIN_NAME_QUERY: 0.88,
   SEMANTIC_STRONG_NAME_QUERY: 0.90,
+  // Confiança mínima da classificação de embedding para queries de nome
+  NAME_QUERY_MIN_CONFIDENCE: 0.6,
 
   // RRF fusion
   RRF_K: 60,
   SEMANTIC_WEIGHT: 0.40,
   KEYWORD_WEIGHT: 0.35,
   TRIGRAM_WEIGHT: 0.25,
-
-  // Trigram
-  TRIGRAM_MIN_THRESHOLD: 0.15,
-  TRIGRAM_MIN_THRESHOLD_NAME: 0.30,
 
   // Filtro de falsos positivos por substring
   SUBSTRING_MIN_LENGTH: 6,
@@ -60,8 +58,27 @@ export const SEARCH = {
   // classifyQuery cai no fallback genérico (baixíssima confiança)
   CLASSIFICATION_REFINE_MAX_CONFIDENCE: 0.4,
 
-  // Pagination
-  PAGE_SIZE: 20,
+  // Cache em memória (single-process / VPS self-hosted)
+  CACHE_TTL_MS: 5 * 60 * 1000,
+  CACHE_MAX_ENTRIES: 500,
+
+  // Modelo de embeddings
+  MODEL_CACHE_DIR: '/tmp/.transformers-cache',
+
+  // pgvector
+  IVFFLAT_PROBES: 40,
+  PGVECTOR_TIMEOUT_MS: 30_000,
+
+  // Quantidades padrão
+  SEMANTIC_TOP_K: 60,
+  HYBRID_TOP_K: 20,
+  SOURCE_FETCH_MULTIPLIER: 5,
+  FINAL_CUT_MARGIN: 2,
+  AUTOCOMPLETE_TAKE: 8,
+  DASHBOARD_TOP_K: 10,
+
+  // Full-text search
+  TSQUERY_LANGUAGE: 'portuguese',
 } as const
 
 export const SITE = {

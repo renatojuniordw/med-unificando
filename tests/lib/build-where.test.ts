@@ -34,11 +34,20 @@ describe('buildWhere', () => {
     })
   })
 
-  it('builds filter for status', () => {
+  it('builds filter for status with exact match', () => {
     const result = buildWhere({ status: 'Ativo' })
     expect(result).toEqual({
-      status: { contains: 'Ativo', mode: 'insensitive' },
+      status: { equals: 'Ativo', mode: 'insensitive' },
     })
+  })
+
+  it('does not match "Inativo" when filtering "Ativo"', () => {
+    const result = buildWhere({ status: 'Ativo' })
+    const statusFilter = result.status as { equals: string; mode: string }
+    // 'Inativo' contains 'Ativo' (case-insensitive), so substring matching
+    // would wrongly return inactive registrations for an active filter.
+    expect(statusFilter.equals.toLowerCase()).not.toContain('inativo')
+    expect('Inativo'.toLowerCase()).not.toBe(statusFilter.equals.toLowerCase())
   })
 
   it('builds filter for pharmaceuticalForm', () => {
@@ -64,7 +73,7 @@ describe('buildWhere', () => {
     expect(result).toEqual({
       reference: { contains: '12345', mode: 'insensitive' },
       category: { contains: 'Similar', mode: 'insensitive' },
-      status: { contains: 'Ativo', mode: 'insensitive' },
+      status: { equals: 'Ativo', mode: 'insensitive' },
     })
   })
 

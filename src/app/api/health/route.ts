@@ -17,7 +17,8 @@ export async function GET() {
         prices: priceCount,
       },
     })
-  } catch {
+  } catch (error) {
+    console.error('Health check falhou — banco desconectado:', error)
     return NextResponse.json(
       {
         status: 'unhealthy',

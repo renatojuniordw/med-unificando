@@ -36,12 +36,6 @@ describe('applyScoreAdjustments', () => {
     expect(result).toEqual([])
   })
 
-  it('applies manual adjustment for "articulação" query', async () => {
-    const results = [makeResult(1, 0.5)]
-    const adjusted = await applyScoreAdjustments('articulação', results)
-    expect(adjusted[0].score).toBeGreaterThan(0.5)
-  })
-
   it('applies DB-driven boost for high approval feedback', async () => {
     mockFindMany.mockResolvedValue([
       { query: 'dor', medicineId: 1, medicineName: 'Ibuprofeno', feedback: 'helpful' },
@@ -138,5 +132,39 @@ describe('applyScoreAdjustments', () => {
     const adjusted = await applyScoreAdjustments('teste', results)
     expect(adjusted[0].medicine.id).toBe(1)
     expect(adjusted[1].medicine.id).toBe(2)
+  })
+
+  it('penalizes deceptive name (Stomup-like) for "estômago" query', async () => {
+    const results = [
+      makeResult(1, 0.8, {
+        therapeuticClass: 'colirio',
+        tradeName: 'Stomup Gotas',
+        activeIngredient: 'cloridrato de tetrizolina',
+      }),
+    ]
+    const adjusted = await applyScoreAdjustments('estômago', results)
+    // -0.45 (non-gastric) + -0.4 (deceptive name) → abaixo do filtro 0.08
+    expect(adjusted.length).toBe(0)
+  })
+
+  it('does not apply deceptive penalty for non-stomach queries', async () => {
+    const results = [
+      makeResult(1, 0.6, {
+        therapeuticClass: 'colirio',
+        tradeName: 'Stomup Gotas',
+        activeIngredient: 'cloridrato de tetrizolina',
+      }),
+    ]
+    const adjusted = await applyScoreAdjustments('dor de cabeça', results)
+    // Query de tópico diferente → sem penalidade de estômago; score preservado
+    expect(adjusted[0].medicine.id).toBe(1)
+    expect(adjusted[0].score).toBe(0.6)
+  })
+
+  it('does not apply manually hardcoded "articulação" boost anymore', async () => {
+    const results = [makeResult(1, 0.5)]
+    const adjusted = await applyScoreAdjustments('articulação', results)
+    // Regra manual removida: sem feedbacks no banco, score permanece inalterado
+    expect(adjusted[0].score).toBe(0.5)
   })
 })

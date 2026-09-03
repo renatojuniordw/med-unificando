@@ -5,10 +5,11 @@ import { parseQuery } from '@/lib/query-parser'
 import { GENERIC_TERMS } from '@/lib/dictionaries/synonyms'
 import { buildOrTsQuery, expandTermsWithSynonyms } from '@/lib/keyword-utils'
 import { stripAccents } from '@/lib/text-utils'
+import { SEARCH } from '@/lib/config'
 
 export async function keywordSearch(
   query: string,
-  topK: number = 20
+  topK: number = SEARCH.HYBRID_TOP_K
 ): Promise<{ medicineId: number; keywordScore: number }[]> {
   if (!query.trim()) return []
 
@@ -26,10 +27,11 @@ export async function keywordSearch(
 
   if (!searchQuery) return []
 
+  const lang = SEARCH.TSQUERY_LANGUAGE
   const sql = `
-    SELECT id, ts_rank("search_document", to_tsquery('portuguese', $1::text)) AS keyword_score
+    SELECT id, ts_rank("search_document", to_tsquery('${lang}', $1::text)) AS keyword_score
     FROM medicines
-    WHERE "search_document" @@ to_tsquery('portuguese', $1::text)
+    WHERE "search_document" @@ to_tsquery('${lang}', $1::text)
     ORDER BY keyword_score DESC
     LIMIT $2
   `

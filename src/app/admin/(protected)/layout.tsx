@@ -1,5 +1,6 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
+import { isAdmin } from "@/lib/auth-guard"
 
 export default async function AdminProtectedLayout({
   children,
@@ -8,7 +9,7 @@ export default async function AdminProtectedLayout({
 }) {
   const session = await auth()
 
-  if (!session?.user) {
+  if (!session?.user || !isAdmin(session)) {
     redirect("/admin/login")
   }
 
