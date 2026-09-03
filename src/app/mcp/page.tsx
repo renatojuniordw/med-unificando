@@ -2,6 +2,8 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { ClipboardButton } from '@/components/ui/clipboard-button'
+import { Tabs } from '@/components/ui/tabs'
+import { McpConnectionTest } from '@/components/mcp/connection-test'
 import { SITE } from '@/lib/config'
 import type { Metadata } from 'next'
 
@@ -77,6 +79,7 @@ export default function McpPage() {
               Apontar o cliente para a URL abaixo é suficiente.
             </p>
             <CodeBlock code={endpoint} label="URL do MCP Server" />
+            <McpConnectionTest endpoint={endpoint} />
           </Card>
 
           <Card>
@@ -85,22 +88,35 @@ export default function McpPage() {
               Adicione o servidor no seu agente favorito:
             </p>
 
-            <p className="text-sm font-medium text-[var(--color-text)] mt-4">Claude Desktop / Claude Code</p>
-            <CodeBlock code={`{
+            <Tabs
+              tabs={[
+                {
+                  id: 'claude',
+                  label: 'Claude Desktop / Code',
+                  content: (
+                    <CodeBlock code={`{
   "mcpServers": {
     "med-unificando": {
       "url": "${endpoint}"
     }
   }
 }`} />
-
-            <p className="text-sm font-medium text-[var(--color-text)] mt-4">Cursor</p>
-            <CodeBlock code={`MCP → Add new server:
+                  ),
+                },
+                {
+                  id: 'cursor',
+                  label: 'Cursor',
+                  content: (
+                    <CodeBlock code={`MCP → Add new server:
   Type: HTTP
   URL:  ${endpoint}`} />
-
-            <p className="text-sm font-medium text-[var(--color-text)] mt-4">opencode</p>
-            <CodeBlock code={`{
+                  ),
+                },
+                {
+                  id: 'opencode',
+                  label: 'opencode',
+                  content: (
+                    <CodeBlock code={`{
   "mcp": {
     "med-unificando": {
       "type": "http",
@@ -108,18 +124,21 @@ export default function McpPage() {
     }
   }
 }`} />
+                  ),
+                },
+              ]}
+            />
           </Card>
 
           <Card>
-            <h2 className="font-semibold text-lg mb-3">Ferramentas disponíveis (12)</h2>
+            <h2 className="font-semibold text-lg mb-3">Ferramentas disponíveis ({tools.length})</h2>
             <ul className="space-y-2 text-sm text-[var(--color-text-secondary)]">
               {tools.map(([name, description]) => (
                 <li key={name} className="flex items-start gap-2">
                   <span className="text-brand-yellow mt-0.5">▸</span>
-                  <span>
-                    <code className="text-xs bg-[var(--color-surface)] px-1.5 py-0.5 rounded text-[var(--color-text)]">{name}</code>{' '}
-                    — {description}
-                  </span>
+                  <code className="text-xs bg-[var(--color-surface)] px-1.5 py-0.5 rounded text-[var(--color-text)] shrink-0 mt-0.5">{name}</code>
+                  <ClipboardButton iconOnly text={name} className="shrink-0 mt-0.5" />
+                  <span className="min-w-0">— {description}</span>
                 </li>
               ))}
             </ul>
