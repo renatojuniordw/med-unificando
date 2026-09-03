@@ -19,6 +19,7 @@ export function CompareView() {
 
   const [medicines, setMedicines] = useState<MedicineResult[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<number[]>(ids)
 
   const syncUrl = useCallback((newIds: number[]) => {
@@ -29,20 +30,29 @@ export function CompareView() {
   const { query: searchQuery, setQuery: setSearchQuery, results: searchResults, searching } =
     useDebouncedSearch(searchMedicinesForCompare)
 
-  useEffect(() => {
-    async function fetchData() {
-      if (selectedIds.length === 0) {
-        setMedicines([])
-        setLoading(false)
-        return
-      }
-      setLoading(true)
+  const loadMedicines = useCallback(async () => {
+    if (selectedIds.length === 0) {
+      setMedicines([])
+      setError(null)
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    setError(null)
+    try {
       const data = await getMedicinesByIds(selectedIds)
       setMedicines(data)
+    } catch {
+      setMedicines([])
+      setError('Não foi possível carregar a comparação. Tente novamente.')
+    } finally {
       setLoading(false)
     }
-    fetchData()
   }, [selectedIds])
+
+  useEffect(() => {
+    loadMedicines()
+  }, [loadMedicines])
 
   function addMedicine(id: number) {
     if (!selectedIds.includes(id)) {
@@ -96,6 +106,17 @@ export function CompareView() {
           <p className="font-semibold text-lg text-[var(--color-text)] animate-pulse">
             Carregando...
           </p>
+        </div>
+      ) : error ? (
+        <div className="text-center py-12 space-y-3">
+          <p className="text-sm text-error">{error}</p>
+          <button
+            type="button"
+            onClick={() => loadMedicines()}
+            className="text-sm font-semibold underline"
+          >
+            Tentar novamente
+          </button>
         </div>
       ) : (
         <CompareTable medicines={medicines} />

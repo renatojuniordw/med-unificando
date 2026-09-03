@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react'
 import { STORAGE_KEYS, THEME_COLORS } from '@/lib/constants'
 
 type Theme = 'light' | 'dark'
@@ -41,8 +41,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const toggle = useCallback(() => setThemeState(prev => prev === 'light' ? 'dark' : 'light'), [])
   const setTheme = useCallback((t: Theme) => setThemeState(t), [])
 
+  // Valor memoizado: o objeto não muda de identidade a cada render do provider,
+  // evitando re-render desnecessário de consumidores quando nada mudou.
+  const value = useMemo(() => ({ theme, toggle, setTheme }), [theme, toggle, setTheme])
+
   return (
-    <ThemeContext.Provider value={{ theme, toggle, setTheme }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   )

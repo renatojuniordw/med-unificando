@@ -131,6 +131,7 @@ export function AutocompleteField({
         onKeyDown={handleKeyDown}
         aria-autocomplete="list"
         aria-expanded={suggestions.length > 0}
+        aria-label={label ? undefined : placeholder}
         aria-activedescendant={activeIndex >= 0 ? `autocomplete-${fieldKey}-${activeIndex}` : undefined}
         autoComplete="off"
       />

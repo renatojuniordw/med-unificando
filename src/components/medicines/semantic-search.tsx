@@ -176,6 +176,7 @@ export function SemanticSearch() {
             <Input
               ref={inputElRef}
               label=""
+              aria-label="Buscar medicamento"
               placeholder='Ex: "anti-inflamatório" ou "remédio para pressão"'
               value={query}
               onChange={(e) => {

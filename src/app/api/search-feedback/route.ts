@@ -12,6 +12,14 @@ export async function POST(request: NextRequest) {
     return rateLimitResponse(rl)
   }
 
+  // Defesa em profundidade: o payload de feedback é pequeno (~100 bytes); rejeitar
+  // corpos grandes antes do JSON.parse evita uso de memória via body gigante
+  // (App Router não impõe limite por padrão).
+  const contentLength = Number(request.headers.get('content-length') ?? 0)
+  if (contentLength > 8 * 1024) {
+    return NextResponse.json({ error: 'Payload muito grande' }, { status: 413 })
+  }
+
   try {
     const body = await request.json()
     const parsed = feedbackSchema.safeParse(body)

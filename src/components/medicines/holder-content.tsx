@@ -37,6 +37,8 @@ export function HolderContent({ holder, initialData, totalMedicines, ativos, cat
 
   const [data, setData] = useState<SearchResponse>(initialData)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [reload, setReload] = useState(0)
   const [searchInput, setSearchInput] = useState(q)
 
   useEffect(() => {
@@ -46,18 +48,24 @@ export function HolderContent({ holder, initialData, totalMedicines, ativos, cat
   useEffect(() => {
     async function fetch() {
       setLoading(true)
-      const result = await getHolderMedicines(
-        holder,
-        page,
-        pageSize,
-        q || undefined,
-        status || undefined
-      )
-      setData(result)
-      setLoading(false)
+      setError(null)
+      try {
+        const result = await getHolderMedicines(
+          holder,
+          page,
+          pageSize,
+          q || undefined,
+          status || undefined
+        )
+        setData(result)
+      } catch {
+        setError('Não foi possível carregar os medicamentos. Tente novamente.')
+      } finally {
+        setLoading(false)
+      }
     }
     fetch()
-  }, [holder, page, pageSize, q, status])
+  }, [holder, page, pageSize, q, status, reload])
 
   const inativos = totalMedicines - ativos
   const currentTotal = data.total
@@ -130,6 +138,19 @@ export function HolderContent({ holder, initialData, totalMedicines, ativos, cat
       <div className="mt-4">
         <StatusFilter value={status} onChange={handleStatusChange} />
       </div>
+
+      {error && (
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-sm border border-error/30 bg-red-50/50 dark:bg-red-950/20 p-3 text-sm text-error">
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={() => setReload(r => r + 1)}
+            className="text-xs font-semibold underline shrink-0"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      )}
 
       {/* Mobile: Cards */}
       <div className="space-y-3 md:hidden">
