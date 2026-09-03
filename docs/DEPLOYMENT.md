@@ -47,9 +47,9 @@ npm run docker:up
 ```
 
 > **IDs estáveis entre syncs (desde 2026-09-03):** o import de medicamentos usa
-> diff por `reference` (multiplicidade) — as URLs `/medicamento/[id]`, favoritos e
-> comparações **sobrevivem** aos syncs; somente linhas novas/removidas alteram o
-> conjunto de IDs. O reset (`down -v`) continua apagando tudo de propósito.
+> diff por `reference` (multiplicidade) — as URLs `/medicamento/[slug]` (ID no
+> sufixo do slug), favoritos e comparações **sobrevivem** aos syncs; somente
+> linhas novas/removidas alteram o conjunto de IDs. O reset (`down -v`) continua apagando tudo de propósito.
 
 ### Reinicializar do zero (reset)
 

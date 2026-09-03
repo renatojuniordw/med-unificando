@@ -1,5 +1,6 @@
 import { getCachedMedicineDetail } from '@/lib/data-cache'
 import { safeJsonLd } from '@/lib/safe-json-ld'
+import { medicineUrl, parseMedicineSlug } from '@/lib/medicine-url'
 import { Badge } from '@/components/ui/badge'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { Card } from '@/components/ui/card'
@@ -7,41 +8,52 @@ import { MedicineInfoCard } from '@/components/medicines/medicine-info-card'
 import { ActionBar } from '@/components/medicines/action-bar'
 import { PriceSection } from '@/components/medicines/price-section'
 import { SimilarSection } from '@/components/medicines/similar-section'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
+import Link from 'next/link'
 import type { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
-  const { id } = await params
-  const parsedId = parseInt(id)
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params
+  const id = parseMedicineSlug(slug)
   // Reusa o mesmo cache de 1h do corpo da página (evita query duplicada no DB).
-  const detail = Number.isNaN(parsedId) ? null : await getCachedMedicineDetail(parsedId)
+  const detail = id === null ? null : await getCachedMedicineDetail(id)
   const med = detail?.medicine
   if (!med) return { title: 'Medicamento não encontrado' }
 
-  const title = `${med.tradeName} — ${med.activeIngredient} | Med Unificando`
+  const canonical = medicineUrl(med.id, med.tradeName)
+  const full = `${med.tradeName} — ${med.activeIngredient} | Med Unificando`
+  const title = full.length > 60 ? `${med.tradeName} | Med Unificando` : full
   const description = `${med.tradeName} (${med.activeIngredient}) — ${med.category || 'Medicamento'} ${med.status === 'Ativo' ? 'com registro ativo' : 'com registro inativo'} na ANVISA. ${med.similarHolder}.`
 
   return {
     title,
     description,
+    alternates: { canonical },
     openGraph: {
-      title,
+      title: `${med.tradeName} — ${med.activeIngredient}`,
       description,
       type: 'article',
       siteName: 'Med Unificando',
       locale: 'pt_BR',
+      url: canonical,
     },
   }
 }
 
-export default async function MedicineDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  const detail = await getCachedMedicineDetail(parseInt(id))
+export default async function MedicineDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  const id = parseMedicineSlug(slug)
+  const detail = id === null ? null : await getCachedMedicineDetail(id)
   if (!detail) notFound()
 
   const { medicine: med, prices, similares } = detail
+
+  // URLs legadas /medicamento/{id} → redirect permanente para o slug canônico.
+  if (/^\d+$/.test(slug)) redirect(medicineUrl(med.id, med.tradeName))
+
+  const canonical = medicineUrl(med.id, med.tradeName)
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -50,6 +62,7 @@ export default async function MedicineDetailPage({ params }: { params: Promise<{
     description: `${med.activeIngredient} — ${med.category || 'Medicamento'}`,
     activeIngredient: med.activeIngredient,
     manufacturer: med.similarHolder,
+    url: canonical,
     code: {
       '@type': 'MedicalCode',
       code: med.reference,
@@ -57,6 +70,8 @@ export default async function MedicineDetailPage({ params }: { params: Promise<{
     },
     drugClass: med.atcCode ? { '@type': 'MedicalCode', code: med.atcCode, codingSystem: 'ATC' } : undefined,
     status: med.status === 'Ativo' ? 'available' : 'discontinued',
+    datePublished: med.anvisaFileDate ? new Date(med.anvisaFileDate).toISOString().split('T')[0] : undefined,
+    dateModified: med.lastImportAt ? new Date(med.lastImportAt).toISOString().split('T')[0] : undefined,
   }
 
   const fields = [
@@ -117,7 +132,14 @@ export default async function MedicineDetailPage({ params }: { params: Promise<{
         {med.referenceMedicine && (
           <Card variant="highlight" className="mb-8">
             <p className="text-xs font-semibold text-muted mb-1">MEDICAMENTO DE REFERÊNCIA</p>
-            <p className="font-semibold text-lg text-[var(--color-text)]">{med.referenceMedicine}</p>
+            <p className="font-semibold text-lg text-[var(--color-text)]">
+              <Link
+                href={`/referencias/${encodeURIComponent(med.referenceMedicine)}`}
+                className="hover:underline"
+              >
+                {med.referenceMedicine}
+              </Link>
+            </p>
           </Card>
         )}
 

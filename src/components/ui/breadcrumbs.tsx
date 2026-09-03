@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import { SITE } from '@/lib/config'
 import { safeJsonLd } from '@/lib/safe-json-ld'

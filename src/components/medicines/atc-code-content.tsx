@@ -8,6 +8,8 @@ import { StatusPill } from '@/components/ui/status-pill'
 import { Badge } from '@/components/ui/badge'
 import { PaginationBar } from '@/components/ui/pagination'
 import Link from 'next/link'
+import { Breadcrumbs } from '@/components/ui/breadcrumbs'
+import { medicineUrl } from '@/lib/medicine-url'
 import type { MedicineResult, SearchResponse } from '@/types'
 
 interface AtcCodeContentProps {
@@ -18,9 +20,8 @@ interface AtcCodeContentProps {
 // Computa breadcrumbs ATC a partir do código (usa getAtcLevel como fonte única)
 function getAtcBreadcrumbs(code: string): { label: string; href?: string }[] {
   const level = getAtcLevel(code)
-  if (!level) return [{ label: code }]
-
-  const crumbs: { label: string; href?: string }[] = []
+  const crumbs: { label: string; href?: string }[] = [{ label: 'ATC', href: '/atc' }]
+  if (!level) return [...crumbs, { label: code }]
   if (level.level1) crumbs.push({ label: level.level1, href: `/atc/${level.level1}` })
   if (level.level2) crumbs.push({ label: level.level2, href: `/atc/${level.level2}` })
   if (level.level3) crumbs.push({ label: level.level3, href: `/atc/${level.level3}` })
@@ -82,24 +83,8 @@ export function AtcCodeContent({ code, initialData }: AtcCodeContentProps) {
   return (
     <section className="py-12 md:py-20 bg-[var(--color-bg)]">
       <div className="max-w-5xl mx-auto px-6 lg:px-12">
-        {/* Breadcrumbs ATC */}
-        <nav className="flex items-center gap-1.5 text-xs text-muted mb-6 flex-wrap" aria-label="Hierarquia ATC">
-          <Link href="/atc" className="hover:text-[var(--color-text)] underline transition-colors">
-            ATC
-          </Link>
-          {crumbs.map((crumb, i) => (
-            <span key={i} className="flex items-center gap-1.5">
-              <span>/</span>
-              {crumb.href ? (
-                <Link href={crumb.href} className="hover:text-[var(--color-text)] underline transition-colors">
-                  {crumb.label}
-                </Link>
-              ) : (
-                <span className="text-[var(--color-text)] font-medium">{crumb.label}</span>
-              )}
-            </span>
-          ))}
-        </nav>
+        {/* Breadcrumbs ATC (com BreadcrumbList schema via componente) */}
+        <Breadcrumbs items={crumbs} />
 
         <div className="mt-8 mb-10">
           <Badge variant="primary" className="mb-4">Código ATC</Badge>
@@ -121,7 +106,7 @@ export function AtcCodeContent({ code, initialData }: AtcCodeContentProps) {
             data.data.map((med: MedicineResult) => (
               <Link
                 key={med.id}
-                href={`/medicamento/${med.id}`}
+                href={`${medicineUrl(med.id, med.tradeName)}`}
                 data-testid="atc-medicine-item"
                 className="block border border-border rounded-sm bg-[var(--color-bg)] p-4 hover:bg-brand-yellow/10 hover:border-brand-yellow transition-all group"
               >
@@ -165,7 +150,7 @@ export function AtcCodeContent({ code, initialData }: AtcCodeContentProps) {
               {data.data.map((med: MedicineResult, i: number) => (
                 <tr key={med.id} data-testid="atc-medicine-row" className={`border-b border-border ${i % 2 === 0 ? 'bg-[var(--color-bg)]' : 'bg-[var(--color-bg-secondary)]/50'} hover:bg-brand-yellow/5 transition-colors`}>
                   <td className="p-3 text-sm font-medium">
-                    <Link href={`/medicamento/${med.id}`} className="text-[var(--color-text)] hover:underline">{med.tradeName}</Link>
+                    <Link href={`${medicineUrl(med.id, med.tradeName)}`} className="text-[var(--color-text)] hover:underline">{med.tradeName}</Link>
                   </td>
                   <td className="p-3 text-sm text-[var(--color-text)]">{med.activeIngredient}</td>
                   <td className="p-3 text-sm text-muted">{med.similarHolder}</td>

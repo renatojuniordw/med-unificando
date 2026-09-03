@@ -62,11 +62,11 @@ med-unificando/
 │   │   ├── sitemap.ts             # Sitemap dinâmico (~32k+ URLs)
 │   │   ├── robots.ts              # Configuração de indexação
 │   │   ├── opengraph-image.tsx    # OG Image gerada dinamicamente
-│   │   ├── medicamento/[id]/      # Detalhes + JSON-LD + breadcrumbs + bula + gráfico preços + similares
+│   │   ├── medicamento/[slug]/    # Detalhes + JSON-LD + breadcrumbs + bula + gráfico preços + similares
 │   │   ├── referencias/           # Lista (paginação, A-Z, ordenação) + detalhe de referência
 │   │   ├── atc/                   # Árvore ATC (busca + autocomplete + expandir/recolher)
 │   │   ├── atc/[code]/            # Medicamentos por código (paginação, breadcrumbs, mobile cards)
-│   │   ├── detentor/[cnpj]/       # Todos medicamentos de uma empresa (cards mobile + resumo)
+│   │   ├── detentor/[holder]/     # Todos medicamentos de uma empresa (cards mobile + resumo)
 │   │   ├── dashboard/             # Stats + timeline por ano
 │   │   ├── compare/               # Comparação lado a lado
 │   │   ├── sobre/                 # Sobre o projeto

@@ -3,16 +3,19 @@ import { getReferenceMedicines } from '@/lib/actions/references'
 import { ReferenceSearch } from '@/components/medicines/reference-search'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { safeJsonLd } from '@/lib/safe-json-ld'
+import { SITE } from '@/lib/config'
 import type { ReferenceItem } from '@/components/medicines/reference-search'
 import type { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: "Medicamentos de Referência",
+  title: "Medicamentos de Referência e Similares",
   description: "Consulte todos os medicamentos de referência e seus similares conforme lista ANVISA.",
+  alternates: { canonical: "/referencias" },
   openGraph: {
-    title: "Medicamentos de Referência — Med Unificando",
+    title: "Medicamentos de Referência e Similares — Med Unificando",
     description: "Consulte medicamentos de referência e seus similares ANVISA.",
   },
 }
@@ -23,7 +26,28 @@ async function ReferenceSearchContainer() {
     name: r.name,
     count: r.count,
   }))
-  return <ReferenceSearch initialReferences={items} />
+
+  const itemList = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'Medicamentos de Referência',
+    itemListElement: refs.map((r, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: r.name,
+      url: `${SITE.BASE_URL}/referencias/${encodeURIComponent(r.name)}`,
+    })),
+  }
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(itemList) }}
+      />
+      <ReferenceSearch initialReferences={items} />
+    </>
+  )
 }
 
 export default function ReferenciasPage() {

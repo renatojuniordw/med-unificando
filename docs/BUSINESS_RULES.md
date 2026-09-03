@@ -131,7 +131,7 @@ O programa Farmácia Popular do Ministério da Saúde disponibiliza medicamentos
 
 - Base atualizada via CSV dos Dados Abertos ANVISA
 - Verificação do header `Last-Modified` antes de baixar (evita downloads desnecessários)
-- **Importação por diff preservando IDs** (desde 2026-09-03): `src/lib/sync-diff.ts` casa as linhas por `reference` (multiplicidade para duplicatas) e executa apenas INSERT/UPDATE/DELETE do que mudou, **dentro de uma transação com advisory lock** — as URLs `/medicamento/[id]`, favoritos e comparações sobrevivem aos syncs (não é mais "apaga tudo e recria")
+- **Importação por diff preservando IDs** (desde 2026-09-03): `src/lib/sync-diff.ts` casa as linhas por `reference` (multiplicidade para duplicatas) e executa apenas INSERT/UPDATE/DELETE do que mudou, **dentro de uma transação com advisory lock** — as URLs `/medicamento/[slug]` (ID preservado no sufixo), favoritos e comparações sobrevivem aos syncs (não é mais "apaga tudo e recria")
 - **Trigger de tsvector** garante busca textual imediatamente após o import (preenche `search_document` no INSERT/UPDATE); refinamento em background melhora a qualidade com nomes ATC/forma resolvidos
 - Preços CMED importados separadamente (na mesma transação com diff de medicamentos? preços: replace transacional simples)
 - Farmácia Popular sincronizado separadamente (lista do Ministério da Saúde)

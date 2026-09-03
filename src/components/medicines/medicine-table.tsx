@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { PaginationBar } from '@/components/ui/pagination'
 import { ExportButton } from '@/components/medicines/export-button'
 import Link from 'next/link'
+import { medicineUrl } from '@/lib/medicine-url'
 import type { MedicineResult, SearchResponse } from '@/types'
 
 export const columns = [
@@ -50,7 +51,7 @@ function MedicineCard({ medicine, selected, onToggle }: {
         />
         <div className="min-w-0 flex-1">
           <Link
-            href={`/medicamento/${medicine.id}`}
+            href={medicineUrl(medicine.id, medicine.tradeName)}
             className="font-semibold text-sm text-[var(--color-text)] hover:underline"
           >
             {medicine.tradeName}
@@ -63,7 +64,7 @@ function MedicineCard({ medicine, selected, onToggle }: {
                 <p key={f.key} className="text-xs text-muted">
                   <span className="font-medium text-[var(--color-text-secondary)]">{f.label}: </span>
                   {f.key === 'reference' ? (
-                    <Link href={`/medicamento/${medicine.id}`} className="hover:underline">
+                    <Link href={medicineUrl(medicine.id, medicine.tradeName)} className="hover:underline">
                       {value}
                     </Link>
                   ) : value}
@@ -185,7 +186,7 @@ function MedicineTableContent({ data, selectedIds, toggleSelect, toggleSelectAll
                   if (col.key === 'tradeName' || col.key === 'reference') {
                     return (
                       <td key={col.key} className="p-3 text-sm font-medium">
-                        <Link href={`/medicamento/${medicine.id}`} className="text-[var(--color-text)] hover:underline">
+                        <Link href={medicineUrl(medicine.id, medicine.tradeName)} className="text-[var(--color-text)] hover:underline">
                           {value}
                         </Link>
                       </td>

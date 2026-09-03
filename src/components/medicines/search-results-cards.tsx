@@ -6,6 +6,7 @@ import { submitSearchFeedback } from '@/lib/actions/search-feedback'
 import Link from 'next/link'
 import type { MedicineResult } from '@/types'
 import type { MatchReason } from '@/lib/actions/semantic-search'
+import { medicineUrl } from '@/lib/medicine-url'
 
 interface SearchResultsCardsProps {
   results: { score: number; medicine: MedicineResult; matchReasons?: MatchReason[] }[]
@@ -91,7 +92,7 @@ export function SearchResultsCards({ results, searchQuery }: SearchResultsCardsP
       {results.map(r => (
           <Link
             key={r.medicine.id}
-            href={`/medicamento/${r.medicine.id}`}
+            href={medicineUrl(r.medicine.id, r.medicine.tradeName)}
             data-testid="semantic-search-result"
             className="group flex items-start gap-3 border border-border rounded-sm px-3 py-2.5 hover:bg-brand-yellow/10 hover:border-brand-yellow transition-colors"
             role="listitem"

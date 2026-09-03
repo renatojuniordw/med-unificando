@@ -9,10 +9,11 @@ import type { Metadata } from 'next'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: "Busca Avançada",
+  title: "Busca Avançada de Medicamentos ANVISA",
   description: "Filtre por referência, princípio ativo, nome comercial ou categoria e navegue pela base completa de medicamentos ANVISA.",
+  alternates: { canonical: "/buscar-avancado" },
   openGraph: {
-    title: "Busca Avançada — Med Unificando",
+    title: "Busca Avançada de Medicamentos ANVISA",
     description: "Filtre e navegue pela base completa de medicamentos intercambiáveis ANVISA.",
   },
 }

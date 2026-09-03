@@ -9,6 +9,7 @@ const navLinks = [
   { href: '/buscar-avancado', label: 'Medicamentos' },
   { href: '/referencias', label: 'Referências' },
   { href: '/atc', label: 'ATC' },
+  { href: '/compare', label: 'Comparar' },
   { href: '/dashboard', label: 'Estatísticas' },
   { href: '/sobre', label: 'Sobre' },
   { href: '/admin/import', label: 'Admin' },

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-// Jornada: Detalhe do Medicamento (página /medicamento/[id])
+// Jornada: Detalhe do Medicamento (página /medicamento/[slug])
 // Happy path (abre a partir da busca avançada) + falha (rota inexistente → 404).
 test.describe('Detalhe do Medicamento', () => {
   test('navega da busca até o detalhe com informações e similares', async ({ page }) => {
@@ -12,7 +12,7 @@ test.describe('Detalhe do Medicamento', () => {
 
     // Timeout maior: primeira navegação client-side pode passar por cold compile
     // no dev server (Next) — mitigação anti-flake (ver e2e-test-report.md §4.4).
-    await expect(page).toHaveURL(/\/medicamento\/\d+/, { timeout: 15_000 })
+    await expect(page).toHaveURL(/\/medicamento\/[^/]+/, { timeout: 15_000 })
     await expect(page.getByTestId('medicine-info-card')).toBeVisible()
   })
 

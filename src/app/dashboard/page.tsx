@@ -8,10 +8,11 @@ import type { Metadata } from 'next'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: "Estatísticas",
+  title: "Estatísticas da Base de Medicamentos",
   description: "Estatísticas consolidadas da base de medicamentos ANVISA. Filtros por ano, categoria e situação.",
+  alternates: { canonical: "/dashboard" },
   openGraph: {
-    title: "Estatísticas — Med Unificando",
+    title: "Estatísticas da Base de Medicamentos — Med Unificando",
     description: "Estatísticas consolidadas da base de medicamentos ANVISA.",
   },
 }

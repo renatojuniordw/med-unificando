@@ -75,10 +75,10 @@ src/
 ├── app/             # App Router
 │   ├── page.tsx     # Home (busca semântica)
 │   ├── buscar-avancado/  # Busca textual avançada
-│   ├── medicamento/[id]/ # Detalhes + PDF + preços
+│   ├── medicamento/[slug]/ # Detalhes + PDF + preços
 │   ├── referencias/      # Lista + detalhe de referência
 │   ├── atc/              # Árvore ATC
-│   ├── detentor/[cnpj]/  # Medicamentos por empresa
+│   ├── detentor/[holder]/  # Medicamentos por empresa
 │   ├── dashboard/        # Estatísticas
 │   ├── compare/          # Comparação
 │   ├── sobre/            # Sobre o projeto

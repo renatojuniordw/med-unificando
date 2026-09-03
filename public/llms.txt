@@ -21,8 +21,8 @@ Tech stack: Next.js 16, TypeScript, Tailwind CSS v4, Prisma 7, PostgreSQL, NextA
 - /dashboard — Estatisticas consolidadas
 - /compare — Comparacao lado a lado
 - /sobre — Sobre o projeto e fontes de dados
-- /medicamento/[id] — Detalhes de um medicamento (inclui badge Farmacia Popular)
-- /detentor/[cnpj] — Medicamentos por detentor de registro
+- /medicamento/[slug] — Detalhes de um medicamento (slug semantico com ID no sufixo; inclui badge Farmacia Popular)
+- /detentor/[holder] — Medicamentos por detentor de registro
 - /admin/login — Login do administrador
 - /admin/import — Sincronizacao ANVISA + Farmacia Popular
 

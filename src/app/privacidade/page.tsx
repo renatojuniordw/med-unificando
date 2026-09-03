@@ -6,6 +6,7 @@ import type { Metadata } from 'next'
 export const metadata: Metadata = {
   title: 'Política de Privacidade',
   description: 'Política de privacidade do Med Unificando: dados coletados, finalidade, base legal, retenção e direitos do titular conforme a LGPD (Lei 13.709/2018).',
+  alternates: { canonical: '/privacidade' },
   openGraph: {
     title: 'Política de Privacidade — Med Unificando',
     description: 'Como o Med Unificando trata dados pessoais, em conformidade com a LGPD.',

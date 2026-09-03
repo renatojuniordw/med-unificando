@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { SemanticSearch } from "@/components/medicines/semantic-search";
 import { Badge } from "@/components/ui/badge";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 export default function HomePage() {
   return (

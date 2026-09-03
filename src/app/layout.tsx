@@ -61,12 +61,6 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
-  alternates: {
-    canonical: SITE.BASE_URL,
-    languages: {
-      "pt-BR": SITE.BASE_URL,
-    },
-  },
 };
 
 export default function RootLayout({

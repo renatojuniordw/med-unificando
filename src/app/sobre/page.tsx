@@ -6,10 +6,11 @@ import { safeJsonLd } from '@/lib/safe-json-ld'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Sobre',
+  title: 'Sobre o Med Unificando: fontes e metodologia',
   description: 'Informações sobre o Med Unificando, fontes de dados oficiais ANVISA, metodologia de intercambialidade e busca por descrição.',
+  alternates: { canonical: '/sobre' },
   openGraph: {
-    title: 'Sobre — Med Unificando',
+    title: 'Sobre o Med Unificando: fontes e metodologia',
     description: 'Plataforma de consulta de medicamentos intercambiáveis ANVISA.',
   },
 }

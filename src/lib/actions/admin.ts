@@ -169,7 +169,7 @@ async function bulkReplaceMedicines(
   remoteTimestamp: Date,
   now: Date
 ) {
-  // Diff preservando IDS: URLs públicas (/medicamento/{id}), favoritos e comparação
+  // Diff preservando IDS: URLs públicas (/medicamento/{slug}-{id}), favoritos e comparação
   // só quebram quando o id muda — aqui mantemos os ids estáveis entre imports.
   // Linhas idênticas ficam intactas, alteradas viram UPDATE, removidas viram DELETE,
   // novas viram INSERT; tudo dentro de uma transação (rollback se falhar no meio).

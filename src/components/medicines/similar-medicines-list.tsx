@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { StatusPill } from '@/components/ui/status-pill'
 import { PaginationBar } from '@/components/ui/pagination'
+import { medicineUrl } from '@/lib/medicine-url'
 import type { MedicineResult } from '@/types'
 
 interface SimilarMedicinesListProps {
@@ -65,7 +66,7 @@ export function SimilarMedicinesList({ medicines }: SimilarMedicinesListProps) {
           paginatedMeds.map(med => (
             <Link
               key={med.id}
-              href={`/medicamento/${med.id}`}
+              href={medicineUrl(med.id, med.tradeName)}
               className="block border border-border rounded-sm bg-[var(--color-bg)] p-4 hover:bg-brand-yellow/10 hover:border-brand-yellow transition-all group"
               role="listitem"
             >

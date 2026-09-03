@@ -1,4 +1,5 @@
 import { getCachedSitemapData } from '@/lib/data-cache'
+import { medicineUrl } from '@/lib/medicine-url'
 import type { MetadataRoute } from 'next'
 import { SITE } from '@/lib/config'
 
@@ -7,7 +8,7 @@ export const revalidate = 86400
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = SITE.BASE_URL
 
-  let sitemapData = { medicines: [] as { id: number; updatedAt: Date | null }[], references: [] as { referenceMedicine: string | null }[], atcCodes: [] as { atcCode: string | null }[], holders: [] as { similarHolder: string }[] }
+  let sitemapData = { medicines: [] as { id: number; tradeName: string; updatedAt: Date | null }[], references: [] as { referenceMedicine: string | null }[], atcCodes: [] as { atcCode: string | null }[], holders: [] as { similarHolder: string }[] }
   try {
     sitemapData = await getCachedSitemapData()
   } catch {
@@ -19,7 +20,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date()
 
   const medicineUrls = medicines.map(med => ({
-    url: `${baseUrl}/medicamento/${med.id}`,
+    url: `${baseUrl}${medicineUrl(med.id, med.tradeName)}`,
     lastModified: med.updatedAt ?? now,
     changeFrequency: 'weekly' as const,
     priority: 0.7,
@@ -60,6 +61,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/atc`, lastModified: now, changeFrequency: 'weekly', priority: 0.7 },
     { url: `${baseUrl}/dashboard`, lastModified: now, changeFrequency: 'daily', priority: 0.6 },
     { url: `${baseUrl}/sobre`, lastModified: now, changeFrequency: 'monthly', priority: 0.3 },
+    { url: `${baseUrl}/compare`, lastModified: now, changeFrequency: 'weekly', priority: 0.6 },
     ...medicineUrls,
     ...referenceUrls,
     ...atcUrls,

@@ -1,6 +1,7 @@
 import { Card } from '@/components/ui/card'
 import { StatusPill } from '@/components/ui/status-pill'
 import Link from 'next/link'
+import { medicineUrl } from '@/lib/medicine-url'
 
 interface SimilarMedicine {
   id: number
@@ -27,7 +28,7 @@ export function SimilarSection({ similares, referenceMedicine, currentMedicineId
         <div className="flex items-center justify-between gap-2 mb-4 pb-3 border-b border-border">
           {currentIndex > 0 ? (
             <Link
-              href={`/medicamento/${similares[currentIndex - 1].id}`}
+              href={medicineUrl(similares[currentIndex - 1].id, similares[currentIndex - 1].tradeName)}
               className="text-xs text-[var(--color-brand)] hover:underline flex items-center gap-1"
             >
               ← {similares[currentIndex - 1].tradeName}
@@ -38,7 +39,7 @@ export function SimilarSection({ similares, referenceMedicine, currentMedicineId
           </span>
           {currentIndex < similares.length - 1 ? (
             <Link
-              href={`/medicamento/${similares[currentIndex + 1].id}`}
+              href={medicineUrl(similares[currentIndex + 1].id, similares[currentIndex + 1].tradeName)}
               className="text-xs text-[var(--color-brand)] hover:underline flex items-center gap-1"
             >
               {similares[currentIndex + 1].tradeName} →
@@ -51,7 +52,7 @@ export function SimilarSection({ similares, referenceMedicine, currentMedicineId
         {similares.map(s => (
           <Link
             key={s.id}
-            href={`/medicamento/${s.id}`}
+            href={medicineUrl(s.id, s.tradeName)}
             className={`block border rounded-sm p-3 hover:bg-brand-yellow/10 hover:border-brand-yellow transition-colors ${
               currentMedicineId === s.id
                 ? 'border-brand-yellow bg-brand-yellow/10'

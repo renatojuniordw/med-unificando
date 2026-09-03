@@ -10,12 +10,13 @@ import type { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
 
-export async function generateMetadata({ params }: { params: Promise<{ cnpj: string }> }): Promise<Metadata> {
-  const { cnpj } = await params
-  const decoded = decodeURIComponent(cnpj)
+export async function generateMetadata({ params }: { params: Promise<{ holder: string }> }): Promise<Metadata> {
+  const { holder } = await params
+  const decoded = decodeURIComponent(holder)
   return {
     title: `${decoded} — Detentor de Registro`,
     description: `Medicamentos do detentor de registro ${decoded}. Consulte todos os medicamentos e similares.`,
+    alternates: { canonical: `/detentor/${holder}` },
     openGraph: {
       title: `${decoded} — Detentor de Registro | Med Unificando`,
       description: `Medicamentos do detentor de registro ${decoded}.`,
@@ -23,9 +24,9 @@ export async function generateMetadata({ params }: { params: Promise<{ cnpj: str
   }
 }
 
-export default async function HolderPage({ params }: { params: Promise<{ cnpj: string }> }) {
-  const { cnpj } = await params
-  const decoded = decodeURIComponent(cnpj)
+export default async function HolderPage({ params }: { params: Promise<{ holder: string }> }) {
+  const { holder } = await params
+  const decoded = decodeURIComponent(holder)
 
   const [{ data, total }, summary] = await Promise.all([
     getCachedHolderMedicines(decoded, 1, MEDICINE_LIMITS.HOLDER_PAGE_SIZE),

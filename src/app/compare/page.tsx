@@ -4,10 +4,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: "Comparar Medicamentos",
+  title: "Comparar Medicamentos Lado a Lado",
   description: "Compare medicamentos lado a lado. Veja diferenças em referência, princípio ativo, categoria e mais.",
+  alternates: { canonical: "/compare" },
   openGraph: {
-    title: "Comparar Medicamentos — Med Unificando",
+    title: "Comparar Medicamentos Lado a Lado",
     description: "Compare medicamentos lado a lado.",
   },
 }

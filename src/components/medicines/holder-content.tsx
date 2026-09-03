@@ -11,6 +11,7 @@ import { StatusPill } from '@/components/ui/status-pill'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import { MEDICINE_LIMITS } from '@/lib/constants'
+import { medicineUrl } from '@/lib/medicine-url'
 import type { SearchResponse, MedicineResult } from '@/types'
 
 interface HolderContentProps {
@@ -194,7 +195,7 @@ export function HolderContent({ holder, initialData, totalMedicines, ativos, cat
           data.data.map((med: MedicineResult) => (
             <Link
               key={med.id}
-              href={`/medicamento/${med.id}`}
+              href={medicineUrl(med.id, med.tradeName)}
               data-testid="holder-medicine-item"
               className="block border border-border rounded-sm bg-[var(--color-bg)] p-4 hover:bg-brand-yellow/10 hover:border-brand-yellow transition-all group"
             >
@@ -267,7 +268,7 @@ export function HolderContent({ holder, initialData, totalMedicines, ativos, cat
                   className={`border-b border-border ${i % 2 === 0 ? 'bg-[var(--color-bg)]' : 'bg-[var(--color-bg-secondary)]/50'} hover:bg-brand-yellow/5 transition-colors`}
                 >
                   <td className="p-3 text-sm font-medium">
-                    <Link href={`/medicamento/${med.id}`} className="text-[var(--color-text)] hover:underline">
+                    <Link href={medicineUrl(med.id, med.tradeName)} className="text-[var(--color-text)] hover:underline">
                       {med.tradeName}
                     </Link>
                   </td>

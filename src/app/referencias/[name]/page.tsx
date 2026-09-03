@@ -1,5 +1,6 @@
 import { getCachedReferenceMedicines } from '@/lib/data-cache'
 import { Badge } from '@/components/ui/badge'
+import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { SimilarMedicinesList } from '@/components/medicines/similar-medicines-list'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -14,6 +15,7 @@ export async function generateMetadata({ params }: { params: Promise<{ name: str
   return {
     title: `${decodedName} — Similares`,
     description: `Medicamentos similares ao ${decodedName}. Veja todos os medicamentos intercambiáveis com este medicamento de referência.`,
+    alternates: { canonical: `/referencias/${name}` },
     openGraph: {
       title: `${decodedName} — Similares | Med Unificando`,
       description: `Medicamentos similares ao ${decodedName}.`,
@@ -32,6 +34,10 @@ export default async function ReferenceDetailPage({ params }: { params: Promise<
   return (
     <section className="py-12 md:py-20 bg-[var(--color-bg)]">
       <div className="max-w-5xl mx-auto px-6 lg:px-12">
+        <Breadcrumbs items={[
+          { label: 'Referências', href: '/referencias' },
+          { label: decodedName },
+        ]} />
         <Link href="/referencias" className="text-sm text-muted hover:text-[var(--color-text)] underline transition-colors">
           ← Todas as referências
         </Link>

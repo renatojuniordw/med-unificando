@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { columns } from '@/components/medicines/medicine-table'
 import { getRelevanceLabel } from '@/lib/search-relevance'
+import { medicineUrl } from '@/lib/medicine-url'
 import type { MedicineResult } from '@/types'
 
 interface SemanticResultsTableProps {
@@ -55,7 +56,7 @@ export function SemanticResultsTable({ results }: SemanticResultsTableProps) {
                     return (
                       <td key={col.key} className="p-3 text-sm font-medium">
                         <Link
-                          href={`/medicamento/${medicine.id}`}
+                          href={medicineUrl(medicine.id, medicine.tradeName)}
                           className="text-[var(--color-text)] hover:underline"
                         >
                           {display}

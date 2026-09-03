@@ -39,7 +39,7 @@ async function main() {
   console.log(`[2] 1 alteração → toUpdate=${diff.toUpdate.length} (todos com id existente? ${allExisting}), toCreate=${diff.toCreate.length}, toDelete=${diff.toDeleteIds.length}`)
   if (diff.toUpdate.length !== 1 || !allExisting) throw new Error('FALHA: diff não preservou o id na alteração')
 
-  console.log('OK: IDs preservados — URLs /medicamento/{id} sobrevivem a re-syncs.')
+  console.log('OK: IDs preservados — URLs /medicamento/{slug}-{id} sobrevivem a re-syncs.')
   await prisma.$disconnect()
 }
 

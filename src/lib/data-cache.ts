@@ -71,7 +71,7 @@ export const getCachedSitemapData = unstable_cache(
   async () => {
     const [medicines, references, atcCodes, holders] = await Promise.all([
       prisma.medicine.findMany({
-        select: { id: true, updatedAt: true, referenceMedicine: true, atcCode: true },
+        select: { id: true, tradeName: true, updatedAt: true, referenceMedicine: true, atcCode: true },
         orderBy: { id: 'asc' },
         take: 50000,
       }),

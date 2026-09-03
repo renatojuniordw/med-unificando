@@ -28,7 +28,7 @@ Consulta inteligente de medicamentos intercambiáveis da ANVISA com busca semân
 - **PWA** — instalável como app (manifest com ícones 192/512 + service worker com offline parcial; não cacheia `/admin`/`/api`)
 - **SEO** — JSON-LD Schema.org/MedicalDrug, OG Image dinâmica, sitemap 32K+ URLs, robots com GPTBot/ClaudeBot/Google-Extended, `/privacidade` (LGPD)
 - **CI** — GitHub Actions (lint, typecheck, unit, build em push/PR)
-- **Resiliência** — ErrorBoundary global, skeleton global realista, IDs de `/medicamento/[id]` estáveis entre syncs (diff)
+- **Resiliência** — ErrorBoundary global, skeleton global realista, URLs de `/medicamento/[slug]` com ID estável no sufixo entre syncs (diff)
 
 ---
 
@@ -161,7 +161,7 @@ Outros utilitários (não npm scripts) em `scripts/`: `reindex-embeddings.ts`, `
 |------|-----------|
 | `/` | Home com busca semântica |
 | `/buscar-avancado` | Busca textual com filtros avançados |
-| `/medicamento/[id]` | Detalhes (preços, similares, bula) — IDs estáveis entre syncs |
+| `/medicamento/[slug]` | Detalhes (preços, similares, bula) — slug semântico com ID estável no sufixo |
 | `/referencias` | Lista de medicamentos de referência |
 | `/referencias/[name]` | Similares de uma referência específica |
 | `/atc` | Navegação por árvore ATC |
@@ -214,10 +214,10 @@ Rate limits: `/api/medicines` 60/min · `/api/autocomplete` 120/min · `/api/sea
 src/
 ├── app/                       # Páginas (App Router)
 │   ├── buscar-avancado/        # Busca avançada
-│   ├── medicamento/[id]/       # Detalhe do medicamento
+│   ├── medicamento/[slug]/     # Detalhe do medicamento
 │   ├── referencias/            # Referências
 │   ├── atc/[code]/             # Classificação ATC
-│   ├── detentor/[cnpj]/        # Detentor
+│   ├── detentor/[holder]/      # Detentor
 │   ├── dashboard/              # Estatísticas (cacheado)
 │   ├── compare/                # Comparação
 │   ├── privacidade/            # Política de privacidade
