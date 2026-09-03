@@ -116,7 +116,7 @@ describe('Casos de Teste de Regressão - Busca por Descrição', () => {
         { id: 6, tradeName: 'Enalapril', status: 'Ativo', therapeuticClass: 'ANTI-HIPERTENSIVOS' },
         { id: 7, tradeName: 'Anlodipino', status: 'Ativo', therapeuticClass: 'ANTI-HIPERTENSIVOS' },
         { id: 8, tradeName: 'Hidroclorotiazida', status: 'Ativo', therapeuticClass: 'DIURETICOS' },
-      ] as any)
+      ] as never)
 
       const { results } = await hybridSearch('remédio para pressão', 20)
 
@@ -160,7 +160,7 @@ describe('Casos de Teste de Regressão - Busca por Descrição', () => {
         { id: 10, tradeName: 'Naproxeno', status: 'Ativo', therapeuticClass: 'ANTI-INFLAMATORIOS' },
         { id: 11, tradeName: 'Diclofenaco', status: 'Ativo', therapeuticClass: 'ANTI-INFLAMATORIOS' },
         { id: 12, tradeName: 'Meloxicam', status: 'Ativo', therapeuticClass: 'ANTI-INFLAMATORIOS' },
-      ] as any)
+      ] as never)
 
       const { results } = await hybridSearch('anti-inflamatório para articulação', 20)
 
@@ -200,7 +200,7 @@ describe('Casos de Teste de Regressão - Busca por Descrição', () => {
         { id: 1, tradeName: 'Medicamento A', status: 'Ativo', therapeuticClass: 'ANALGESICOS' },
         { id: 2, tradeName: 'Medicamento B', status: 'Ativo', therapeuticClass: 'ANALGESICOS' },
         { id: 3, tradeName: 'Medicamento C', status: 'Ativo', therapeuticClass: 'ANALGESICOS' },
-      ] as any)
+      ] as never)
 
       const { results } = await hybridSearch('dor', 10)
 
@@ -229,7 +229,7 @@ describe('Casos de Teste de Regressão - Busca por Descrição', () => {
       vi.mocked(prisma.medicine.findMany).mockResolvedValue([
         { id: 1, tradeName: 'Medicamento Ativo', status: 'Ativo', therapeuticClass: 'ANALGESICOS' },
         { id: 2, tradeName: 'Medicamento Inativo', status: 'Inativo', therapeuticClass: 'ANALGESICOS' },
-      ] as any)
+      ] as never)
 
       const { results } = await hybridSearch('dor', 10)
 

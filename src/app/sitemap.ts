@@ -2,7 +2,7 @@ import { getCachedSitemapData } from '@/lib/data-cache'
 import type { MetadataRoute } from 'next'
 import { SITE } from '@/lib/config'
 
-export const revalidate = 86400
+export const dynamic = 'force-dynamic'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = SITE.BASE_URL

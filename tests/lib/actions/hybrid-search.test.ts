@@ -64,7 +64,7 @@ describe('hybridSearch', () => {
     vi.mocked(prisma.medicine.findMany).mockResolvedValue([
       { id: 1, tradeName: 'Remédio A', status: 'Ativo' },
       { id: 2, tradeName: 'Remédio B', status: 'Ativo' },
-    ] as any)
+    ] as never)
 
     const result = await hybridSearch('teste', 5)
     expect(result.results.length).toBeGreaterThan(0)
@@ -79,7 +79,7 @@ describe('hybridSearch', () => {
     vi.mocked(keywordSearch).mockResolvedValue([])
     vi.mocked(prisma.medicine.findMany).mockResolvedValue([
       { id: 1, tradeName: 'Med A', status: 'Ativo' },
-    ] as any)
+    ] as never)
 
     await hybridSearch('losartana', 10)
     const sql = vi.mocked(prisma.$queryRawUnsafe).mock.calls[0][0] as string

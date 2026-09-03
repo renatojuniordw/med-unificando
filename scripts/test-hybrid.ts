@@ -1,3 +1,4 @@
+import "dotenv/config"
 import { hybridSearch } from '../src/lib/actions/semantic-search'
 
 async function main() {
