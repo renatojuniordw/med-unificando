@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
+import { ClipboardButton } from '@/components/ui/clipboard-button'
 import { SITE } from '@/lib/config'
 import type { Metadata } from 'next'
 
@@ -33,7 +34,14 @@ const tools = [
 function CodeBlock({ code, label }: { code: string; label?: string }) {
   return (
     <div className="mt-2">
-      {label && <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-1">{label}</p>}
+      <div className="flex items-center justify-between gap-2 mb-1">
+        {label ? (
+          <p className="text-xs font-medium text-[var(--color-text-secondary)]">{label}</p>
+        ) : (
+          <span />
+        )}
+        <ClipboardButton text={code} />
+      </div>
       <pre className="overflow-x-auto rounded-md bg-black text-[13px] leading-relaxed text-[#ccff00] p-4 whitespace-pre">
         <code>{code}</code>
       </pre>
