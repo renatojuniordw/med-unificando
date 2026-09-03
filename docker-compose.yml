@@ -48,6 +48,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # Inline no bundle do cliente durante o build (evita hydration mismatch
+        # no JSON-LD do Breadcrumbs). Usa NEXT_PUBLIC_BASE_URL, senão BASE_URL.
+        NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-${BASE_URL:-https://med.unificando.com.br}}
     container_name: medicamentos-app
     restart: unless-stopped
     ports:
@@ -68,6 +72,8 @@ services:
       MCP_SESSION_TTL_MIN: ${MCP_SESSION_TTL_MIN:-60}
       MCP_ENABLE_JSON_RESPONSE: ${MCP_ENABLE_JSON_RESPONSE:-false}
       MCP_RATE_LIMIT: ${MCP_RATE_LIMIT:-120}
+      # Pública/inline do cliente — mesmo valor do build (fallback BASE_URL)
+      NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-${BASE_URL:-https://med.unificando.com.br}}
     networks:
       - medicamentos-net
     depends_on:

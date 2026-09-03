@@ -18,6 +18,12 @@ RUN npx prisma generate
 
 COPY . .
 
+# NEXT_PUBLIC_* é inline no bundle do cliente durante o build. Sem isso, o
+# navegador usaria valor diferente do servidor (hydration mismatch no JSON-LD
+# do Breadcrumbs). Default: site de produção; compose passa via build args.
+ARG NEXT_PUBLIC_BASE_URL
+ENV NEXT_PUBLIC_BASE_URL=${NEXT_PUBLIC_BASE_URL:-https://med.unificando.com.br}
+
 RUN npm run build
 
 # ============================================================================

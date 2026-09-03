@@ -112,6 +112,7 @@ npm run dev
 | `ADMIN_EMAIL` | Email do admin inicial (seed) | Sim |
 | `ADMIN_PASSWORD` | Senha do admin inicial (seed) | Sim |
 | `BASE_URL` | URL base do site (sitemap/robots/OG) | Não |
+| `NEXT_PUBLIC_BASE_URL` | URL base pública/inline — mesma de `BASE_URL`, prefixo `NEXT_PUBLIC_` para componentes client (JSON-LD do Breadcrumbs); evita hydration mismatch | Não |
 | `ANVISA_MEDICINES_URL` | URL do CSV de medicamentos ANVISA (fallback) | Não |
 | `ANVISA_PRICES_URL` | URL do CSV de preços CMED (fallback) | Não |
 | `ANVISA_THERAPEUTIC_CLASS_URL` | URL do CSV de dados abertos ANVISA (classe terapêutica, fallback) | Não |
