@@ -53,7 +53,7 @@ export function Footer() {
               Unificando
             </a>
             <span className="text-xs text-[var(--color-text-secondary)]">
-              © 2026 Med Unificando — Consulta de medicamentos intercambiáveis e referências ANVISA.
+              © {new Date().getFullYear()} UNIFICANDO DIGITAL · Med Unificando — Consulta de medicamentos intercambiáveis e referências ANVISA.
             </span>
           </div>
         </div>

@@ -79,7 +79,7 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#ffffff" />
         <link rel="icon" type="image/png" href="/favicon.png" sizes="any" />
-        <link rel="apple-touch-icon" href="/icon-192.svg" />
+        <link rel="apple-touch-icon" href="/logo_thumbnail.svg" />
         <link rel="dns-prefetch" href={SITE.BASE_URL} />
         <script
           type="application/ld+json"

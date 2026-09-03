@@ -73,6 +73,17 @@ export default function Image() {
         >
           busca por descrição · preços CMED · comparação · classificação ATC
         </div>
+        <div
+          style={{
+            fontSize: '14px',
+            letterSpacing: '0.25em',
+            color: '#94a3b8',
+            marginTop: '28px',
+            textAlign: 'center',
+          }}
+        >
+          UNIFICANDO · LABORATÓRIO DE PROJETOS AUTORAIS & IA
+        </div>
       </div>
     ),
     { ...size },
