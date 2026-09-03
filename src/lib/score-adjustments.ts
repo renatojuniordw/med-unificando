@@ -36,6 +36,11 @@ const TOPICAL_PENALTY = 0.3
 const NON_GASTRIC_PENALTY = 0.45
 const COLYRIUM_PENALTY = 0.6
 
+// Penalidade para medicamentos que não estão "Ativo": o embedding mistura
+// registros suspensos/cancelados com os ativos e eles dominam o topo por terem
+// scores brutos maiores. Para UX, o ativo equivalente deve subir.
+const INACTIVE_STATUS_PENALTY = 0.06
+
 // Resultados com score <= MIN_RELEVANT_SCORE são removidos (falsos positivos
 // severos). O threshold de 0.15 era muito agressivo: resultados puramente
 // keyword (sem suporte semântico) têm scores típicos de 10-14%, sendo
@@ -52,10 +57,15 @@ const NON_GASTRIC_SIGNALS = [
   'dermatologico', 'pele',
   'oncologico', 'antineoplasico', 'quimioterapia',
   'cardiovascular', 'cardiaco', 'cardíaco',
+  'angina', 'antianginoso', 'vasodilatador', 'coronari', 'isquemia',
   'respiratorio', 'pulmao', 'pulmão', 'broncodilatador',
   'neurologico', 'neurológico',
   'psiquiatrico', 'psiquiátrico',
-  'urologico', 'urológico', 'urinario', 'urinário',
+  'urologico', 'urológico', 'urinario', 'urinário', 'uretral', 'ureter',
+  'bexiga', 'bexiga hiperativa', 'vias urinarias', 'vias urinárias', 'trato urinario', 'trato urinário',
+  'incontinencia', 'incontinência', 'disuria', 'disúria', 'miccao', 'micção', 'jato urinario', 'jato urinário',
+  'esfincter', 'esfíncter', 'prostata', 'próstata',
+  'oxibutinina', 'tolterodina', 'solifenacina', 'darifenacina', 'fesoterodina', 'mirabegron', 'genurin',
   'antibiotico', 'antibiótico', 'antimicrobiano',
   'vacina', 'imunizacao', 'imunização',
   'motilidade intestinal', 'intestino irritavel', 'intestino irritável', 'constipacao', 'constipação',
@@ -66,6 +76,8 @@ const NON_GASTRIC_SIGNALS = [
 // dispara em buscas relacionadas a estômago (guard de tópico abaixo).
 const DECEPTIVE_NAME_PATTERNS = [
   { nome: 'stom', classe: 'oftalmico', penalty: 0.4 }, // Stomup = colírio
+  { nome: 'genurin', classe: 'urinario', penalty: 0.4 }, // Genurin = oxibutinina (bexiga)
+  { nome: 'quicard', classe: 'antianginoso', penalty: 0.4 }, // Quicard = angina/trimetazidina
 ]
 
 // Buscar ajustes do banco de dados baseados em feedback
@@ -145,6 +157,7 @@ export async function applyScoreAdjustments<T extends {
   indications?: string | null;
   activeIngredient?: string | null;
   tradeName?: string | null;
+  status?: string | null;
 }>(
   query: string,
   results: { score: number; medicine: T }[]
@@ -207,6 +220,12 @@ export async function applyScoreAdjustments<T extends {
           totalBoost -= pattern.penalty
         }
       }
+    }
+
+    // Prioridade para medicamentos Ativos: registros inativos/suspensos/cancelados
+    // recebem uma penalidade moderada (embedding não distingue status).
+    if (r.medicine.status && r.medicine.status !== 'Ativo') {
+      totalBoost -= INACTIVE_STATUS_PENALTY
     }
 
     const adjustedScore = Math.max(0, Math.min(1, r.score + totalBoost))

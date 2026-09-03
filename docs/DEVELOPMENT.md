@@ -193,7 +193,7 @@ O fluxo:
 6. **Score adjustments** baseados em feedback dos usuários
 7. **Synonym expansion** com mapa consolidado em `dictionaries/synonyms.ts`
 
-Regras adicionais do pipeline (config em `SEARCH`): queries de condição com confiança alta aprovam no gate a partir de `SEMANTIC_HARD_MIN` (0.80) sem suporte keyword/trigram; resultados sem suporte textual com score semântico ≥ `SEMANTIC_NO_SUPPORT_EXEMPT` (0.80) são eximidos da penalidade; o fallback é híbrido (semântica + keyword + trigram via RRF) para semânticos reprovados no gate com score ≥ `SEMANTIC_FALLBACK_MIN` (0.80).
+Regras adicionais do pipeline (config em `SEARCH`): queries de condição com confiança alta aprovam no gate a partir de `SEMANTIC_HARD_MIN` (0.80) sem suporte keyword/trigram; resultados sem suporte textual com score semântico ≥ `SEMANTIC_NO_SUPPORT_EXEMPT` (0.80) são eximidos da penalidade; o fallback é híbrido (semântica + keyword + trigram via RRF) para semânticos reprovados no gate com score ≥ `SEMANTIC_FALLBACK_MIN` (0.80). Ajustes de score em `score-adjustments.ts` incluem prioridade para medicamentos Ativos (`INACTIVE_STATUS_PENALTY`) e penalidades de tópico não-gástrico expandidas (cardiovascular/angina, urinário/bexiga, oxibutinina) para buscas de estômago. Fallbacks também persistem em `search_logs`.
 
 O texto usado para gerar cada embedding (prefixo `passage:`) inclui:
 `nome | princípio ativo | forma farmacêutica | classe terapêutica | descrição ATC | indicações | sinônimos | concentração | categoria | tipo prescrição | detentor | situação | farmácia popular`

@@ -612,14 +612,18 @@ async function fallbackNoSemantic(
   sources: SourceCollection,
   topK: number,
   t0: number,
-  semanticCandidates: { score: number; medicine: MedicineResult }[]
+  semanticCandidates: { score: number; medicine: MedicineResult }[],
+  queryType: string
 ): Promise<HybridSearchResult> {
   const { keywordResults, trigramResults } = sources
 
   if (keywordResults.length === 0 && trigramResults.length === 0 && semanticCandidates.length === 0) {
     console.warn(`❌ [BUSCA DESCRIÇÃO] Nenhum resultado em nenhuma fonte (Semântica: ${sources.semanticResults.length} [0 aprovados pelo gate], Keyword: 0, Trigram: 0).`)
     console.log(`================== [BUSCA DESCRIÇÃO] FIM (0 resultados) ==================\n`)
-    return { results: [], suggestions: [] }
+    const empty: HybridSearchResult = { results: [], suggestions: [] }
+    // Persiste também o caso vazio para o analytics de "queries sem resultado".
+    persistSearch(query, topK, empty, queryType, Number((performance.now() - t0).toFixed(0)))
+    return empty
   }
 
   console.log(`🔄 [BUSCA DESCRIÇÃO] Ativando fallback híbrido: mesclando Semântica (${semanticCandidates.length}) + Keyword (${keywordResults.length}) + Trigram (${trigramResults.length}) via RRF`)
@@ -632,7 +636,9 @@ async function fallbackNoSemantic(
   const totalMs = (performance.now() - t0).toFixed(0)
   console.log(`✅ [BUSCA DESCRIÇÃO] [Fallback híbrido] Concluído em ${totalMs}ms | Retornando ${finalResults.length} medicamentos`)
   console.log(`================== [BUSCA DESCRIÇÃO] FIM ==================\n`)
-  return { results: finalResults, suggestions: [] }
+  const searchResult: HybridSearchResult = { results: finalResults, suggestions: [] }
+  persistSearch(query, topK, searchResult, queryType, Number(totalMs))
+  return searchResult
 }
 
 // Fallback semântico puro quando keyword e trigram vêm vazios
@@ -640,7 +646,8 @@ async function fallbackSemanticOnly(
   query: string,
   filteredSemanticResults: { score: number; medicine: MedicineResult }[],
   topK: number,
-  t0: number
+  t0: number,
+  queryType: string
 ): Promise<HybridSearchResult> {
   console.log(`ℹ️ [BUSCA DESCRIÇÃO] Sem Keyword ou Trigram. Usando apenas ${filteredSemanticResults.length} resultados Semânticos aprovados.`)
   const semanticOnlyResults = filteredSemanticResults
@@ -655,7 +662,9 @@ async function fallbackSemanticOnly(
   const totalMs = (performance.now() - t0).toFixed(0)
   console.log(`✅ [BUSCA DESCRIÇÃO] [Apenas Semântica] Concluído em ${totalMs}ms | Retornando ${adjustedSemanticOnly.length} medicamentos`)
   console.log(`================== [BUSCA DESCRIÇÃO] FIM ==================\n`)
-  return { results: adjustedSemanticOnly, suggestions: [] }
+  const searchResult: HybridSearchResult = { results: adjustedSemanticOnly, suggestions: [] }
+  persistSearch(query, topK, searchResult, queryType, Number(totalMs))
+  return searchResult
 }
 
 // Fusão RRF das 3 fontes + carregamento dos medicamentos restantes
@@ -901,12 +910,12 @@ export async function hybridSearch(
 
     // Sem resultados semânticos aprovados — fallback híbrido (semântica + keyword + trigram)
     if (filteredSemanticResults.length === 0) {
-      return await fallbackNoSemantic(query, sources, topK, t0, semanticCandidates)
+      return await fallbackNoSemantic(query, sources, topK, t0, semanticCandidates, classification.type)
     }
 
     // Sem keyword/trigram — usa apenas o semântico aprovado
     if (sources.keywordResults.length === 0 && sources.trigramResults.length === 0) {
-      return await fallbackSemanticOnly(query, filteredSemanticResults, topK, t0)
+      return await fallbackSemanticOnly(query, filteredSemanticResults, topK, t0, classification.type)
     }
 
     const { initialResults } = await fuseAndFetch(filteredSemanticResults, sources, topK)

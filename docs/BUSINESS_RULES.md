@@ -78,6 +78,7 @@ A busca combina **3 fontes** — pgvector (semântica), tsvector (keyword) e pg_
   - **Exceção para condições**: queries de condição com confiança alta (`≥ CONDITION_GATE_MIN_CONFIDENCE`) aprovam na faixa fraca sem suporte textual — ex: "queimação e dor no estômago" → antiácidos ~0.84, mas o tsvector não cobre termos de condição compostos
 - **Standalone threshold**: quando a busca semântica roda sozinha, threshold mais alto
 - **Isenção de penalidade "sem suporte"**: resultados com score semântico ≥ `SEMANTIC_NO_SUPPORT_EXEMPT` (0.80) não recebem o multiplicador `NO_SUPPORT_PENALTY` no pós-processamento — a similaridade semântica já é evidência suficiente
+- **Prioridade Ativo**: no ajuste de score, medicamentos com `status !== 'Ativo'` recebem penalidade moderada (`INACTIVE_STATUS_PENALTY` = 0.06) — o embedding não distingue status e registros suspensos/cancelados dominavam o topo
 
 #### Busca Textual (tsvector)
 
@@ -110,6 +111,7 @@ RRF(d) = 0.40/(60 + rank_semantica) + 0.35/(60 + rank_keyword) + 0.25/(60 + rank
 
 - Sem resultados semânticos aprovados no gate → **fallback híbrido**: semânticos reprovados (mas com `score ≥ SEMANTIC_FALLBACK_MIN` = 0.80) são mesclados com keyword + trigram via RRF, reaproveitando o mesmo pipeline de pós-processamento/ajustes do caminho principal
 - Apenas semântica disponível → **semântica pura**
+- Fallbacks também persistem no `search_logs` (antes ficavam fora do analytics — "queries sem resultado" não podiam ser auditadas)
 
 ## 7. Farmácia Popular
 

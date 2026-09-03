@@ -10,6 +10,7 @@ vi.mock('@/lib/prisma', () => {
         findMany: vi.fn().mockResolvedValue([]),
       },
       $queryRawUnsafe: queryRawUnsafe,
+      $executeRawUnsafe: vi.fn(),
       $transaction: vi.fn((callback: (tx: unknown) => unknown) =>
         callback({
           $executeRawUnsafe: vi.fn(),
@@ -243,6 +244,12 @@ describe('Casos de Teste de Regressão - Busca por Descrição', () => {
       expect(results.length).toBeGreaterThan(0)
       const tradeNames = results.map(r => r.medicine.tradeName.toLowerCase())
       expect(tradeNames).toContain('medgastro')
+
+      // Fallbacks também devem entrar no analytics (search_logs)
+      expect(prisma.$executeRawUnsafe).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO search_logs'),
+        expect.any(String), expect.any(Number), expect.any(Number), expect.any(String), expect.any(Number),
+      )
     })
   })
 

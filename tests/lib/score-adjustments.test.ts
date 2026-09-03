@@ -167,4 +167,59 @@ describe('applyScoreAdjustments', () => {
     // Regra manual removida: sem feedbacks no banco, score permanece inalterado
     expect(adjusted[0].score).toBe(0.5)
   })
+
+  it('penalizes inactive medicines to prioritize available ones', async () => {
+    const results = [
+      makeResult(1, 0.6, { status: 'Inativo' }),
+      makeResult(2, 0.6, { status: 'Ativo' }),
+      makeResult(3, 0.6),
+    ]
+    const adjusted = await applyScoreAdjustments('dor', results)
+    const inactive = adjusted.find(r => r.medicine.id === 1)
+    const active = adjusted.find(r => r.medicine.id === 2)
+    const noStatus = adjusted.find(r => r.medicine.id === 3)
+    expect(inactive!.score).toBeLessThan(0.6)
+    expect(active!.score).toBe(0.6)
+    // Sem status informado → sem penalidade (compatibilidade)
+    expect(noStatus!.score).toBe(0.6)
+  })
+
+  it('penalizes inactive below an active with same base score', async () => {
+    const results = [
+      makeResult(1, 0.55, { status: 'Inativo' }),
+      makeResult(2, 0.5, { status: 'Ativo' }),
+    ]
+    const adjusted = await applyScoreAdjustments('dor', results)
+    // 0.55 - 0.06 = 0.49 < 0.50 → o ativo deve vir na frente
+    expect(adjusted[0].medicine.id).toBe(2)
+    expect(adjusted[1].medicine.id).toBe(1)
+  })
+
+  it('penalizes antianginal meds (Quicard-like) for "estômago" query', async () => {
+    const results = [
+      makeResult(1, 0.8, {
+        therapeuticClass: 'ANTIANGINOSOS E VASODILATADORES',
+        indications: 'angina, dor no peito, circulação',
+        tradeName: 'Quicard',
+        status: 'Ativo',
+      }),
+    ]
+    const adjusted = await applyScoreAdjustments('estômago', results)
+    // -0.45 (não gástrico: angina/vasodilatador) + -0.4 (nome enganoso) → filtrado
+    expect(adjusted.length).toBe(0)
+  })
+
+  it('penalizes urinary antispasmodics (oxibutinina) for "estômago" query', async () => {
+    const results = [
+      makeResult(1, 0.8, {
+        activeIngredient: 'cloridrato de oxibutinina',
+        indications: 'cólica, espasmo, dor abdominal',
+        status: 'Ativo',
+      }),
+    ]
+    const adjusted = await applyScoreAdjustments('estômago', results)
+    // Sinal "oxibutinina" → -0.45 (não gástrico)
+    expect(adjusted.some(r => r.medicine.id === 1)).toBe(true)
+    expect(adjusted.find(r => r.medicine.id === 1)!.score).toBeLessThan(0.8)
+  })
 })

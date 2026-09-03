@@ -206,8 +206,8 @@ med-unificando/
    RRF(d) = Σ peso / (k + posição)
    k = 60 | semântica 0.40 | keyword 0.35 | trigram 0.25
    ```
-6. Pós-processamento: penalidade de falso positivo por substring, boost por match de nome, verificação por keyword, penalidade de falta de suporte (com isenção para score semântico ≥ 0.80), ajustes por feedback
-7. Fallbacks: **fallback híbrido** (semânticos reprovados no gate com score ≥ 0.80 + keyword + trigram via RRF) e semântica pura
+6. Pós-processamento: penalidade de falso positivo por substring, boost por match de nome, verificação por keyword, penalidade de falta de suporte (com isenção para score semântico ≥ 0.80), ajustes por feedback e prioridade para medicamentos Ativos (penalidade `INACTIVE_STATUS_PENALTY` para status ≠ Ativo)
+7. Fallbacks: **fallback híbrido** (semânticos reprovados no gate com score ≥ 0.80 + keyword + trigram via RRF) e semântica pura — ambos também registram em `search_logs`
 8. `logSearch` registra a busca em `search_logs` (analytics)
 
 ### Classificação de Query
