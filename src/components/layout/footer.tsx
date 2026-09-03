@@ -5,10 +5,10 @@ export function Footer() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-[var(--color-border)]">
           <div className="max-w-xl">
             <span className="inline-block bg-brand-yellow text-brand-black text-xs font-semibold px-2 py-1 rounded-sm mb-3">
-              UNIFICANDO · ECOSSISTEMA
+              UNIFICANDO · LABORATÓRIO
             </span>
             <p className="text-sm text-[var(--color-text-secondary)]">
-              Desenvolvido com foco total em performance e privacidade pela{' '}
+              Desenvolvido com foco total em performance e privacidade pelo{' '}
               <a
                 href="https://unificando.com.br"
                 target="_blank"
@@ -17,13 +17,13 @@ export function Footer() {
               >
                 Unificando
               </a>
-              . Ferramentas rápidas, seguras e fáceis de usar.
+              , laboratório de projetos autorais e inteligência artificial. Ferramentas rápidas, seguras e fáceis de usar.
             </p>
           </div>
 
           <div className="flex flex-col items-start md:items-end gap-1">
             <span className="text-sm font-semibold text-[var(--color-text)]">
-              Pronto para o próximo nível?
+              Laboratório de projetos autorais & IA
             </span>
             <a
               href="https://unificando.com.br"
@@ -31,10 +31,10 @@ export function Footer() {
               rel="noopener noreferrer"
               className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors"
             >
-              Consultoria em IA e Desenvolvimento
+              unificando.com.br
             </a>
             <span className="text-xs text-[var(--color-text-secondary)]">
-              IA • Web • Sistemas
+              IA • Utilitários • Sistemas & Web
             </span>
           </div>
         </div>

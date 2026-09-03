@@ -2,7 +2,7 @@
 
 Consulta inteligente de medicamentos intercambiáveis da ANVISA com busca semântica por IA local.
 
-> Projeto ofertado por [Unificando](https://unificando.com.br) | Desenvolvido por [Renato Bezerra](https://renatobezerra.com.br)
+> Projeto do [Unificando](https://unificando.com.br) — laboratório de projetos autorais e IA — | Desenvolvido por [Renato Bezerra](https://renatobezerra.com.br)
 > **Acesse:** [https://med.unificando.com.br](https://med.unificando.com.br)
 
 ---

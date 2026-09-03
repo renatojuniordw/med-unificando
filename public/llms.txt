@@ -2,7 +2,7 @@
 
 Consulta inteligente de medicamentos intercambiaveis da ANVISA com busca por descricao.
 
-Projeto ofertado por Unificando (unificando.com.br) e desenvolvido por Renato Bezerra (renatobezerra.com.br).
+Projeto do Unificando — Laboratório de Projetos Autorais & IA (unificando.com.br) —, desenvolvido por Renato Bezerra (renatobezerra.com.br).
 
 ## Sobre
 
@@ -52,7 +52,7 @@ Fonte: dados abertos da ANVISA (lista de medicamentos intercambiaveis). Precos d
 
 ## Links
 
-- Site: https://medicamentos.unificando.com.br
-- Documentacao de design: https://medicamentos.unificando.com.br/sobre
+- Site: https://med.unificando.com.br
+- Documentacao de design: https://med.unificando.com.br/sobre
 - Anvisa: https://www.gov.br/anvisa
 - Github: [repository-url]

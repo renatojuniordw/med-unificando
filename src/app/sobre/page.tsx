@@ -160,12 +160,12 @@ export default function AboutPage() {
               <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed mt-3">
                 <strong className="text-[var(--color-text)]">GitHub:</strong>{' '}
                 <a
-                  href="https://github.com/unificando/medicamentos"
+                  href="https://github.com/renatojuniordw/med-unificando"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="underline hover:text-brand-yellow transition-colors"
                 >
-                  github.com/unificando/medicamentos
+                  github.com/renatojuniordw/med-unificando
                 </a>
               </p>
               <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed mt-3">

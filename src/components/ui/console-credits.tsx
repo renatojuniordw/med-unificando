@@ -45,7 +45,7 @@ export function ConsoleCredits() {
       subTitleStyle
     )
     console.log(
-      '%cEste projeto é ofertado pela Unificando e desenvolvido por Renato Bezerra. Adoraria ver você contribuindo ou fazendo um fork para seu ambiente!',
+      '%cEste projeto é um produto do Unificando — Laboratório de Projetos Autorais & IA —, desenvolvido por Renato Bezerra. Adoraria ver você contribuindo ou fazendo um fork para seu ambiente!',
       normalStyle
     )
     console.log('\n')

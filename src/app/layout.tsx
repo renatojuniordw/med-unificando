@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "pt_BR",
     siteName: "Med Unificando",
-    url: "https://medicamentos.unificando.com.br",
+    url: SITE.BASE_URL,
   },
   twitter: {
     card: "summary_large_image",
@@ -61,9 +61,9 @@ export const metadata: Metadata = {
     },
   },
   alternates: {
-    canonical: "https://medicamentos.unificando.com.br",
+    canonical: SITE.BASE_URL,
     languages: {
-      "pt-BR": "https://medicamentos.unificando.com.br",
+      "pt-BR": SITE.BASE_URL,
     },
   },
 };
@@ -80,8 +80,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#ffffff" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="apple-touch-icon" href="/icon-192.svg" />
-        <link rel="dns-prefetch" href="https://medicamentos.unificando.com.br" />
-        <link rel="dns-prefetch" href="https://data.unificando.com.br" />
+        <link rel="dns-prefetch" href={SITE.BASE_URL} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -90,13 +89,13 @@ export default function RootLayout({
               "@type": "WebSite",
               name: "Med Unificando",
               alternateName: "Med Unificando",
-              url: "https://medicamentos.unificando.com.br",
+              url: SITE.BASE_URL,
               description: "Consulta de medicamentos intercambiáveis ANVISA com busca por descrição",
               publisher: {
                 "@type": "Organization",
                 name: "Unificando",
                 url: "https://unificando.com.br",
-                logo: "https://unificando.com.br/logo.png",
+                logo: "https://unificando.com.br/logo.svg",
               },
               author: {
                 "@type": "Person",
@@ -108,7 +107,7 @@ export default function RootLayout({
                 "@type": "SearchAction",
                 target: {
                   "@type": "EntryPoint",
-                  urlTemplate: "https://medicamentos.unificando.com.br/buscar-avancado?reference={search_term_string}",
+                  urlTemplate: `${SITE.BASE_URL}/buscar-avancado?reference={search_term_string}`,
                 },
                 "query-input": "required name=search_term_string",
               },

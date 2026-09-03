@@ -239,7 +239,7 @@ Allow: /
 Disallow: /admin/
 Disallow: /api/
 
-Sitemap: https://medicamentos.unificando.com.br/sitemap.xml
+Sitemap: https://med.unificando.com.br/sitemap.xml
 ```
 
 ## Autenticação

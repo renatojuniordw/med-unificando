@@ -65,5 +65,5 @@ export const SEARCH = {
 } as const
 
 export const SITE = {
-  BASE_URL: process.env.BASE_URL ?? 'https://medicamentos.unificando.com.br',
+  BASE_URL: process.env.BASE_URL ?? 'https://med.unificando.com.br',
 } as const
