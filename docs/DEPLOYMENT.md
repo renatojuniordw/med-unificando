@@ -160,7 +160,7 @@ server {
         add_header Cache-Control "public, immutable";
     }
 
-    location /favicon.ico {
+    location /favicon.png {
         proxy_pass http://127.0.0.1:11006;
         expires 30d;
     }
