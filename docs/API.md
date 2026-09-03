@@ -247,7 +247,7 @@ Sitemap: https://medicamentos.unificando.com.br/sitemap.xml
 - **Páginas admin**: `/admin/(protected)/*` exigem sessão (layout redireciona para `/admin/login`); `/admin/import` tem callback `authorized` no NextAuth.
 - **Server actions admin**: usam `withAdmin` / `withAdminReturn` de `src/lib/auth-guard.ts` (role `ADMIN`).
 - **APIs admin**: `/api/search-analytics` e GET `/api/search-feedback` verificam `session.user.role === 'ADMIN'` (401 se não).
-- **Login**: POST `/admin/login` tem rate limit de **10 tentativas/min** via `src/middleware.ts` (429 + `Retry-After`).
+- **Login**: POST `/admin/login` tem rate limit de **10 tentativas/min** via `src/proxy.ts` (429 + `Retry-After`).
 - Sessão: JWT, expira em 24h, cookies `secure` em produção.
 
 ## Rate Limit

@@ -143,7 +143,7 @@ med-unificando/
 │   │   └── hooks/use-medicine-search.ts  # Busca com URL search params
 │   ├── types/                     # index, medicine, next-auth.d.ts, pdf-parse.d.ts, pdfmake.d.ts
 │   ├── auth.ts                    # Instância NextAuth v5
-│   ├── middleware.ts              # Rate limit do login (POST /admin/login, 10/min)
+│   ├── proxy.ts                   # Rate limit do login (POST /admin/login, 10/min)
 │   └── generated/prisma/          # Cliente Prisma gerado
 ├── tests/                         # Testes Vitest (api, components, lib/actions, lib)
 ├── prisma.config.ts
@@ -277,7 +277,7 @@ med-unificando/
 - **HTTP**: security headers (X-Frame-Options: DENY, X-Content-Type-Options: nosniff, CSP via next.config.ts)
 - **CSP**: Content-Security-Policy no next.config.ts — fontes self-hosted (next/font), sem CDN de fontes
 - **Rate limit interno**: `src/lib/rate-limit.ts` (in-memory Map, janela 60s) — escopos: medicines-api 60/min, autocomplete 120/min, search-feedback POST 20/min
-- **Rate limit login**: `src/middleware.ts` — POST /admin/login 10/min
+- **Rate limit login**: `src/proxy.ts` — POST /admin/login 10/min
 - **Auth**: páginas `/admin/(protected)/` exigem sessão (redirect p/ login); actions de admin usam withAdmin/withAdminReturn; `/admin/import` tem callback authorized; rotas `/api/search-analytics` e GET `/api/search-feedback` exigem role ADMIN
 - **Body Size**: limite de 10MB para server actions
 - **Prisma**: módulo não exposto ao cliente (Edge Runtime não o carrega)

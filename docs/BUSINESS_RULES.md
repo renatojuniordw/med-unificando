@@ -176,7 +176,7 @@ Aplicativo instalável via navegador com `manifest.json`. Ideal para acesso mobi
 ## 13. Segurança
 
 - Rate limit por rota via `src/lib/rate-limit.ts`: `/api/medicines` 60/min, `/api/autocomplete` 120/min, `POST /api/search-feedback` 20/min
-- **middleware.ts**: rate limit adicional para `POST /admin/login` (10/min)
+- **proxy.ts**: rate limit adicional para `POST /admin/login` (10/min)
 - **CSP headers**: Content-Security-Policy configurado para evitar XSS e injeção (fontes self-hosted via next/font)
 - Security headers: X-Frame-Options: DENY, X-Content-Type-Options: nosniff, X-XSS-Protection, Referrer-Policy, Permissions-Policy
 - Docker: read-only filesystem, non-root user, sem privilégios

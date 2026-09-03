@@ -21,7 +21,7 @@ Esta aplicação implementa múltiplas camadas de segurança seguindo princípio
   - `/api/medicines`: 60 req/min/IP
   - `/api/autocomplete`: 120 req/min/IP
   - `POST /api/search-feedback`: 20 req/min/IP
-  - `POST /admin/login`: 10 req/min/IP (via `src/middleware.ts`)
+  - `POST /admin/login`: 10 req/min/IP (via `src/proxy.ts`)
 - Em excesso: `429` com header `Retry-After`
 
 ### Headers de Segurança

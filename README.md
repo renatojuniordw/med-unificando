@@ -276,7 +276,7 @@ src/
 │   ├── theme-provider.tsx     # Tema claro/escuro
 │   └── hooks/use-medicine-search.ts # Busca com URL search params
 ├── auth.ts                    # Instância NextAuth
-├── middleware.ts              # Rate limit do login (10/min)
+├── proxy.ts                   # Rate limit do login (10/min)
 └── types/
     ├── index.ts               # Tipos compartilhados
     ├── medicine.ts            # Tipos de medicamento

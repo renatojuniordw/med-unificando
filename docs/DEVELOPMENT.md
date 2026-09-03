@@ -108,7 +108,7 @@ src/
 │   └── hooks/use-medicine-search.ts # Busca com URL search params
 ├── types/           # TypeScript interfaces
 ├── auth.ts          # Instância NextAuth
-└── middleware.ts    # Rate limit do login (10/min)
+└── proxy.ts         # Rate limit do login (10/min)
 ```
 
 ## Convenções
