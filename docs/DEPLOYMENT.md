@@ -31,12 +31,12 @@ open http://localhost:11006
 ```
 
 > O `docker-entrypoint.sh` executa automaticamente na primeira inicialização:
-> 1. `prisma migrate deploy` — schema
+> 1. `prisma migrate deploy` — schema (aplica a migração do **trigger de tsvector**)
 > 2. `prisma/seed.ts` — ANVISA + admin
 > 3. `scripts/sync-farmacia-popular.ts` — Farmácia Popular
 > 4. `scripts/backfill-indications.ts` — indicações
-> 5. `scripts/generate-search-index.ts` — embeddings (multilingual-e5-base, 768 dims)
-> 6. `scripts/generate-tsvector.ts` — busca textual
+> 5. `scripts/generate-tsvector.ts` — busca textual (gap-fill)
+> 6. `scripts/generate-search-index.ts` — embeddings (multilingual-e5-base, 768 dims) em 2º plano
 
 ### Atualizar
 
@@ -45,6 +45,11 @@ git pull
 npm run docker:build
 npm run docker:up
 ```
+
+> **IDs estáveis entre syncs (desde 2026-09-03):** o import de medicamentos usa
+> diff por `reference` (multiplicidade) — as URLs `/medicamento/[id]`, favoritos e
+> comparações **sobrevivem** aos syncs; somente linhas novas/removidas alteram o
+> conjunto de IDs. O reset (`down -v`) continua apagando tudo de propósito.
 
 ### Reinicializar do zero (reset)
 
@@ -99,6 +104,9 @@ docker compose logs -f db      # Banco
 | `npm run search-index` | Regenerar embeddings |
 | `npm run tsvector` | Regenerar índice textual |
 | `npm run backfill-indications` | Preencher indicações |
+| `npm run purge:logs` | Purge de `search_logs`/`search_feedback` (>365d, LGPD) |
+| `npm run test:e2e` | Suíte E2E/Pintewright (sobe dev server próprio em 11009) |
+| `npm run pwa:icons` | Regenerar ícones PNG do PWA (192/512) |
 
 ## Variáveis de Ambiente
 
@@ -255,3 +263,4 @@ A configuração atual do `docker-compose.yml` já inclui:
 - **Healthcheck**: monitoramento contínuo (app: curl `/api/health`, db: pg_isready)
 - **Volume persistente**: `transformers_cache` para cache do modelo baixado na primeira execução (multilingual-e5-base)
 - **Portas privadas**: `127.0.0.1:` bind, sem exposição pública direta
+- **`.dockerignore`**: exclui `.env`, `node_modules`, `.git`, `docs`, artefatos de teste do build context — segredos nunca entram na imagem

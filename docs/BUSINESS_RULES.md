@@ -24,13 +24,13 @@ Um medicamento **similar** é intercambiável com seu **medicamento de referênc
 | Dinamizado | Medicamento homeopático | Registro ANVISA |
 | Radiofármaco | Medicamento radioativo | Registro ANVISA |
 
-Total: ~32.585 registros de medicamentos (07/2026).
-+ ~53.422 preços CMED vinculados por número de registro.
+Total: **32.661** registros de medicamentos (verificado 03/2026) — 32.658 referências distintas.
++ **53.422** preços CMED vinculados por número de registro.
 
 ## 3. Situação do Registro
 
-- **Ativo**: registro válido e vigente → ~4.701
-- **Inativo**: registro vencido, cancelado ou não renovado → ~16.003
+- **Ativo**: registro válido e vigente → **10.273**
+- **Inativo**: registro vencido, cancelado ou não renovado → **22.388**
 - Medicamentos inativos não devem ser considerados para prescrição ou dispensação
 
 ## 4. Classificação ATC (Anatomical Therapeutic Chemical)
@@ -71,9 +71,13 @@ A busca combina **3 fontes** — pgvector (semântica), tsvector (keyword) e pg_
 
 - Modelo: `Xenova/multilingual-e5-base` — 768 dimensões (processamento 100% local, zero custo de API)
 - Texto indexado (prefixo `passage:`): nome + princípio ativo + forma farmacêutica + classe terapêutica + descrição ATC + indicações + sinônimos + concentração + categoria + tipo prescrição + detentor + situação + farmácia popular
-- Índice: HNSW (cosine)
+- Índice: HNSW (cosine); `hnsw.ef_search` = 100 (`SEARCH.HNSW_EF_SEARCH`) para o `LIMIT` (topK × 5) não ser truncado no default de 40
 - **Semantic Gate**: thresholds configuráveis em `SEARCH` (queries gerais vs. queries de nome de medicamento, mais restritivas)
+  - Faixa fraca (`hardMin ≤ score < strong`): só aprova com suporte keyword/trigram
+  - Faixa forte (`score ≥ strong`): aprova direto
+  - **Exceção para condições**: queries de condição com confiança alta (`≥ CONDITION_GATE_MIN_CONFIDENCE`) aprovam na faixa fraca sem suporte textual — ex: "queimação e dor no estômago" → antiácidos ~0.84, mas o tsvector não cobre termos de condição compostos
 - **Standalone threshold**: quando a busca semântica roda sozinha, threshold mais alto
+- **Isenção de penalidade "sem suporte"**: resultados com score semântico ≥ `SEMANTIC_NO_SUPPORT_EXEMPT` (0.80) não recebem o multiplicador `NO_SUPPORT_PENALTY` no pós-processamento — a similaridade semântica já é evidência suficiente
 
 #### Busca Textual (tsvector)
 
@@ -104,7 +108,7 @@ RRF(d) = 0.40/(60 + rank_semantica) + 0.35/(60 + rank_keyword) + 0.25/(60 + rank
 
 #### Fallbacks
 
-- Sem resultados semânticos relevantes → **keyword + trigram** (sem a fonte semântica)
+- Sem resultados semânticos aprovados no gate → **fallback híbrido**: semânticos reprovados (mas com `score ≥ SEMANTIC_FALLBACK_MIN` = 0.80) são mesclados com keyword + trigram via RRF, reaproveitando o mesmo pipeline de pós-processamento/ajustes do caminho principal
 - Apenas semântica disponível → **semântica pura**
 
 ## 7. Farmácia Popular
@@ -125,8 +129,9 @@ O programa Farmácia Popular do Ministério da Saúde disponibiliza medicamentos
 
 - Base atualizada via CSV dos Dados Abertos ANVISA
 - Verificação do header `Last-Modified` antes de baixar (evita downloads desnecessários)
-- Importação substitui **todos** os registros existentes
-- Preços CMED importados separadamente
+- **Importação por diff preservando IDs** (desde 2026-09-03): `src/lib/sync-diff.ts` casa as linhas por `reference` (multiplicidade para duplicatas) e executa apenas INSERT/UPDATE/DELETE do que mudou, **dentro de uma transação com advisory lock** — as URLs `/medicamento/[id]`, favoritos e comparações sobrevivem aos syncs (não é mais "apaga tudo e recria")
+- **Trigger de tsvector** garante busca textual imediatamente após o import (preenche `search_document` no INSERT/UPDATE); refinamento em background melhora a qualidade com nomes ATC/forma resolvidos
+- Preços CMED importados separadamente (na mesma transação com diff de medicamentos? preços: replace transacional simples)
 - Farmácia Popular sincronizado separadamente (lista do Ministério da Saúde)
 - **therapeuticClass**: sincronizado do CSV DADOS_ABERTOS_MEDICAMENTOS (campo `SUBSTANCIA` mapeado para classe terapêutica)
 - **Embeddings**: sincronizados apenas para novos medicamentos (sem embedding existente), em batches de 50 — modelo `multilingual-e5-base` (768d). Para regeneração completa, usar `scripts/reindex-embeddings.ts`
@@ -166,7 +171,7 @@ Tecnologia: pdfmake (PdfPrinter API).
 
 - Cada página de medicamento possui meta tags dinâmicas (title, description, OG)
 - JSON-LD estruturado (Schema.org/MedicalDrug) para buscadores
-- Sitemap com 32.585+ URLs para indexação completa
+- Sitemap com 32K+ URLs para indexação completa
 - Robots.txt bloqueia áreas administrativas
 
 ## 12. PWA

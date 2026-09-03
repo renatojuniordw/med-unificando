@@ -1,78 +1,66 @@
 # Test Report — med-unificando
 
-**Date:** 2026-08-21
-**Framework:** Vitest 4.1.10 + jsdom + @testing-library/react
+**Date:** 2026-09-03
+**Framework:** Vitest 4.1.10 + jsdom + @testing-library/react + Playwright (E2E)
+**Escopo:** unit/componente (58 arquivos) + E2E (8 specs Playwright)
 
 ## Summary
 
-| Metric | Before | After | Change |
-|--------|--------|-------|--------|
-| Test Files | 27 | 35 | +8 |
-| Tests | 183 | 269 | +86 |
-| Statements | — | 73.65% | — |
-| Branches | — | 65.26% | — |
-| Functions | — | 73.49% | — |
-| Lines | — | 75.89% | — |
+| Métrica | Valor atual (2026-09-03) |
+|---------|--------------------------|
+| Test Files (unit) | 58 |
+| Tests (unit) | 385 |
+| Statements | 89.1% |
+| Branches | 81.9% |
+| Functions | 88.3% |
+| Lines | **91.0%** |
+| E2E specs | 8 (Playwright) |
+| E2E tests | 18 |
 
-## New Test Files
+> **Número oficial:** `npm run test:coverage` → Lines 91.0% · Stmts 89.1% · Branch 81.9% · Funcs 88.3%. Hooks incluídos na cobertura; `semantic-search.ts` excluído por design (injeta modelo on-device `@xenova/transformers`). Sempre citar o número do mesmo comando único (a discrepância histórica 74% vs 92% vinha de inclusões diferentes).
 
-| File | Module Tested | Tests |
-|------|---------------|-------|
-| `tests/lib/format.test.ts` | `src/lib/format.ts` | normalizeText (8), normalizeMedicine (5) |
-| `tests/lib/text-utils.test.ts` | `src/lib/text-utils.ts` | stripAccents (4), normalizeQuery (11), PHARMACEUTICAL_FORMS (1), THERAPEUTIC_CLASSES (1) |
-| `tests/lib/keyword-utils.test.ts` | `src/lib/keyword-utils.ts` | getSynonymExpansion (7), buildOrTsQuery (7), buildExpandedTsquery (5) |
-| `tests/lib/search-preprocessor.test.ts` | `src/lib/search-preprocessor.ts` | classifyQuery (12) |
-| `tests/lib/search-relevance.test.ts` | `src/lib/search-relevance.ts` | getRelevanceLabel (3) |
-| `tests/lib/score-adjustments.test.ts` | `src/lib/score-adjustments.ts` | applyScoreAdjustments (10) |
-| `tests/lib/auth-guard.test.ts` | `src/lib/auth-guard.ts` | withAuth (3), withAuthReturn (3) |
-| `tests/lib/constants.test.ts` | `src/lib/constants.ts` | MEDICINE_LIMITS, BATCH, YEARS, STORAGE_KEYS, THEME_COLORS, PDF_COLORS (6) |
-| `tests/business-rules.md` | — | Business rules documentation |
+## E2E (Playwright)
 
-## Coverage by Module (New Tests)
+`npm run test:e2e` — 8 specs / 18 testes, autossuficiente (sobe dev server em 11009 via `scripts/e2e-server.sh`, com warm-up; exige Postgres `medicamentos-db` no ar):
 
-| Module | Statements | Branches | Functions | Lines |
-|--------|-----------|----------|-----------|-------|
-| `keyword-utils.ts` | 97.22% | 95.00% | 100% | 100% |
-| `score-adjustments.ts` | 98.71% | 88.13% | 100% | 98.61% |
-| `search-preprocessor.ts` | 87.03% | 77.41% | 100% | 95.00% |
-| `search-relevance.ts` | 100% | 100% | 100% | 100% |
-| `auth-guard.ts` | 100% | 100% | 100% | 100% |
-| `constants.ts` | 100% | 100% | 100% | 100% |
-| `format.ts` | 100% | 100% | 100% | 100% |
-| `text-utils.ts` | 100% | 100% | 100% | 100% |
+| Spec | Jornadas |
+|------|----------|
+| `smoke.spec.ts` | sanity da home |
+| `busca-semantica.spec.ts` | happy + submit desabilitado + estado vazio |
+| `busca-avancada.spec.ts` | happy com filtro + estado vazio |
+| `detalhe-medicamento.spec.ts` | navegação até o detalhe + 404 |
+| `comparacao.spec.ts` | happy (2 medicamentos) + estado vazio |
+| `referencias.spec.ts` | happy + termo inexistente |
+| `login-admin.spec.ts` | credenciais válidas/inválidas + **brute-force bloqueado (429)** (rate limit 10/min no callback) |
+| `pwa.spec.ts` | manifest com ícones, PNGs válidos, service worker registrado |
 
-## Traceability Matrix
+Seletores via `data-testid` (76 atributos em 36 arquivos — ver rastreabilidade interna). Zero hard wait; cada jornada tem happy path + ≥1 caminho de falha.
 
-| Business Rule | Test File | Test Case |
-|---------------|-----------|-----------|
-| normalizeText: title-casing | format.test.ts | "capitalizes the first word" |
-| normalizeText: stop words | format.test.ts | "lowercases stop words in positions after the first" |
-| normalizeText: first word always caps | format.test.ts | "capitalizes first word even if it is a stop word" |
-| normalizeText: empty input | format.test.ts | "handles empty string" |
-| normalizeMedicine: normalizable fields | format.test.ts | "normalizes normalizable fields" |
-| normalizeMedicine: skip empty strings | format.test.ts | "does not normalize empty string fields" |
-| stripAccents: diacritics removal | text-utils.test.ts | "removes accents from accented characters" |
-| normalizeQuery: filler removal | text-utils.test.ts | "strips "remédio para" prefix" (+ 6 more) |
-| getSynonymExpansion: SYNONYM_MAP | keyword-utils.test.ts | "expands via SYNONYM_MAP" |
-| getSynonymExpansion: COMPOUND_SUBJECTS | keyword-utils.test.ts | "expands compound subjects" |
-| buildOrTsQuery: AND/OR logic | keyword-utils.test.ts | "joins multi-word term with AND" |
-| buildOrTsQuery: stop word removal | keyword-utils.test.ts | "removes stop words" |
-| classifyQuery: "remédio para" | search-preprocessor.test.ts | "detects "remédio para X" as condition" |
-| classifyQuery: medicine name | search-preprocessor.test.ts | "detects medicine name by suffix" |
-| classifyQuery: mixed type | search-preprocessor.test.ts | "detects mixed type when 2+ categories present" |
-| getRelevanceLabel: thresholds | search-relevance.test.ts | "returns high/medium/low tier" |
-| applyScoreAdjustments: manual boost | score-adjustments.test.ts | "applies manual adjustment for "articulação" query" |
-| applyScoreAdjustments: DB boost | score-adjustments.test.ts | "applies DB-driven boost for high approval" |
-| applyScoreAdjustments: topical penalty | score-adjustments.test.ts | "penalizes topical meds for "dor de cabeça"" |
-| applyScoreAdjustments: gastric penalty | score-adjustments.test.ts | "penalizes non-gastric meds for "estômago"" |
-| applyScoreAdjustments: filter <= 0.08 | score-adjustments.test.ts | "filters out results with score <= 0.08" |
-| withAuth: unauthorized | auth-guard.test.ts | "returns UNAUTHORIZED when no session" |
-| withAuthReturn: default value | auth-guard.test.ts | "returns defaultValue when no session" |
+## Cobertura por módulo-alvo
 
-## Run Commands
+| Módulo | Cobertura (Lines) | Observação |
+|--------|-------------------|------------|
+| `src/app/api/autocomplete/route.ts` | ~93% | validação/clamp/erro |
+| `src/app/api/search-analytics/route.ts` | coberto (401/403/200/500) | auth admin |
+| `src/app/api/health/route.ts` | coberto (200/503) | health |
+| `src/lib/actions/search.ts` | ~100% | searchAutocomplete/holder/count/clamp |
+| `src/lib/actions/atc.ts` | coberto | counts global + levels |
+| `src/lib/rate-limit*.ts` | coberto | janela/sweep/429 |
+| `src/lib/sync-diff.ts` | coberto | multiplicidade/matchKey (IDs estáveis) |
+| `src/lib/hooks/use-medicine-search.ts` | ~83% | sem double-fetch no mount |
 
-```bash
-npx vitest run                    # Run all tests
-npx vitest run --coverage         # Run with coverage report
-npx vitest run --reporter=verbose # Verbose output
-```
+## Casos Não Cobertos (justificados)
+
+- `src/lib/actions/semantic-search.ts` — excluído por design (modelo on-device pesado)
+- Geração de PDF / interações de browser de baixo valor — mock contraverteria F.I.R.S.T.
+- `scripts/` de rede/DB — sem lógica pura; smoke dedicado (`smoke-sync-ids.ts`)
+
+## Gates
+
+| Gate | Resultado |
+|------|-----------|
+| `npm run lint` | ✅ 0 |
+| `npm run typecheck` | ✅ 0 |
+| `npm test` | ✅ 58 files / 385 tests |
+| `npm run build` | ✅ 0 |
+| `npm run test:e2e` | ✅ 18/18 (com Postgres no ar) |

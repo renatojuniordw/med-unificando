@@ -36,6 +36,9 @@ crontab -e
 
 > ⚠️ O container `medicamentos-app` precisa estar rodando para o `docker exec` funcionar.
 > O purge respeita a política de retenção (padrão 365 dias) — ver `scripts/purge-search-logs.ts` e a página `/privacidade`.
+> Desde 2026-09-03 o seed/sync **preserva IDs** (diff por `reference`): rodar o cron de domingo é idempotente e não quebra URLs `/medicamento/{id}`, favoritos nem comparações.
+>
+> **Backup e monitoramento** (healthcheck da API + verificação de frescor do backup via `scripts/check-backup-freshness.sh`) também estão agendados — ver seção "Sincronização automática (Cron)" em `docs/DEPLOYMENT.md`.
 
 ## Scripts disponíveis para cron
 

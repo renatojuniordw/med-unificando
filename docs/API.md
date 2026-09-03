@@ -128,7 +128,7 @@ Envia feedback sobre resultado de busca. Rate limit: **20 req/min/IP**.
 }
 ```
 
-`feedback` pode ser `"helpful"` ou `"not_helpful"`. Validações: campos obrigatórios, `query` ≤ 200 chars, `medicineName` ≤ 300 chars, `medicineId` inteiro > 0, enum de feedback. `query` é normalizada (lowercase/trim).
+`feedback` pode ser `"helpful"` ou `"not_helpful"`. Validações: campos obrigatórios, `query` ≤ 200 chars, `medicineName` ≤ 300 chars, `medicineId` inteiro > 0, enum de feedback. `query` é normalizada (lowercase/trim). **Limite de body:** `Content-Length > 8 KB` é rejeitado com **413** antes do parse (defesa contra payload gigante; App Router não limita por padrão).
 
 ### Resposta (201)
 
@@ -216,7 +216,7 @@ Endpoints do NextAuth v5 (Credentials provider, JWT). Handlers delegados de `src
 
 ## GET /sitemap.xml
 
-Sitemap gerado dinamicamente com todas as URLs da aplicação (~32.585+ URLs):
+Sitemap gerado dinamicamente com todas as URLs da aplicação (32K+ URLs):
 
 ```
 /
@@ -247,7 +247,7 @@ Sitemap: https://med.unificando.com.br/sitemap.xml
 - **Páginas admin**: `/admin/(protected)/*` exigem sessão (layout redireciona para `/admin/login`); `/admin/import` tem callback `authorized` no NextAuth.
 - **Server actions admin**: usam `withAdmin` / `withAdminReturn` de `src/lib/auth-guard.ts` (role `ADMIN`).
 - **APIs admin**: `/api/search-analytics` e GET `/api/search-feedback` verificam `session.user.role === 'ADMIN'` (401 se não).
-- **Login**: POST `/admin/login` tem rate limit de **10 tentativas/min** via `src/proxy.ts` (429 + `Retry-After`).
+- **Login**: rate limit de **10 tentativas/min por IP** — aplicado no wrapper de `src/app/api/auth/[...nextauth]/route.ts` para o path `/api/auth/callback/credentials` (ponto real de verificação de senha do NextAuth) **antes** de delegar ao handler; `src/proxy.ts` (`matcher: ['/admin/login', '/api/auth/callback/credentials']`) atua como defesa em profundidade na borda. Excesso → 429 + `Retry-After`.
 - Sessão: JWT, expira em 24h, cookies `secure` em produção.
 
 ## Rate Limit
@@ -257,8 +257,8 @@ Sitemap: https://med.unificando.com.br/sitemap.xml
 | `/api/medicines` | 60 req/min |
 | `/api/autocomplete` | 120 req/min |
 | `POST /api/search-feedback` | 20 req/min |
-| `POST /admin/login` | 10 req/min (proxy) |
+| `/api/auth/callback/credentials` (POST login) | 10 req/min (route wrapper; proxy na borda) |
 
-Implementação: `src/lib/rate-limit.ts` — `Map<string, { count, resetAt }>` em memória (janela fixa de 60s), adequado para instância única; para multi-instância, migrar para Redis. Em excesso, retorna `429 Too Many Requests` com header `Retry-After`.
+Implementação: `src/lib/rate-limit.ts` — `Map<string, { count, resetAt }>` em memória (janela fixa de 60s) com **sweep/evict** (teto de 10.000 buckets; chaves expiradas removidas periodicamente), adequado para instância única; para multi-instância, migrar para Redis. Em excesso, retorna `429 Too Many Requests` com header `Retry-After`. Server actions públicas (busca, autocomplete, export, feedback) também são limitadas via `src/lib/rate-limit-action.ts`.
 
 > Atenção: `getClientIp` usa o primeiro valor de `x-forwarded-for` (ou `x-real-ip`). Em produção atrás de proxy, garanta que o proxy **sobrescreva** esses headers para evitar contornar o limite.

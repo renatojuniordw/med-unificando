@@ -203,6 +203,11 @@ export async function semanticSearch(
       try {
         await tx.$executeRawUnsafe(`SET LOCAL ivfflat.probes = ${SEARCH.IVFFLAT_PROBES}`)
       } catch { /* HNSW ou outro tipo de índice — ignorar */ }
+      // hnsw.ef_search controla o recall do HNSW — sem ele, o default (40)
+      // trunca o LIMIT em 40 mesmo pedindo topK maior.
+      try {
+        await tx.$executeRawUnsafe(`SET LOCAL hnsw.ef_search = ${SEARCH.HNSW_EF_SEARCH}`)
+      } catch { /* IVFFLAT ou outro tipo de índice — ignorar */ }
       return tx.$queryRawUnsafe<{ id: number; semantic_score: number }[]>(
         sql,
         vecStr,
@@ -269,10 +274,15 @@ function passesSemanticGate(
   classification: QueryClassification
 ): boolean {
   const isNameQuery = classification.type === 'medicine-name' && classification.confidence >= SEARCH.NAME_QUERY_MIN_CONFIDENCE
+  const isStrongCondition = classification.type === 'condition' && classification.confidence >= SEARCH.CONDITION_GATE_MIN_CONFIDENCE
   const hardMin = isNameQuery ? SEARCH.SEMANTIC_HARD_MIN_NAME_QUERY : SEMANTIC_HARD_MIN
   const strong = isNameQuery ? SEARCH.SEMANTIC_STRONG_NAME_QUERY : SEMANTIC_STRONG
   if (score < hardMin) return false
   if (score >= strong) return true
+  // Condições com confiança alta: o score semântico >= hardMin é evidência
+  // suficiente (ex: "queimação e dor no estômago" → antiácidos ~0.84 sem
+  // suporte keyword — o tsvector não cobre termos de condição compostos).
+  if (isStrongCondition) return true
   return hasKeywordSupport
 }
 
@@ -593,59 +603,36 @@ function filterSemanticByGate(
   return { filteredSemanticResults }
 }
 
-// Fallback quando nenhum resultado semântico passa no gate: mescla keyword + trigram
+// Fallback quando nenhum resultado semântico passa no gate: mescla semânticos
+// reprovados (score >= SEMANTIC_FALLBACK_MIN) + keyword + trigram via RRF.
+// Reusa o mesmo pipeline do caminho principal (fuseAndFetch + postProcess) para
+// manter scores e penalidades consistentes (DRY).
 async function fallbackNoSemantic(
   query: string,
   sources: SourceCollection,
   topK: number,
-  t0: number
+  t0: number,
+  semanticCandidates: { score: number; medicine: MedicineResult }[]
 ): Promise<HybridSearchResult> {
-  const { keywordResults, trigramResults, keywordIds, trigramIds } = sources
+  const { keywordResults, trigramResults } = sources
 
-  if (keywordResults.length === 0 && trigramResults.length === 0) {
+  if (keywordResults.length === 0 && trigramResults.length === 0 && semanticCandidates.length === 0) {
     console.warn(`❌ [BUSCA DESCRIÇÃO] Nenhum resultado em nenhuma fonte (Semântica: ${sources.semanticResults.length} [0 aprovados pelo gate], Keyword: 0, Trigram: 0).`)
     console.log(`================== [BUSCA DESCRIÇÃO] FIM (0 resultados) ==================\n`)
     return { results: [], suggestions: [] }
   }
 
-  console.log(`🔄 [BUSCA DESCRIÇÃO] Ativando fallback: mesclando Keyword (${keywordResults.length}) + Trigram (${trigramResults.length}) via RRF`)
-  const keywordRank = new Map(keywordResults.map((r, i) => [r.medicineId, i + 1]))
-  const trigramRank = new Map(trigramResults.map((r, i) => [r.medicineId, i + 1]))
-  const keywordScoreMapFb = new Map(keywordResults.map(r => [r.medicineId, r.keywordScore]))
-  const trigramScoreMapFb = new Map(trigramResults.map(r => [r.medicineId, r.trigramScore]))
-  const allFallbackIds = new Set([...keywordIds, ...trigramIds])
+  console.log(`🔄 [BUSCA DESCRIÇÃO] Ativando fallback híbrido: mesclando Semântica (${semanticCandidates.length}) + Keyword (${keywordResults.length}) + Trigram (${trigramResults.length}) via RRF`)
 
-  const fallbackScores = rrfFusion([
-    { rank: keywordRank, weight: KEYWORD_WEIGHT },
-    { rank: trigramRank, weight: TRIGRAM_WEIGHT },
-  ], RRF_K)
-  const topFallbackIds = [...allFallbackIds]
-    .sort((a, b) => (fallbackScores.get(b) ?? 0) - (fallbackScores.get(a) ?? 0))
-    .slice(0, topK)
+  const { initialResults } = await fuseAndFetch(semanticCandidates, sources, topK)
+  const penalizedResults = await postProcessResults(query, initialResults, sources, sources.keywordResults.length > 0)
+  const adjustedFallback = await applyScoreAdjustments(query, penalizedResults) as SearchResultItem[]
+  const finalResults = adjustedFallback.slice(0, topK)
 
-  const medicines = await prisma.medicine.findMany({
-    where: { id: { in: topFallbackIds } },
-    select: SEARCH_MEDICINE_SELECT,
-  })
-  const medMap = new Map(medicines.map(m => [m.id, m]))
-  const fallbackResults = topFallbackIds
-    .map(id => ({
-      score: honestScore(
-        null,
-        keywordScoreMapFb.get(id) ?? null,
-        trigramScoreMapFb.get(id) ?? null
-      ),
-      medicine: medMap.get(id) as unknown as MedicineResult,
-      matchReasons: [] as MatchReason[],
-    }))
-    .filter(r => r.medicine)
-    .slice(0, topK)
-
-  const adjustedFallback = await applyScoreAdjustments(query, fallbackResults) as SearchResultItem[]
   const totalMs = (performance.now() - t0).toFixed(0)
-  console.log(`✅ [BUSCA DESCRIÇÃO] [Fallback] Concluído em ${totalMs}ms | Retornando ${adjustedFallback.length} medicamentos`)
+  console.log(`✅ [BUSCA DESCRIÇÃO] [Fallback híbrido] Concluído em ${totalMs}ms | Retornando ${finalResults.length} medicamentos`)
   console.log(`================== [BUSCA DESCRIÇÃO] FIM ==================\n`)
-  return { results: adjustedFallback, suggestions: [] }
+  return { results: finalResults, suggestions: [] }
 }
 
 // Fallback semântico puro quando keyword e trigram vêm vazios
@@ -797,6 +784,10 @@ async function postProcessResults(
     const hasKeyword = keywordVerifiedIds.has(r.medicine.id)
     const hasTrigram = trigramIds.has(r.medicine.id)
     if (hasKeyword || hasTrigram) return r
+    // Sem suporte textual mas score semântico forte (>= SEMANTIC_NO_SUPPORT_EXEMPT):
+    // a similaridade semântica já é evidência suficiente (o gate aprovou).
+    const semScore = r.matchReasons.find(mr => mr.type === 'semantic')?.score ?? null
+    if (semScore !== null && semScore >= SEARCH.SEMANTIC_NO_SUPPORT_EXEMPT) return r
     if (!medicineRelatesToQuery(r.medicine, queryTerms)) {
       penalizedCount++
       return { ...r, score: r.score * SEARCH.NO_SUPPORT_PENALTY }
@@ -902,9 +893,15 @@ export async function hybridSearch(
     const sources = await collectSearchSources(query, queryEmb, topK)
     const { filteredSemanticResults } = filterSemanticByGate(sources, classification, isNameQuery)
 
-    // Sem resultados semânticos aprovados — fallback keyword + trigram
+    // Candidatos semânticos para o fallback: reprovados no gate mas com score
+    // >= SEMANTIC_FALLBACK_MIN (ex: antiácidos em "queimação e dor no estômago",
+    // que não têm suporte keyword/trigram no tsvector).
+    const semanticCandidates = sources.semanticResults
+      .filter(r => r.score >= SEARCH.SEMANTIC_FALLBACK_MIN)
+
+    // Sem resultados semânticos aprovados — fallback híbrido (semântica + keyword + trigram)
     if (filteredSemanticResults.length === 0) {
-      return await fallbackNoSemantic(query, sources, topK, t0)
+      return await fallbackNoSemantic(query, sources, topK, t0, semanticCandidates)
     }
 
     // Sem keyword/trigram — usa apenas o semântico aprovado

@@ -10,7 +10,7 @@ Extensões:
 
 ## Migrations
 
-Total: 15 migrations (em `prisma/migrations/`):
+Total: 17 migrations (em `prisma/migrations/`):
 
 | Migration | Descrição |
 |-----------|-----------|
@@ -29,10 +29,12 @@ Total: 15 migrations (em `prisma/migrations/`):
 | `20260821020000_finalize_embedding_768` | Remove `embedding` (384d), renomeia `embedding_new` → `embedding` (768d) e o índice |
 | `20260821030000_add_search_feedback` | Tabela `search_feedback` + índices |
 | `20260903000000_make_search_document_regular` | `search_document` vira coluna **regular** (não GENERATED); índices para `referenceMedicine`, `atcCode`, `inclusionDate` |
+| `20260903120000_remove_salt_column` | Remove campo `salt` de `users` (hash bcrypt embute o salt; campo redundante) |
+| `20260904000000_add_search_document_trigger` | Função + trigger `trg_medicines_search_document` preenche `search_document` no INSERT/UPDATE (via COALESCE, preservando vetores do script) |
 
 ## Modelos
 
-### Medicine (32.585 registros)
+### Medicine (32.661 registros)
 
 ```prisma
 model Medicine {
@@ -73,7 +75,7 @@ model Medicine {
 }
 ```
 
-> `embedding` é `vector(768)` (multilingual-e5-base). `search_document` é uma coluna **regular** (não GENERATED) — a fonte autoritativa é o script `scripts/generate-tsvector.ts`, que resolve nomes de forma farmacêutica/ATC (a versão GENERATED usava códigos crus e foi removida).
+> `embedding` é `vector(768)` (multilingual-e5-base). `search_document` é uma coluna **regular** (não GENERATED) — desde a migração `20260904000000` um **trigger** (`trg_medicines_search_document`) preenche `search_document` automaticamente em INSERT/UPDATE com os campos crus (via `COALESCE`, sem sobrescrever vetores existentes), garantindo que **após um sync a busca textual nunca fique vazia**; o refinamento de alta qualidade (nomes de forma farmacêutica/ATC resolvidos) continua via `scripts/generate-tsvector.ts` / `src/lib/tsvector-refresh.ts`.
 
 ### Price (53.422 registros)
 
@@ -107,7 +109,6 @@ model User {
   name              String
   role              String   @default("USER")
   password          String
-  salt              String
   confirmationToken String?
   recoverToken      String?
   createdAt         DateTime @default(now())
@@ -170,6 +171,7 @@ CREATE TABLE search_logs (
 
 - Escrita: `logSearch` em `src/lib/actions/semantic-search.ts` (fire-and-forget)
 - Leitura: `/api/search-analytics` e página admin `/admin/search-analytics`
+- Retenção: `scripts/purge-search-logs.ts` (`npm run purge:logs`) remove registros > 365 dias (política LGPD — ver `/privacidade`)
 
 ## Índices
 
@@ -190,6 +192,7 @@ Os embeddings são armazenados diretamente no banco de dados PostgreSQL usando a
 
 - **Modelo**: `Xenova/multilingual-e5-base` (768 dimensões) — configurável via `EMBEDDING_MODEL`/`EMBEDDING_DIMS`
 - **Índice**: HNSW com cosine (o antigo IVFFlat de 384d foi removido na migração de finalização)
+- **Recall**: a busca semântica define `SET LOCAL hnsw.ef_search = 100` (`SEARCH.HNSW_EF_SEARCH`) antes da consulta — sem isso o HNSW usa o default de 40 e o `LIMIT` (topK × 5 = 100) retorna no máximo 40 registros
 - **Geração**: batch de 50 registros (`generate-search-index.ts`), apenas medicamentos sem embedding (`WHERE embedding IS NULL`); retry 3x por lote
 - **Prefixo**: texto de documento com prefixo `passage:`; consultas usam `query:`
 - **Cache do modelo**: `/tmp/.transformers-cache` (volume `transformers_cache` no Docker)
@@ -230,4 +233,13 @@ npm run search-index
 
 # Re-indexar TODOS os embeddings (força regeneração completa)
 npx tsx scripts/reindex-embeddings.ts
+
+# Sequência completa de índices (indications + tsvector + embeddings)
+npm run db:index
+
+# Purge de retenção LGPD (search_logs/search_feedback > 365d)
+npm run purge:logs
+
+# Gerar ícones PWA
+npm run pwa:icons
 ```

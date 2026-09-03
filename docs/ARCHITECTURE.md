@@ -29,26 +29,31 @@ Med Unificando é uma aplicação Next.js 16 (App Router) com PostgreSQL que con
 ```
 med-unificando/
 ├── prisma/
-│   ├── schema.prisma              # Medicine, Price, User, SyncLog, SearchFeedback
-│   ├── migrations/                # 15 migrations versionadas
+│   ├── schema.prisma              # Medicine, Price, User, SyncLog, SearchFeedback (search_logs é tabela crua)
+│   ├── migrations/                # 17 migrations versionadas (inclui trigger de tsvector + remove salt)
 │   └── seed.ts                    # Importa CSV ANVISA (medicamentos) + admin
 ├── scripts/
 │   ├── generate-search-index.ts   # Gera embeddings pgvector 768d (multilingual-e5-base), incremental
 │   ├── reindex-embeddings.ts      # Re-indexa TODOS os embeddings (forçado)
-│   ├── generate-tsvector.ts       # Popula a coluna regular tsvector (fonte autoritativa)
+│   ├── generate-tsvector.ts       # Gap-fill da coluna regular tsvector (refina via tsvector-refresh.ts)
 │   ├── sync-farmacia-popular.ts   # Sincroniza PDF da Farmácia Popular
 │   ├── backfill-indications.ts    # Preenche indicações terapêuticas
 │   ├── backfill-therapeutic-class.ts  # Preenche classe terapêutica do CSV DADOS_ABERTOS
 │   ├── add-active-ingredients.ts  # Adiciona princípios ativos normalizados
+│   ├── purge-search-logs.ts       # Purge retenção LGPD (365d) de search_logs/search_feedback
+│   ├── smoke-sync-ids.ts          # Smoke: prova que o diff preserva IDs
+│   ├── generate-pwa-icons.ts      # Gera icons-192/512.png a partir do SVG (sharp)
+│   ├── check-backup-freshness.sh  # Verifica frescor do backup (para cron/monitor)
+│   ├── e2e-server.sh              # Sobe dev server + warm-up p/ Playwright
 │   ├── diagnose-search.ts         # Diagnóstico de performance da busca
-│   ├── test-hybrid-search.ts      # Teste de busca híbrida (RRF)
-│   ├── test-hybrid.ts             # Teste alternativo de busca híbrida
-│   ├── test-keyword.ts            # Teste de busca keyword isolada
-│   ├── test-tsvector.ts           # Teste de busca tsvector
+│   ├── test-hybrid-search.ts / test-hybrid.ts / test-keyword.ts / test-tsvector.ts
 │   ├── run-search-tests.ts        # Runner de bateria de testes de busca
 │   └── analyze-thresholds.ts      # Análise de thresholds de relevância
 ├── public/
-│   └── manifest.json              # PWA manifest
+│   ├── manifest.json              # PWA manifest (ícones 192/512, standalone)
+│   ├── sw.js                      # Service worker (não cacheia /admin·/api·/dashboard)
+│   ├── icon-192.png · icon-512.png · icon-192.svg
+│   └── llms.txt
 ├── src/
 │   ├── app/
 │   │   ├── page.tsx               # Home (busca semântica + autocomplete)
@@ -65,14 +70,15 @@ med-unificando/
 │   │   ├── dashboard/             # Stats + timeline por ano
 │   │   ├── compare/               # Comparação lado a lado
 │   │   ├── sobre/                 # Sobre o projeto
+│   │   ├── privacidade/           # Política de privacidade (LGPD)
 │   │   ├── admin/
-│   │   │   ├── (protected)/       # Layout que exige sessão (redirect p/ login)
-│   │   │   ├── login/             # Login do administrador (rate limit 10/min)
-│   │   │   ├── import/            # Sincronização ANVISA + Preços + Farmácia Popular
-│   │   │   ├── medicamentos/      # CRUD de medicamentos (admin)
-│   │   │   ├── medicamentos/[id]/ # Edição individual
-│   │   │   ├── search-feedback/   # Visualização de feedback de busca
-│   │   │   └── search-analytics/  # Analytics das buscas (search_logs)
+│   │   │   ├── (auth)/login/      # Login (rate limit 10/min no callback)
+│   │   │   └── (protected)/       # Layout que exige sessão (redirect p/ login)
+│   │   │       ├── import/            # Sincronização ANVISA + Preços + Farmácia Popular
+│   │   │       ├── medicamentos/      # CRUD de medicamentos (admin)
+│   │   │       ├── medicamentos/[id]/ # Edição individual
+│   │   │       ├── search-feedback/   # Visualização de feedback de busca
+│   │   │       └── search-analytics/  # Analytics das buscas (search_logs)
 │   │   └── api/
 │   │       ├── medicines/         # API REST pública (JSON/CSV, rate limit 60/min)
 │   │       ├── autocomplete/      # Sugestões trigram (rate limit 120/min)
@@ -94,10 +100,11 @@ med-unificando/
 │   │                              # StatusFilter, ActionBar, HolderContent, ReferenceSearch,
 │   │                              # SimilarMedicinesList, AtcTree, AtcCodeContent, ViewToggle,
 │   │                              # SemanticResultsTable, SearchResultsCards, RecentSearches
-│   ├── hooks/                     # use-favorites, use-recent-searches, use-debounced-search
+│   ├── hooks/                     # use-favorites, use-recent-searches, use-debounced-search, use-autocomplete
+│   ├── components/pwa-register.tsx # Registro do service worker (contexto seguro)
 │   ├── lib/
 │   │   ├── actions/               # 17 server actions
-│   │   │   ├── search.ts                    # searchMedicines, getDashboardStats, searchAutocomplete, countMedicines
+│   │   │   ├── search.ts                    # searchMedicines (clamp pageSize), getDashboardStats, searchAutocomplete, countMedicines
 │   │   │   ├── semantic-search.ts           # hybridSearch (IA local, RRF 3 vias), classificação
 │   │   │   ├── keyword-search.ts            # Busca tsvector + FTS
 │   │   │   ├── trigram-search.ts            # Busca trigram (pg_trgm)
@@ -121,9 +128,14 @@ med-unificando/
 │   │   │   ├── synonyms.ts                  # SYNONYM_MAP consolidado
 │   │   │   ├── therapeutic-classes.ts
 │   │   │   └── therapeutic-class-indications.ts
+│   │   ├── sync-diff.ts           # Diff preservando IDs (matchKey reference + multiplicidade)
+│   │   ├── tsvector-refresh.ts    # Regeneração de tsvector com nomes ATC/forma resolvidos
+│   │   ├── anvisa-https.ts        # Agente TLS escopado à ANVISA (ICP-Brasil)
+│   │   ├── data-cache.ts          # Wrappers unstable_cache (detail, atc, holder, dashboard, stats)
 │   │   ├── config.ts              # Configurações centralizadas (SITE, SEARCH, EMBEDDING, ANVISA)
 │   │   ├── constants.ts           # MEDICINE_LIMITS etc.
-│   │   ├── rate-limit.ts          # Rate limiter in-memory (por IP, por escopo)
+│   │   ├── rate-limit.ts          # Rate limiter in-memory (por IP, por escopo; sweep/evict, teto 10k)
+│   │   ├── rate-limit-action.ts   # Rate limit para server actions públicas
 │   │   ├── auth-guard.ts          # withAuth, withAuthReturn, withAdmin, withAdminReturn, isAdmin
 │   │   ├── auth.config.ts         # Config NextAuth (signIn, maxAge, cookies)
 │   │   ├── search-preprocessor.ts # classifyQuery, refineLowConfidenceClassification
@@ -143,9 +155,11 @@ med-unificando/
 │   │   └── hooks/use-medicine-search.ts  # Busca com URL search params
 │   ├── types/                     # index, medicine, next-auth.d.ts, pdf-parse.d.ts, pdfmake.d.ts
 │   ├── auth.ts                    # Instância NextAuth v5
-│   ├── proxy.ts                   # Rate limit do login (POST /admin/login, 10/min)
+│   ├── proxy.ts                   # Defesa de borda (matcher /admin/login + /api/auth/callback/credentials)
 │   └── generated/prisma/          # Cliente Prisma gerado
-├── tests/                         # Testes Vitest (api, components, lib/actions, lib)
+├── e2e/                           # 8 specs Playwright (smoke, busca, compare, detalhe, referências, login, PWA)
+├── tests/                         # Testes Vitest (~58 arquivos: api, components, lib, hooks)
+├── .github/workflows/ci.yml       # CI: lint + typecheck + test + build (sem DB)
 ├── prisma.config.ts
 ├── vitest.config.ts
 ├── postcss.config.mjs
@@ -172,18 +186,19 @@ med-unificando/
 ### Importação
 1. Usuário admin clica "Sincronizar" ou via script `npm run seed`
 2. Servidor faz HEAD no CSV remoto → verifica `Last-Modified`
-3. Se alterado: baixa CSV → `iconv` (Latin-1 → UTF-8) → `xlsx` (parse) → Prisma `createMany`
-4. Extrai `therapeuticClass` do campo `CLASSE_TERAPEUTICA` do CSV DADOS_ABERTOS_MEDICAMENTOS
-5. Registra log em `SyncLog` (type, count, status)
-6. Preços CMED: mesmo fluxo via `TA_PRECOS_MEDICAMENTOS.csv`
-7. No Docker, a sequência completa é orquestrada pelo `docker-entrypoint.sh` quando o banco está vazio
+3. Se alterado: baixa CSV → `iconv` (Latin-1 → UTF-8) → `xlsx` (parse) → **diff em `src/lib/sync-diff.ts`** (casa por `reference` + multiplicidade; só insere/atualiza/apaga o que mudou — **preserva IDs** das URLs públicas)
+4. **Transação única** com `pg_advisory_xact_lock(hashtext('unificando_sync'))` (serializa syncs concorrentes; rollback em falha)
+5. Trigger `trg_medicines_search_document` preenche `search_document` na hora do INSERT/UPDATE (busca textual nunca fica vazia); refinamento em background (`tsvector-refresh.ts`) eleva a qualidade com nomes ATC/forma resolvidos
+6. Extrai `therapeuticClass` do campo `CLASSE_TERAPEUTICA` do CSV DADOS_ABERTOS_MEDICAMENTOS
+7. Registra log em `SyncLog` (type, count, status) — preços dentro da mesma transação
+8. `revalidatePath('/dashboard')`/`('/atc')` invalida caches; no Docker, a sequência é orquestrada pelo `docker-entrypoint.sh` quando o banco está vazio
 
 ### Busca Híbrida (3 fontes + RRF)
 1. `npm run search-index` → `Xenova/multilingual-e5-base` (768d) → embeddings no PostgreSQL (pgvector, índice HNSW)
 2. `npm run tsvector` → coluna `search_document` tsvector (regular) + índice GIN, stemming pt-br + sinônimos
 3. pg_trgm → índice GIN trigram para keyword/autocomplete fuzzy
 4. `hybridSearch` orquestra as 3 fontes em paralelo (topK × 5):
-   - **Semântica**: `1 - (embedding <=> query_vector)` com cosine; `SET LOCAL ivfflat.probes` (best-effort); semantic gate
+   - **Semântica**: `1 - (embedding <=> query_vector)` com cosine; `SET LOCAL ivfflat.probes` (best-effort) + `SET LOCAL hnsw.ef_search = 100` (recall HNSW; sem ele o `LIMIT` truncava em 40); semantic gate
    - **Keyword**: `ts_rank(search_document, to_tsquery('portuguese', ...))` com expansão de sinônimos
    - **Trigram**: `GREATEST(similarity(tradeName), similarity(activeIngredient))` com o operador `%`
 5. **RRF fusion** combina os 3 rankings:
@@ -191,8 +206,8 @@ med-unificando/
    RRF(d) = Σ peso / (k + posição)
    k = 60 | semântica 0.40 | keyword 0.35 | trigram 0.25
    ```
-6. Pós-processamento: penalidade de falso positivo por substring, boost por match de nome, verificação por keyword, penalidade de falta de suporte, ajustes por feedback
-7. Fallbacks: keyword+trigram (sem semântica) e semântica pura
+6. Pós-processamento: penalidade de falso positivo por substring, boost por match de nome, verificação por keyword, penalidade de falta de suporte (com isenção para score semântico ≥ 0.80), ajustes por feedback
+7. Fallbacks: **fallback híbrido** (semânticos reprovados no gate com score ≥ 0.80 + keyword + trigram via RRF) e semântica pura
 8. `logSearch` registra a busca em `search_logs` (analytics)
 
 ### Classificação de Query
@@ -243,14 +258,15 @@ med-unificando/
 ### Otimizações de SEO
 1. `generateMetadata()` em cada página de detalhe → title + description + Open Graph
 2. JSON-LD (Schema.org/MedicalDrug) no detalhe (sanitizado via `safe-json-ld.ts`)
-3. `sitemap.ts` → 32.585+ URLs
+3. `sitemap.ts` → 32K+ URLs
 4. `robots.ts` → permite indexação, bloqueia /admin/ e /api/
 5. `opengraph-image.tsx` → OG Image dinâmica por medicamento
 
-### PWA
-- `manifest.json` com display standalone
-- Ícones 192x192 e 512x512
-- Meta tag theme-color
+### PWA (real, desde 2026-09-03)
+- `public/manifest.json` com `display: standalone`, `id`, `scope` e **ícones 192x192/512x512** (gerados por `scripts/generate-pwa-icons.ts` via sharp)
+- `public/sw.js` — service worker: navegações network-first com fallback offline; `_next/static` cache-first; **exclui `/admin`, `/api`, `/dashboard`** (sessão/dados dinâmicos nunca saem de cache)
+- Registro em `src/components/pwa-register.tsx` no root layout (somente https/localhost)
+- `apple-touch-icon` aponta para `icon-192.png`
 
 ## Decisões Técnicas
 
@@ -276,8 +292,10 @@ med-unificando/
 - **Rede**: bridge isolada `/16`
 - **HTTP**: security headers (X-Frame-Options: DENY, X-Content-Type-Options: nosniff, CSP via next.config.ts)
 - **CSP**: Content-Security-Policy no next.config.ts — fontes self-hosted (next/font), sem CDN de fontes
-- **Rate limit interno**: `src/lib/rate-limit.ts` (in-memory Map, janela 60s) — escopos: medicines-api 60/min, autocomplete 120/min, search-feedback POST 20/min
-- **Rate limit login**: `src/proxy.ts` — POST /admin/login 10/min
+- **Rate limit interno**: `src/lib/rate-limit.ts` (in-memory Map, janela 60s, **sweep/evict teto 10k**) — escopos: medicines-api 60/min, autocomplete 120/min, search-feedback POST 20/min; server actions também limitadas via `rate-limit-action.ts`
+- **Rate limit login**: **10/min no callback `/api/auth/callback/credentials`** (wrapper em `[...nextauth]/route.ts`, antes do handler) + `src/proxy.ts` na borda (matcher `/admin/login` + callback)
 - **Auth**: páginas `/admin/(protected)/` exigem sessão (redirect p/ login); actions de admin usam withAdmin/withAdminReturn; `/admin/import` tem callback authorized; rotas `/api/search-analytics` e GET `/api/search-feedback` exigem role ADMIN
-- **Body Size**: limite de 10MB para server actions
+- **Body Size**: limite de 10MB para server actions; `/api/search-feedback` rejeita body > 8KB (413)
+- **Erros**: mensagens genéricas ao cliente (nunca `error.message` do Prisma)
 - **Prisma**: módulo não exposto ao cliente (Edge Runtime não o carrega)
+- **Infra de build**: `.dockerignore` exclui `.env`/segredos; CI GitHub Actions (lint + typecheck + test + build)

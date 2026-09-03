@@ -136,7 +136,9 @@ Gerenciado via classe `.dark` na raiz `<html>`, alternada pelo `ThemeProvider`.
 |-----------|---------------|
 | Skip link | `#main-content` no layout |
 | Focus visible | `focus-visible:ring-2` em todos interativos |
-| ARIA | `aria-live`, `role="listbox"`, `aria-expanded`, `aria-current` |
+| ARIA | `aria-live` (toast), `role="listbox"`/`role="option"` (autocomplete), `aria-expanded` (menu), `aria-controls` + foco no menu mobile, `aria-pressed` (ViewToggle), `aria-label` em inputs de busca sem label, `aria-current` |
+| Nome acessível | Inputs de busca com `aria-label`/label; select de paginação com `aria-label="Itens por página"`; toasts com `role="status" aria-live="polite"` |
+| Test IDs | `data-testid` em 36 arquivos (`contexto-elemento[-acao]`, kebab-case) — usados pelos specs E2E (rastreabilidade em `testid-changes-report.md`) |
 | Contraste | WCAG AA (texto #020617 sobre bg #ffffff = 19:1) |
 | Reduzir movimento | `prefers-reduced-motion` desativa animações |
 
@@ -152,7 +154,15 @@ Gerenciado via classe `.dark` na raiz `<html>`, alternada pelo `ThemeProvider`.
 
 ---
 
-## 8. Regras Anti-Clichê
+## 8. PWA
+
+- Manifest com `display: standalone`, `theme_color: #020617`, `background_color: #ccff00`, ícones 192x192/512x512 (`icon-192.png`, `icon-512.png` — gerados por `npm run pwa:icons`)
+- Service worker `public/sw.js`: navegações network-first com fallback offline; `_next/static` cache-first; **não cacheia** `/admin`, `/api`, `/dashboard`
+- Registro automático via `PwaRegister` (somente https/localhost)
+
+---
+
+## 9. Regras Anti-Clichê
 
 | ❌ Evitar | ✅ Correto |
 |-----------|------------|

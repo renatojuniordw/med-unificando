@@ -48,16 +48,22 @@ npm run dev
 | `npm run build` | Build de produção |
 | `npm run start` | Servidor de produção :11006 |
 | `npm run lint` | ESLint |
-| `npm run test` | Vitest |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run test` | Vitest (unit) |
 | `npm run test:watch` | Vitest watch |
-| `npm run test:coverage` | Vitest coverage |
+| `npm run test:coverage` | Vitest coverage (número oficial) |
+| `npm run test:e2e` | Playwright E2E (8 specs; sobe dev server próprio em 11009) |
+| `npm run test:e2e:ui` | Playwright UI |
 | `npm run seed` | Importar dados ANVISA |
 | `npm run migrate` | Aplicar migrations Prisma |
 | `npm run generate` | Gerar cliente Prisma |
-| `npm run search-index` | Gerar embeddings pgvector |
-| `npm run tsvector` | Gerar tsvector search documents |
+| `npm run search-index` | Gerar embeddings pgvector (apenas os que faltam) |
+| `npm run tsvector` | Gerar tsvector search documents (gap-fill + refinamento) |
 | `npm run backfill-indications` | Backfill indicações terapêuticas |
 | `npm run farmacia-popular` | Sincronizar Farmácia Popular |
+| `npm run purge:logs` | Purge de `search_logs`/`search_feedback` (LGPD, 365d) |
+| `npm run pwa:icons` | Regenerar ícones PNG do PWA (192/512) |
+| `npm run db:index` | Indications + tsvector + embeddings (sequência) |
 | `npm run docker:up` | docker compose up -d |
 | `npm run docker:down` | docker compose down |
 | `npm run docker:build` | docker compose build --no-cache |
@@ -180,12 +186,14 @@ O modelo é baixado automaticamente na primeira execução e cacheado em `/tmp/.
 
 O fluxo:
 1. `npm run search-index` → gera embeddings no banco pgvector (coluna `embedding` vector(768), índice HNSW)
-2. Busca semântica: pgvector cosine distance com **semantic gate** (thresholds em `SEARCH` no `config.ts`)
+2. Busca semântica: pgvector cosine distance com **semantic gate** (thresholds em `SEARCH` no `config.ts`); `SET LOCAL hnsw.ef_search = 100` garante o recall do HNSW
 3. Busca keyword: tsvector + GIN index (stemming pt-br + sinônimos)
 4. Busca trigram: pg_trgm (`%` + `similarity`) para keyword/autocomplete
 5. **RRF fusion** (Reciprocal Rank Fusion) combina os 3 rankings (k=60; pesos: semântica 0.40, keyword 0.35, trigram 0.25)
 6. **Score adjustments** baseados em feedback dos usuários
 7. **Synonym expansion** com mapa consolidado em `dictionaries/synonyms.ts`
+
+Regras adicionais do pipeline (config em `SEARCH`): queries de condição com confiança alta aprovam no gate a partir de `SEMANTIC_HARD_MIN` (0.80) sem suporte keyword/trigram; resultados sem suporte textual com score semântico ≥ `SEMANTIC_NO_SUPPORT_EXEMPT` (0.80) são eximidos da penalidade; o fallback é híbrido (semântica + keyword + trigram via RRF) para semânticos reprovados no gate com score ≥ `SEMANTIC_FALLBACK_MIN` (0.80).
 
 O texto usado para gerar cada embedding (prefixo `passage:`) inclui:
 `nome | princípio ativo | forma farmacêutica | classe terapêutica | descrição ATC | indicações | sinônimos | concentração | categoria | tipo prescrição | detentor | situação | farmácia popular`
@@ -198,14 +206,21 @@ npm run test:watch     # Modo watch
 npm run test:coverage  # Com cobertura
 ```
 
-Testes estão em `tests/` usando Vitest + @testing-library/react + jsdom.
+Testes estão em `tests/` usando Vitest + @testing-library/react + jsdom. E2E em `e2e/` com Playwright.
+
+```bash
+npm run test:e2e   # exige Postgres (medicamentos-db) no ar; sobe dev server próprio em 11009
+```
+
+Cobertura oficial (`npm run test:coverage`): **Lines 91% · Stmts 89.1% · Branch 81.9% · Funcs 88.3%** (58 arquivos / 385 testes unit; 18 testes E2E). `semantic-search.ts` fica fora da cobertura por design (injeta modelo on-device).
 
 ## Hooks Customizados
 
 - `use-favorites` — Favoritos em localStorage (toggle, isFavorite)
 - `use-recent-searches` — Últimas 5 buscas em localStorage
 - `use-debounced-search` — Busca com debounce genérica, proteção contra race condition
-- `use-medicine-search` (`src/lib/hooks/`) — URL search params → server data → pagination, proteção contra race condition
+- `use-medicine-search` (`src/lib/hooks/`) — URL search params → server data → pagination, proteção contra race condition; não refaz a busca no mount (SSR já serviu)
+- `use-autocomplete` — sugestões com navegação por teclado; Enter só é interceptado quando há sugestão selecionada (form submete por teclado)
 
 ## Encoding
 

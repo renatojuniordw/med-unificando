@@ -17,11 +17,11 @@ Esta aplicação implementa múltiplas camadas de segurança seguindo princípio
 - **Páginas admin**: `/admin/(protected)/*` exigem sessão — o layout redireciona para `/admin/login`; `/admin/import` tem callback `authorized` no NextAuth
 - **Server actions admin**: `withAdmin` / `withAdminReturn` em `src/lib/auth-guard.ts` (role `ADMIN`)
 - **APIs admin**: `/api/search-analytics` e GET `/api/search-feedback` retornam 401 sem role `ADMIN`
-- **Rate limit por rota** (`src/lib/rate-limit.ts` — `Map<string, { count, resetAt }>` em memória, janela 60s):
+- **Rate limit por rota** (`src/lib/rate-limit.ts` — `Map<string, { count, resetAt }>` em memória, janela 60s, com **sweep/evict** de buckets expirados, teto de 10.000):
   - `/api/medicines`: 60 req/min/IP
   - `/api/autocomplete`: 120 req/min/IP
   - `POST /api/search-feedback`: 20 req/min/IP
-  - `POST /admin/login`: 10 req/min/IP (via `src/proxy.ts`)
+  - `/api/auth/callback/credentials` (POST login): 10 req/min/IP — aplicado no wrapper de `src/app/api/auth/[...nextauth]/route.ts` **antes** de delegar ao handler; `src/proxy.ts` (`matcher: ['/admin/login', '/api/auth/callback/credentials']`) reforça na borda
 - **Rate limit em server actions públicas** (`src/lib/rate-limit-action.ts`, mesmo limiter por IP):
   - `searchMedicines` e `hybridSearch`: 120 req/min/IP
   - `searchAutocomplete`: 120 req/min/IP
@@ -58,6 +58,7 @@ Esta aplicação implementa múltiplas camadas de segurança seguindo princípio
 - Portas internas (5432) não expostas externamente
 - Rede isolada (`172.28.0.0/16`)
 - Limites de memória e CPU
+- **`.dockerignore`** exclui `.env`, `.env.*`, `node_modules`, `.git`, `docs`, `README.md` e artefatos de teste do build context — segredos reais nunca entram no build
 
 ### Infraestrutura
 - Nginx como reverse proxy com TLS 1.2/1.3
@@ -75,11 +76,17 @@ Esta aplicação implementa múltiplas camadas de segurança seguindo princípio
 - Senhas não armazenadas em texto puro (bcrypt)
 - CSV sanitizado antes de parsing (remove chars de controle)
 - `escapeCsv()` para prevenir injection em exports
+- **Erros sanitizados**: `submitSearchFeedback` nunca devolve `error.message` ao client (detalhes do Prisma/SQL ficam só no log do servidor); as demais rotas públicas retornam mensagens genéricas
 
 ### LGPD / Privacidade
 - Política de privacidade pública em `/privacidade` (dados coletados, finalidade, base legal, retenção, direitos do titular)
 - Logs de busca anônimos (sem IP/UA/cookies de rastreamento)
 - Retenção de `search_logs`/`search_feedback`: 12 meses, com purge agendado (`npm run purge:logs` → `scripts/purge-search-logs.ts`)
+
+### PWA / Service Worker
+- `public/sw.js` implementa cache (navegações network-first; `_next/static` cache-first) **excluindo deliberadamente `/admin`, `/api` e `/dashboard`** — sessão e dados dinâmicos nunca são servidos de cache offline
+- Registro via `src/components/pwa-register.tsx` (somente contexto seguro: https ou localhost)
+- Manifest com Ícones instaláveis (`icon-192.png`/`icon-512.png`), `display: standalone`
 
 ### Sanitização de Input
 - Feedback de busca validado em `src/lib/actions/search-feedback.ts`:
@@ -95,7 +102,7 @@ Estado atual: `npm audit --omit=dev` — **0 críticas, 9 altas**. As que perman
 
 | Dependência | Severidade | Status |
 |-------------|------------|--------|
-| `xlsx@0.18.5` | High | **Sem fix disponível** — mitigado: fonte confiável (ANVISA) e uso admin-only |
+| `xlsx@0.18.5` | High | **Sem fix disponível** — mitigado: fonte confiável (ANVISA), input sanitizado e export limitado por rate limit (30/min) |
 | `sharp` (via `@xenova/transformers`) | High | **Mitigado** — não exercitado pela pipeline de embeddings textuais; upgrade exige major do transformers |
 | `next`/`postcss` | High | **Mitigado** — fix exige next 16.3.4 (fora do range atual); exposição limitada |
 | tooling Prisma (`deepmerge-ts`, `mysql2`, `hono`) | High | **Mitigado** — dependências apenas de dev/toolchain, não do runtime da aplicação |
@@ -113,7 +120,8 @@ Estado atual: `npm audit --omit=dev` — **0 críticas, 9 altas**. As que perman
 
 Auditoria de segurança/LGPD/deploy em 03/09/2026 (read-only) — `docs/relatorio-seguranca-lgpd-deploy.md`:
 - 38 itens avaliados: 3 altos e 7 médios identificados; **correções aplicadas em 03/09/2026** (upgrade `next-auth` 5.0.0-beta.32/@auth/core 0.41.3, TLS de saída escopado à ANVISA, política de privacidade `/privacidade`, retenção+purge 12 meses, rate limit em server actions públicas, CSP sem domínios mortos, campo `salt` removido)
-- Pendências restantes: monitoramento/backup ativos no servidor (não verificáveis no repositório), 2FA opcional
+- **Auditoria técnica de 21 itens (03/09/2026)**: sync transacional com advisory lock, rate limit de login real no callback do NextAuth, `.dockerignore`, erros sanitizados, pruning do rate-limit Map, clamp de `pageSize`, `select` em exports, caches de stats (unstable_cache), CI GitHub Actions — ver plano/relatório em `~/.verboo/plans/` e docs correlatos
+- Pendências restantes: monitoramento/backup ativos no servidor (não verificáveis no repositório), 2FA opcional, `registrationNumber @@unique` (depende de auditoria de unicidade do CSV)
 
 ## Como Reportar Vulnerabilidades
 

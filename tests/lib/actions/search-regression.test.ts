@@ -179,6 +179,73 @@ describe('Casos de Teste de Regressão - Busca por Descrição', () => {
     })
   })
 
+  describe('Cenário 4: "queimação e dor no estômago"', () => {
+    it('deve retornar antiácidos/medicamentos gástricos mesmo sem suporte keyword', async () => {
+      // Semântica forte (0.84+) mas SEM suporte keyword/trigram — o tsvector
+      // não cobre termos de condição compostos e o top 100 FTS é dominado por
+      // analgésicos (expansão de sinônimos + termo "dor").
+      vi.mocked(prisma.$queryRawUnsafe).mockResolvedValue([
+        { id: 100, semantic_score: 0.848 }, // Kollangel FF
+        { id: 101, semantic_score: 0.846 }, // Loncord
+        { id: 102, semantic_score: 0.843 }, // Digedrat
+        { id: 103, semantic_score: 0.82 },  // Omeprazol
+      ])
+
+      // Keyword retorna apenas analgésicos irrelevantes (fracos) — como no caso real
+      vi.mocked(keywordSearch).mockResolvedValue([
+        { medicineId: 200, keywordScore: 0.012 },
+        { medicineId: 201, keywordScore: 0.0118 },
+      ])
+
+      // findMany: primeiro é chamado para os semânticos (semanticSearch), depois
+      // para os demais IDs no fuseAndFetch
+      vi.mocked(prisma.medicine.findMany).mockResolvedValue([
+        { id: 100, tradeName: 'Kollangel FF', status: 'Ativo', therapeuticClass: 'ANTIACIDO', indications: 'azia, má digestão, acidez estomacal', activeIngredient: 'hidróxido de alumínio' },
+        { id: 101, tradeName: 'Loncord', status: 'Ativo', therapeuticClass: 'ANTIACIDO', indications: 'azia, má digestão', activeIngredient: 'hidróxido de magnésio' },
+        { id: 102, tradeName: 'Digedrat', status: 'Ativo', therapeuticClass: 'ANTIESPASMODICOS', indications: 'cólica, espasmo, dor abdominal', activeIngredient: 'maleato de trimebutina' },
+        { id: 103, tradeName: 'Omeprazol', status: 'Ativo', therapeuticClass: 'ANTIULCERA', indications: 'úlcera, refluxo, acidez', activeIngredient: 'omeprazol' },
+      ] as never)
+
+      const { results } = await hybridSearch('queimação e dor no estômago', 20)
+
+      expect(results.length).toBeGreaterThan(0)
+
+      const tradeNames = results.map(r => r.medicine.tradeName.toLowerCase())
+      // Os antiácidos/gastro devem estar presentes (semântica forte, sem suporte textual)
+      expect(tradeNames).toContain('kollangel ff')
+      expect(tradeNames).toContain('digedrat')
+    })
+  })
+
+  describe('Cenário 5: fallback híbrido (nenhum aprovado no gate)', () => {
+    it('deve mesclar semânticos reprovados + keyword via RRF no fallback', async () => {
+      // Semântica abaixo do strong (0.855) e sem suporte keyword para os gastro —
+      // para uma query de NOME (gate restrito), todos reprovam o gate.
+      vi.mocked(prisma.$queryRawUnsafe).mockResolvedValue([
+        { id: 300, semantic_score: 0.82 },
+        { id: 301, semantic_score: 0.81 },
+      ])
+
+      vi.mocked(keywordSearch).mockResolvedValue([
+        { medicineId: 300, keywordScore: 0.012 },
+        { medicineId: 302, keywordScore: 0.011 },
+      ])
+
+      vi.mocked(prisma.medicine.findMany).mockResolvedValue([
+        { id: 300, tradeName: 'MedGastro', status: 'Ativo', therapeuticClass: 'ANTIACIDO', indications: 'azia, má digestão', activeIngredient: 'hidróxido de alumínio' },
+        { id: 301, tradeName: 'MedGastro2', status: 'Ativo', therapeuticClass: 'ANTIACIDO', indications: 'azia', activeIngredient: 'hidróxido de magnésio' },
+        { id: 302, tradeName: 'Analg', status: 'Ativo', therapeuticClass: 'ANALGESICOS', indications: 'dor', activeIngredient: 'dipirona' },
+      ] as never)
+
+      // Query de nome (gate 0.88/0.90) → semântica 0.82/0.81 reprova → fallback
+      const { results } = await hybridSearch('kollangel', 20)
+
+      expect(results.length).toBeGreaterThan(0)
+      const tradeNames = results.map(r => r.medicine.tradeName.toLowerCase())
+      expect(tradeNames).toContain('medgastro')
+    })
+  })
+
   describe('Testes de Performance da Busca', () => {
     it('deve retornar resultados ordenados por relevância', async () => {
       // Mock para busca semântica com scores variados

@@ -20,6 +20,19 @@ export const SEARCH = {
   SEMANTIC_STRONG: 0.855,
   SEMANTIC_CEILING: 0.92,
 
+  // Queries de condição com confiança alta aprovam scores >= SEMANTIC_HARD_MIN
+  // sem exigit suporte keyword/trigram (ex: "queimação e dor no estômago" →
+  // antiácidos têm score ~0.84 mas tsvector não cobre termos compostos).
+  CONDITION_GATE_MIN_CONFIDENCE: 0.8,
+
+  // No postProcess, resultados com score semântico >= este valor são eximidos
+  // da penalidade "sem suporte" (a similaridade semântica jor é evidência).
+  SEMANTIC_NO_SUPPORT_EXEMPT: 0.80,
+
+  // Fallback híbrido: semânticos reprovados no gate mas >= este limiar entram
+  // na fusão RRF com keyword + trigram.
+  SEMANTIC_FALLBACK_MIN: 0.80,
+
   // Thresholds semânticos — queries de nome de medicamento (mais restritivos)
   SEMANTIC_HARD_MIN_NAME_QUERY: 0.88,
   SEMANTIC_STRONG_NAME_QUERY: 0.90,
@@ -67,6 +80,9 @@ export const SEARCH = {
 
   // pgvector
   IVFFLAT_PROBES: 40,
+  // HNSW: ef_search controla o recall da busca aproximada. Deve ser >= topK*5
+  // (100) para o LIMIT da busca semântica não ser truncado em 40 por padrão.
+  HNSW_EF_SEARCH: 100,
   PGVECTOR_TIMEOUT_MS: 30_000,
 
   // Quantidades padrão

@@ -1,5 +1,7 @@
 # Histórias de Usuário
 
+> Última revisão: 03/09/2026 — fluxos atualizados para o estado real da UI (compare via URL, busca semântica com guard de resposta, debounce no detentor, a11y/PWA).
+
 ## US-01: Consultar Medicamento por Referência
 
 **Como** usuário do sistema  
@@ -8,11 +10,12 @@
 
 **Critérios de Aceitação:**
 - Campo de busca por referência com auto-complete server-side
-- Navegação por teclado (setas, Enter, Escape)
-- Resultados em tabela paginada (10/25/50 por página)
+- Navegação por teclado (setas, Enter, Escape — Enter submete o form ao confirmar sugestão ou diretamente)
+- Resultados em tabela paginada (com seletor de itens por página)
 - Colunas: referência, princípio ativo, nome comercial, detentor, categoria, situação
-- Checkbox "Selecionar todos" no cabeçalho da tabela
+- Checkbox de seleção (com "Selecionar todos") para ações em lote / comparar
 - Ao clicar no nome, abre página de detalhes com breadcrumbs
+- Formulário submete por Enter (corrigido em 2026-09-03)
 
 ## US-02: Busca por Princípio Ativo e Categoria
 
@@ -33,10 +36,10 @@
 **Para** identificar diferenças de concentração, forma farmacêutica, detentor, tarja, ATC e preço
 
 **Critérios de Aceitação:**
-- Seleção por checkbox na tabela
-- Botão "Comparar" habilitado com 2+ selecionados
-- Tabela comparativa com 14 campos lado a lado
-- Destaque visual para campos diferentes (badge "DIFERENTE")
+- Seleção por checkbox na tabela **ou** adição na página `/compare` via `CompareSearch` (autocomplete por referência/princípio ativo/nome comercial)
+- Comparação em `/compare?ids=` — estado sincronizado com a URL (back/forward preserva a seleção; desde 2026-09-03)
+- Tabela comparativa com campos lado a lado + destaque visual para campos diferentes (badge "DIFERENTE")
+- Estado de erro com "Tentar novamente" se o carregamento falhar (desde 2026-09-03)
 
 ## US-04: Explorar Medicamentos de Referência
 
@@ -190,8 +193,8 @@
 - IA 100% local (Xenova Transformers), sem custo de API
 - Combinação de busca semântica (pgvector) e textual (tsvector)
 - Resultados ordenados por relevância (score de 0-100%)
-- Score mínimo de 0.80 para relevância semântica
-- Fallback para busca keyword se semântica falhar
+- Score mínimo de 0.80 para relevância semântica (queries de condição com confiança alta aprovam a partir desse score mesmo sem suporte textual)
+- Fallback híbrido quando a semântica não passa no gate: funde semânticos ≥ 0.80 com keyword + trigram via RRF
 
 ## US-15: Exportar Resultados
 
