@@ -108,9 +108,37 @@ Estado atual: `npm audit --omit=dev` — **0 críticas, 9 altas**. As que perman
 | tooling Prisma (`deepmerge-ts`, `mysql2`, `hono`) | High | **Mitigado** — dependências apenas de dev/toolchain, não do runtime da aplicação |
 | `protobufjs@7.x` | (antiga Critical) | **Corrigido** — `overrides` força versão segura |
 
+## MCP Server (`/api/mcp`)
+
+O endpoint MCP (Streamable HTTP) segue o mesmo modelo de segurança da API
+pública, com camadas adicionais exigidas pelo spec:
+
+- **Origin allowlist (anti DNS rebinding)** — se o header `Origin` vier presente
+  (navegadores), precisa estar na allowlist (`BASE_URL` + `MCP_ALLOWED_ORIGINS`);
+  clientes nativos (Claude/Cursor/opencode) não enviam `Origin` e são aceitos.
+  Fora da lista → `403`.
+- **API key opcional** — com `MCP_API_KEY` definida, toda requisição exige
+  `Authorization: Bearer <key>` (comparação constant-time via
+  `crypto.timingSafeEqual` com hash SHA-256); senão → `401`.
+- **CORS para navegadores** — a rota ecoa `Access-Control-Allow-Origin` apenas
+  para origens permitidas e responde preflight `OPTIONS` (o transporte MCP não
+  emite CORS por conta própria). Consumo principal: clientes nativos.
+- **Rate limit por IP** — escopo `mcp`, default `120 req/min` (`MCP_RATE_LIMIT`),
+  reusando `src/lib/rate-limit.ts` (mesmo limiter e sweep das rotas `/api`).
+- **Somente leitura** — expõe apenas as Server Actions públicas de consulta
+  (`src/lib/actions/*`). Actions administrativas (`withAdmin`/`withAdminReturn`,
+  `revalidatePath`, escrita em banco) **não** são registradas como tools.
+- **Erros genéricos** — as tools nunca devolvem detalhes internos; apenas
+  `Erro interno ao executar a ferramenta` (detalhe vai para o log do servidor).
+- **Sessões com TTL** — mapa em memória com sweep (teto 10k, padrão do
+  rate-limit); TTL `MCP_SESSION_TTL_MIN` (default 60min, renovação deslizante).
+  Sessão inválida/expirada → `404`, o cliente reinicializa (spec).
+
+Implementação: `src/lib/mcp/security.ts`, `src/lib/mcp/session.ts`.
+
 ## Limitações Conhecidas
 
-1. **Rate limit em memória** — Implementado via `Map<string, { count, resetAt }>` em `src/lib/rate-limit.ts` (rotas e actions). Funciona para single-instância. Para múltiplas instâncias/workers, migrar para Redis.
+1. **Rate limit em memória** — Implementado via `Map<string, { count, resetAt }>` em `src/lib/rate-limit.ts` (rotas e actions) e `src/lib/mcp/session.ts` (sessões MCP). Funciona para single-instância. Para múltiplas instâncias/workers, migrar para Redis.
 2. **Spoofing de IP** — `getClientIp` usa o primeiro valor de `x-forwarded-for`. Em produção atrás de proxy, garantir que o proxy sobrescreva o header para não permitir burlar o limite por IP.
 3. **xlsx@0.18.5** — Sem fix disponível para prototype pollution. Mitigado por ser fonte confiável (ANVISA) e uso restrito a admin.
 4. **Autenticação simples** — Apenas email/senha com Credentials provider. Sem 2FA. Para produção com dados sensíveis, considerar 2FA.

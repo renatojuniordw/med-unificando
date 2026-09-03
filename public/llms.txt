@@ -10,6 +10,15 @@ Med Unificando e uma plataforma para consultar medicamentos similares e de refer
 
 Tech stack: Next.js 16, TypeScript, Tailwind CSS v4, Prisma 7, PostgreSQL, NextAuth v5, Xenova Transformers, Vercel.
 
+## MCP Server
+
+O Med Unificando expoe um MCP Server (Model Context Protocol, Streamable HTTP) para agentes de IA consultarem o dominio como ferramentas read-only:
+
+- Endpoint: https://med.unificando.com.br/api/mcp
+- 12 ferramentas: buscar_medicamentos, buscar_por_descricao (busca semantica hibrida), detalhe_medicamento, referencias_medicamento, similares_referencia, arvore_atc, medicamentos_por_atc, medicamentos_por_detentor, resumo_detentor, comparar_medicamentos, autocomplete_campo, estatisticas_medicamentos
+- Dados: consulta de medicamentos intercambiaveis da ANVISA, precos CMED, classificacao ATC, Farmacia Popular
+- Exemplo (Claude Desktop / Claude Code): {"mcpServers":{"med-unificando":{"url":"https://med.unificando.com.br/api/mcp"}}}
+
 ## Paginas
 
 - / — Home com busca por descricao
@@ -21,6 +30,7 @@ Tech stack: Next.js 16, TypeScript, Tailwind CSS v4, Prisma 7, PostgreSQL, NextA
 - /dashboard — Estatisticas consolidadas
 - /compare — Comparacao lado a lado
 - /sobre — Sobre o projeto e fontes de dados
+- /mcp — Instrucoes de uso do MCP Server
 - /medicamento/[slug] — Detalhes de um medicamento (slug semantico com ID no sufixo; inclui badge Farmacia Popular)
 - /detentor/[holder] — Medicamentos por detentor de registro
 - /admin/login — Login do administrador

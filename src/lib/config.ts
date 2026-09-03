@@ -98,5 +98,9 @@ export const SEARCH = {
 } as const
 
 export const SITE = {
-  BASE_URL: process.env.BASE_URL ?? 'https://med.unificando.com.br',
+  // NEXT_PUBLIC_BASE_URL é inline no bundle do cliente com o MESMO valor do
+  // servidor — componente client (ex.: JSON-LD do Breadcrumbs) não pode ler
+  // variáveis server-only (BASE_URL vira undefined no navegador e causa
+  // hydration mismatch). BASE_URL continua como fallback em código server.
+  BASE_URL: process.env.NEXT_PUBLIC_BASE_URL ?? process.env.BASE_URL ?? 'https://med.unificando.com.br',
 } as const

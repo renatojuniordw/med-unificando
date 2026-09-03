@@ -28,6 +28,7 @@
     "docker:build": "docker compose build --no-cache"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@xenova/transformers": "^2.17.2",

@@ -185,6 +185,16 @@ export default function AboutPage() {
               </p>
             </Card>
 
+            <Card>
+              <h2 className="font-semibold text-lg mb-3">Programático</h2>
+              <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed">
+                Os dados podem ser consumidos via <strong className="text-[var(--color-text)]">API REST</strong> (&apos;/api/medicines&apos;)
+                ou como <strong className="text-[var(--color-text)]">MCP Server</strong> — ferramentas para agentes de IA
+                (Claude, Cursor, opencode). Veja{' '}
+                <a href="/mcp" className="underline hover:text-brand-yellow transition-colors">como usar o MCP</a>.
+              </p>
+            </Card>
+
             <Card variant="inactive">
               <h2 className="font-semibold text-lg mb-3">Aviso Legal</h2>
               <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed">

@@ -242,6 +242,44 @@ Disallow: /api/
 Sitemap: https://med.unificando.com.br/sitemap.xml
 ```
 
+## MCP — Streamable HTTP (`/api/mcp`)
+
+O projeto expõe um **MCP Server** (Model Context Protocol, spec `2025-06-18`)
+no endpoint único `/api/mcp` — permite agentes de IA (Claude Desktop/Code,
+Cursor, opencode) consultarem o domínio como ferramentas. **Somente leitura**,
+espelhando a área pública do site (nenhuma ação administrativa).
+
+| Método | Uso |
+|--------|-----|
+| `POST` | Mensagens JSON-RPC (`initialize`, `tools/list`, `tools/call`, ...) |
+| `GET` | Stream SSE por sessão (notificações do servidor) |
+| `DELETE` | Encerra a sessão |
+
+Handshake típico:
+
+```bash
+# 1. Inicializar → resposta traz o header mcp-session-id
+curl -i -X POST http://localhost:11006/api/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"cli","version":"1.0"}}}'
+
+# 2. tools/list e tools/call usam o mcp-session-id
+curl -X POST http://localhost:11006/api/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "mcp-session-id: <SESSION_ID>" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
+```
+
+São **12 tools** (`buscar_medicamentos`, `buscar_por_descricao`, `detalhe_medicamento`,
+`arvore_atc`, `comparar_medicamentos`, etc.). Documentação completa, exemplos por
+cliente e variáveis de ambiente: **`docs/MCP.md`**.
+
+Rate limit: `120 req/min/IP` (escopo `mcp`, configurável via `MCP_RATE_LIMIT`).
+Com `MCP_API_KEY` definida, toda requisição exige `Authorization: Bearer <key>`.
+Origem fora da allowlist (`BASE_URL` + `MCP_ALLOWED_ORIGINS`) → `403`.
+
 ## Autenticação
 
 - **Páginas admin**: `/admin/(protected)/*` exigem sessão (layout redireciona para `/admin/login`); `/admin/import` tem callback `authorized` no NextAuth.
@@ -258,6 +296,7 @@ Sitemap: https://med.unificando.com.br/sitemap.xml
 | `/api/autocomplete` | 120 req/min |
 | `POST /api/search-feedback` | 20 req/min |
 | `/api/auth/callback/credentials` (POST login) | 10 req/min (route wrapper; proxy na borda) |
+| `/api/mcp` | 120 req/min (MCP; ver `docs/MCP.md`) |
 
 Implementação: `src/lib/rate-limit.ts` — `Map<string, { count, resetAt }>` em memória (janela fixa de 60s) com **sweep/evict** (teto de 10.000 buckets; chaves expiradas removidas periodicamente), adequado para instância única; para multi-instância, migrar para Redis. Em excesso, retorna `429 Too Many Requests` com header `Retry-After`. Server actions públicas (busca, autocomplete, export, feedback) também são limitadas via `src/lib/rate-limit-action.ts`.
 

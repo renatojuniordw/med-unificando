@@ -52,7 +52,7 @@ npm run dev
 | `npm run test` | Vitest (unit) |
 | `npm run test:watch` | Vitest watch |
 | `npm run test:coverage` | Vitest coverage (número oficial) |
-| `npm run test:e2e` | Playwright E2E (8 specs; sobe dev server próprio em 11009) |
+| `npm run test:e2e` | Playwright E2E (9 specs; sobe dev server próprio em 11009) |
 | `npm run test:e2e:ui` | Playwright UI |
 | `npm run seed` | Importar dados ANVISA |
 | `npm run migrate` | Aplicar migrations Prisma |
@@ -213,6 +213,27 @@ npm run test:e2e   # exige Postgres (medicamentos-db) no ar; sobe dev server pr�
 ```
 
 Cobertura oficial (`npm run test:coverage`): **Lines 91% · Stmts 89.1% · Branch 81.9% · Funcs 88.3%** (58 arquivos / 385 testes unit; 18 testes E2E). `semantic-search.ts` fica fora da cobertura por design (injeta modelo on-device).
+
+## MCP Server
+
+O endpoint MCP (`/api/mcp`) funciona no dev server normalmente. Para testá-lo manualmente:
+
+```bash
+# Dev server
+npm run dev
+
+# Para testar com respostas JSON puras (sem SSE) — o default é SSE
+MCP_ENABLE_JSON_RESPONSE=true npm run dev
+```
+
+Em seguida siga o fluxo de curl descrito em `docs/MCP.md` (initialize → tools/list → tools/call).
+
+Testes dedicados:
+- **Unit (Vitest)**: `tests/lib/mcp-registry.test.ts`, `tests/lib/mcp-schemas.test.ts`,
+  `tests/lib/mcp-tools.test.ts`, `tests/lib/mcp-session.test.ts`, `tests/lib/mcp-security.test.ts`,
+  `tests/api/mcp-route.test.ts`.
+- **E2E (Playwright)**: `e2e/mcp.spec.ts` — valida o handshake real; o servidor de E2E roda com
+  `MCP_ENABLE_JSON_RESPONSE=true` (configurado em `playwright.config.ts`).
 
 ## Hooks Customizados
 

@@ -31,6 +31,9 @@ webServer: {
     // o `next dev` faz o próprio autoload do .env para o DATABASE_URL.
     env: {
       NEXT_TELEMETRY_DISABLED: '1',
+      // MCP: nos testes E2E usamos respostas JSON puras (sem SSE) para validar
+      // o handshake via APIRequestContext sem parsing de stream.
+      MCP_ENABLE_JSON_RESPONSE: 'true',
     },
     timeout: 180_000,
   },

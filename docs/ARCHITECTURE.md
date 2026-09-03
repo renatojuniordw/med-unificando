@@ -70,6 +70,7 @@ med-unificando/
 │   │   ├── dashboard/             # Stats + timeline por ano
 │   │   ├── compare/               # Comparação lado a lado
 │   │   ├── sobre/                 # Sobre o projeto
+│   │   ├── mcp/                   # Página pública com instruções do MCP Server
 │   │   ├── privacidade/           # Política de privacidade (LGPD)
 │   │   ├── admin/
 │   │   │   ├── (auth)/login/      # Login (rate limit 10/min no callback)
@@ -84,6 +85,7 @@ med-unificando/
 │   │       ├── autocomplete/      # Sugestões trigram (rate limit 120/min)
 │   │       ├── search-feedback/   # POST feedback (20/min) + GET stats (admin)
 │   │       ├── search-analytics/  # GET analytics (admin)
+│   │       ├── mcp/               # MCP Server — Streamable HTTP (tools read-only)
 │   │       ├── auth/[...nextauth] # NextAuth v5 (Credentials)
 │   │       └── health/            # Health check
 │   ├── components/
@@ -147,6 +149,15 @@ med-unificando/
 │   │   ├── search-relevance.ts    # Cálculo de relevância (honestScore)
 │   │   ├── score-adjustments.ts   # Ajustes de score por feedback
 │   │   ├── embeddings-generator.ts # Geração batch de embeddings
+│   │   ├── mcp/                   # MCP Server (Streamable HTTP)
+│   │   │   ├── types.ts           #   McpToolDefinition (declaração declarativa)
+│   │   │   ├── result.ts          #   jsonResult / toolError (serialização)
+│   │   │   ├── register.ts        #   registerTools(server, defs) — OCP
+│   │   │   ├── server.ts          #   createMcpServer() (factory)
+│   │   │   ├── config.ts          #   MCP_CONFIG (env vars)
+│   │   │   ├── session.ts         #   McpSessionManager (1 server/sessão, TTL)
+│   │   │   ├── security.ts        #   origin + api key + rate limit
+│   │   │   └── tools/             #   12 tools declarativas + schemas zod
 │   │   ├── csv-utils.ts           # Escape CSV
 │   │   ├── safe-json-ld.ts        # JSON-LD sanitizado
 │   │   ├── pdf-parser.ts          # Parse de PDF
@@ -157,8 +168,8 @@ med-unificando/
 │   ├── auth.ts                    # Instância NextAuth v5
 │   ├── proxy.ts                   # Defesa de borda (matcher /admin/login + /api/auth/callback/credentials)
 │   └── generated/prisma/          # Cliente Prisma gerado
-├── e2e/                           # 8 specs Playwright (smoke, busca, compare, detalhe, referências, login, PWA)
-├── tests/                         # Testes Vitest (~58 arquivos: api, components, lib, hooks)
+├── e2e/                           # 9 specs Playwright (smoke, busca, compare, detalhe, referências, login, PWA, MCP)
+├── tests/                         # Testes Vitest (~64 arquivos: api, components, lib, hooks, mcp)
 ├── .github/workflows/ci.yml       # CI: lint + typecheck + test + build (sem DB)
 ├── prisma.config.ts
 ├── vitest.config.ts
@@ -177,6 +188,7 @@ med-unificando/
     ├── DEPLOYMENT.md
     ├── DESIGN_SYSTEM.md
     ├── DEVELOPMENT.md
+    ├── MCP.md                      # MCP Server (tools, clientes, segurança, deploy)
     ├── SECURITY.md
     └── USER_STORIES.md
 ```
@@ -285,6 +297,8 @@ med-unificando/
 | Feedback | Session/memória | PostgreSQL (SearchFeedback) | Persistente, auditável, queryável |
 | Farmácia Popular | Manual OCR | pdf-parse + matching por activeIngredient | Custo zero, estrutura tabular previsível |
 | Rate limit | Redis | In-memory (Map) | Suficiente para instância única; migrar p/ Redis se multi-instância |
+| MCP transport | SSE antigo / stdio | Streamable HTTP (web-standard) | Spec 2025-06-18; roda nativo no route handler do Next (Request/Response) |
+| MCP session | Singleton por processo | 1 McpServer + 1 transport por sessão (Map) | SDK rejeita conectar o mesmo Server a 2 transports; clientes reconectam via 404 |
 
 ## Segurança
 

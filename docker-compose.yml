@@ -61,6 +61,13 @@ services:
       NODE_ENV: production
       PORT: 11006
       NEXT_TELEMETRY_DISABLED: "1"
+      # MCP Server (/api/mcp) — opcional; ver docs/MCP.md
+      MCP_ENABLED: ${MCP_ENABLED:-true}
+      MCP_API_KEY: ${MCP_API_KEY:-}
+      MCP_ALLOWED_ORIGINS: ${MCP_ALLOWED_ORIGINS:-}
+      MCP_SESSION_TTL_MIN: ${MCP_SESSION_TTL_MIN:-60}
+      MCP_ENABLE_JSON_RESPONSE: ${MCP_ENABLE_JSON_RESPONSE:-false}
+      MCP_RATE_LIMIT: ${MCP_RATE_LIMIT:-120}
     networks:
       - medicamentos-net
     depends_on:

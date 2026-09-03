@@ -120,6 +120,7 @@ docker compose logs -f db      # Banco
 | `NODE_ENV` | Não | `production` (default) |
 | `PORT` | Não | `11006` (default) |
 | `BASE_URL` | Não | URL base para sitemap/robots (`https://seudominio.com.br`) |
+| `NEXT_PUBLIC_BASE_URL` | Não | Mesma URL do `BASE_URL`, pública (inline no bundle do cliente) — evita hydration mismatch em componentes client (ex.: JSON-LD do Breadcrumbs) |
 | `EMBEDDING_MODEL` | Não | Modelo de embedding (`Xenova/multilingual-e5-base`) |
 | `ANVISA_THERAPEUTIC_CLASS_URL` | Não | URL do CSV de classes terapêuticas |
 | `NEXT_TELEMETRY_DISABLED` | Não | `1` (default no Docker) |
@@ -179,6 +180,25 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # MCP (Streamable HTTP). Com MCP_ENABLE_JSON_RESPONSE=false (default) o
+    # servidor responde via SSE — é necessário desativar o buffering e permitir
+    # streams longos para o handshake não "estagnar". Detalhes: docs/MCP.md.
+    # IMPORTANTE: repita os proxy_set_header do location / para o rate limit
+    # por IP funcionar (X-Forwarded-For/X-Real-IP não são herdados entre
+    # locations irmãos — sem eles todo cliente cai no bucket 'unknown').
+    location /api/mcp {
+        proxy_pass http://127.0.0.1:11006;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_read_timeout 30m;
+        proxy_send_timeout 30m;
     }
 }
 

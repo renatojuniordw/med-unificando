@@ -119,6 +119,12 @@ npm run dev
 | `EMBEDDING_DIMS` | Dimensões do embedding (default: 768; `EMBEDDING.COLUMN` é fixo em `embedding` no código) | Não |
 | `SEARCH_LOGS_RETENTION_DAYS` | Dias de retenção de `search_logs` no purge (default 365) | Não |
 | `SEARCH_FEEDBACK_RETENTION_DAYS` | Dias de retenção de `search_feedback` no purge (default 365) | Não |
+| `MCP_ENABLED` | Liga/desliga o endpoint `/api/mcp` (default `true`) | Não |
+| `MCP_API_KEY` | Se definida, exige `Authorization: Bearer <key>` no MCP | Não |
+| `MCP_ALLOWED_ORIGINS` | Allowlist extra de Origin (vírgula) além de `BASE_URL` | Não |
+| `MCP_SESSION_TTL_MIN` | TTL de sessão MCP em minutos (default `60`) | Não |
+| `MCP_ENABLE_JSON_RESPONSE` | `true` = respostas JSON puras; `false` = SSE (default) | Não |
+| `MCP_RATE_LIMIT` | Limite de req/min por IP no MCP (default `120`) | Não |
 | `NODE_ENV` | `production` (compose) | Não |
 
 Todas as variáveis com `:?` no compose são obrigatórias em deploy. **Removido:** `ALLOW_INSECURE_TLS` (não há mais variável global de TLS).
@@ -170,6 +176,7 @@ Outros utilitários (não npm scripts) em `scripts/`: `reindex-embeddings.ts`, `
 | `/compare` | Comparação lado a lado (sincroniza com `?ids=`) |
 | `/dashboard` | Estatísticas com filtros interativos (cacheado) |
 | `/sobre` | Sobre o projeto e fontes de dados |
+| `/mcp` | Página pública do MCP Server (instruções de uso) |
 | `/privacidade` | Política de privacidade (LGPD) |
 | `/admin/login` | Login (rate limit 10/min no callback) |
 | `/admin/import` | Sincronização ANVISA + Preços + Farmácia Popular |
@@ -204,6 +211,26 @@ curl -X POST http://localhost:11006/api/search-feedback \
   -d '{"query":"...","medicineId":1,"medicineName":"...","feedback":"helpful"}'
 ```
 
+### MCP Server (Model Context Protocol)
+
+O site também expõe um **MCP Server** via Streamable HTTP (`spec 2025-06-18`) no
+endpoint `https://med.unificando.com.br/api/mcp` — agentes de IA (Claude
+Desktop/Code, Cursor, opencode) consultam o domínio como **12 ferramentas**
+read-only (`buscar_medicamentos`, `buscar_por_descricao`, `detalhe_medicamento`,
+`arvore_atc`, ...), reutilizando as mesmas Server Actions do site.
+
+Exemplo de config no cliente:
+
+```jsonc
+{
+  "mcpServers": {
+    "med-unificando": { "url": "https://med.unificando.com.br/api/mcp" }
+  }
+}
+```
+
+Documentação completa: **[`docs/MCP.md`](docs/MCP.md)** · Página pública: [`/mcp`](https://med.unificando.com.br/mcp) · Endpoint: `/api/mcp`
+
 Rate limits: `/api/medicines` 60/min · `/api/autocomplete` 120/min · `/api/search-feedback` POST 20/min · login 10/min (callback NextAuth + proxy). Detalhes em `docs/API.md`.
 
 ---
@@ -222,6 +249,7 @@ src/
 │   ├── compare/                # Comparação
 │   ├── privacidade/            # Política de privacidade
 │   ├── sobre/                  # Sobre
+│   ├── mcp/                    # Página do MCP Server (instruções)
 │   ├── admin/
 │   │   ├── (auth)/login/      # Login (rate limit no callback)
 │   │   └── (protected)/        # Layout que exige sessão
@@ -234,6 +262,7 @@ src/
 │   │   ├── autocomplete/      # Sugestões trigram (120/min)
 │   │   ├── search-feedback/   # POST feedback (20/min) + GET stats (admin)
 │   │   ├── search-analytics/  # GET analytics (admin)
+│   │   ├── mcp/               # MCP Server — Streamable HTTP (read-only)
 │   │   ├── auth/[...nextauth]/ # NextAuth v5 (rate limit login 10/min)
 │   │   └── health/            # Health check
 │   ├── layout.tsx · loading.tsx · not-found.tsx · sitemap.ts · robots.ts · opengraph-image.tsx
@@ -257,6 +286,7 @@ src/
 │   ├── rate-limit.ts + rate-limit-action.ts  # in-memory com sweep (teto 10k)
 │   ├── auth-guard.ts          # withAuth / withAdmin / withAdminReturn / isAdmin
 │   ├── feedback-schema.ts     # zod para feedback
+│   ├── mcp/                   # MCP Server — types, register, session, security, tools
 │   └── ... (format, text-utils, build-where, query-parser, keyword-utils,
 │            search-relevance, score-adjustments, embeddings-generator, csv-utils,
 │            csv-export, safe-json-ld, pdf-parser, prisma, theme-provider,
@@ -265,8 +295,8 @@ src/
 ├── proxy.ts                   # Defesa de borda no login (matcher /admin/login + callback)
 └── types/                     # index.ts, medicine.ts, next-auth.d.ts, pdf-*
 public/  # manifest.json (PWA com ícones), sw.js, icon-192/512.png/svg, llms.txt
-e2e/     # 8 specs Playwright (smoke, busca, compare, detalhe, referências, login, PWA)
-tests/   # ~58 arquivos Vitest (api, components, lib, hooks)
+e2e/     # 9 specs Playwright (smoke, busca, compare, detalhe, referências, login, PWA, MCP)
+tests/   # ~64 arquivos Vitest (api, components, lib, hooks, mcp)
 scripts/ # utilitários (19 arquivos TS/SH)
 prisma/  # schema.prisma, migrations (17), seed.ts, import-prices.ts
 .github/workflows/ci.yml       # lint + typecheck + test + build (sem banco)
@@ -332,6 +362,7 @@ Identidade **Healthcare Moderno** — amarelo neon (`#ccff00`) como acento de ma
 - `docs/DESIGN_SYSTEM.md` — identidade visual, componentes, a11y
 - `docs/SECURITY.md` — modelo de ameaça, headers, rate limits
 - `docs/USER_STORIES.md` — jornadas do usuário
+- `docs/MCP.md` — MCP Server (tools, clientes, segurança, deploy)
 
 ---
 
