@@ -1,4 +1,4 @@
-import { getMedicinesByAtc } from '@/lib/actions/atc'
+import { getCachedAtcMedicines } from '@/lib/data-cache'
 import { AtcCodeContent } from '@/components/medicines/atc-code-content'
 import { Skeleton } from '@/components/ui/skeleton'
 import { notFound } from 'next/navigation'
@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: { params: Promise<{ code: str
 export default async function AtcCodePage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params
   const decoded = decodeURIComponent(code).toUpperCase()
-  const initialData = await getMedicinesByAtc(decoded, 1, 20)
+  const initialData = await getCachedAtcMedicines(decoded, 1, 20)
 
   if (initialData.data.length === 0) notFound()
 

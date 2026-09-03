@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma'
+import { getCachedReferenceMedicines } from '@/lib/data-cache'
 import { Badge } from '@/components/ui/badge'
 import { SimilarMedicinesList } from '@/components/medicines/similar-medicines-list'
 import Link from 'next/link'
@@ -25,10 +25,7 @@ export default async function ReferenceDetailPage({ params }: { params: Promise<
   const { name } = await params
   const decodedName = decodeURIComponent(name)
 
-  const medicines = await prisma.medicine.findMany({
-    where: { referenceMedicine: { equals: decodedName, mode: 'insensitive' } },
-    orderBy: { tradeName: 'asc' },
-  })
+  const medicines = await getCachedReferenceMedicines(decodedName)
 
   if (medicines.length === 0) notFound()
 

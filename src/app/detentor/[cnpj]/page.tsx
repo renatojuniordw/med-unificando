@@ -2,7 +2,7 @@ import { Badge } from '@/components/ui/badge'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { HolderContent } from '@/components/medicines/holder-content'
 import { Skeleton } from '@/components/ui/skeleton'
-import { getHolderMedicines, getHolderSummary } from '@/lib/actions/search'
+import { getCachedHolderMedicines, getCachedHolderSummary } from '@/lib/data-cache'
 import { MEDICINE_LIMITS } from '@/lib/constants'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
@@ -28,8 +28,8 @@ export default async function HolderPage({ params }: { params: Promise<{ cnpj: s
   const decoded = decodeURIComponent(cnpj)
 
   const [{ data, total }, summary] = await Promise.all([
-    getHolderMedicines(decoded, 1, MEDICINE_LIMITS.HOLDER_PAGE_SIZE),
-    getHolderSummary(decoded),
+    getCachedHolderMedicines(decoded, 1, MEDICINE_LIMITS.HOLDER_PAGE_SIZE),
+    getCachedHolderSummary(decoded),
   ])
 
   if (data.length === 0) notFound()

@@ -1,4 +1,4 @@
-import { getMedicineDetail } from '@/lib/actions/medicine-detail'
+import { getCachedMedicineDetail } from '@/lib/data-cache'
 import { prisma } from '@/lib/prisma'
 import { safeJsonLd } from '@/lib/safe-json-ld'
 import { Badge } from '@/components/ui/badge'
@@ -36,7 +36,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function MedicineDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const detail = await getMedicineDetail(parseInt(id))
+  const detail = await getCachedMedicineDetail(parseInt(id))
   if (!detail) notFound()
 
   const { medicine: med, prices, similares } = detail
