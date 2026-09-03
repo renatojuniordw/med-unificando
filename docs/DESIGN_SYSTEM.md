@@ -55,7 +55,7 @@ impacto visual do Brutalismo puro usado em outros projetos da marca.
 
 ## 2. Tipografia
 
-**Família:** Inter (variável), carregada via Google Fonts com `display: swap`.
+**Família:** Inter (variável), carregada via `next/font/google` (self-hosted em `/_next/static/media/...`, com `display: swap`) — sem requisição externa a CDN de fontes.
 
 ```css
 const inter = Inter({

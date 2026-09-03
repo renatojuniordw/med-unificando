@@ -32,6 +32,8 @@ export interface AtcLevel {
   fullCode: string
 }
 
+export function getAtcLevel(code: string): AtcLevel
+export function getAtcLevel(code: null | undefined): null
 export function getAtcLevel(code: string | null | undefined): AtcLevel | null {
   if (!code) return null
   return {

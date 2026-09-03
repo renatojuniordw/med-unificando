@@ -3,6 +3,7 @@
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useEffect, useState, useRef } from 'react'
 import { getMedicinesByAtc } from '@/lib/actions/atc'
+import { getAtcLevel } from '@/lib/dictionaries/atc-codes'
 import { StatusPill } from '@/components/ui/status-pill'
 import { Badge } from '@/components/ui/badge'
 import { PaginationBar } from '@/components/ui/pagination'
@@ -14,18 +15,15 @@ interface AtcCodeContentProps {
   initialData: SearchResponse
 }
 
-// Computa breadcrumbs ATC a partir do código
+// Computa breadcrumbs ATC a partir do código (usa getAtcLevel como fonte única)
 function getAtcBreadcrumbs(code: string): { label: string; href?: string }[] {
+  const level = getAtcLevel(code)
+  if (!level) return [{ label: code }]
+
   const crumbs: { label: string; href?: string }[] = []
-  if (code.length >= 1) {
-    crumbs.push({ label: code.substring(0, 1), href: `/atc/${code.substring(0, 1)}` })
-  }
-  if (code.length >= 3) {
-    crumbs.push({ label: code.substring(0, 3), href: `/atc/${code.substring(0, 3)}` })
-  }
-  if (code.length >= 4) {
-    crumbs.push({ label: code.substring(0, 4), href: `/atc/${code.substring(0, 4)}` })
-  }
+  if (level.level1) crumbs.push({ label: level.level1, href: `/atc/${level.level1}` })
+  if (level.level2) crumbs.push({ label: level.level2, href: `/atc/${level.level2}` })
+  if (level.level3) crumbs.push({ label: level.level3, href: `/atc/${level.level3}` })
   crumbs.push({ label: code })
   return crumbs
 }

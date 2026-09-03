@@ -1,12 +1,12 @@
 // Script de teste automatizado da busca híbrida
 // Executa múltiplos cenários e valida os resultados
 
-import { hybridSearch, clearEmbeddingsCache } from '../src/lib/actions/semantic-search'
+import { hybridSearch, clearEmbeddingsCache, type SearchResultItem } from '../src/lib/actions/semantic-search'
 
 interface TestCase {
   name: string
   query: string
-  validate: (results: { score: number; medicine: { tradeName: string; activeIngredient: string; indications?: string | null; therapeuticClass?: string | null } }[]) => string[]
+  validate: (results: SearchResultItem[]) => string[]
 }
 
 const TESTS: TestCase[] = [
@@ -175,7 +175,7 @@ async function runTests() {
     
     try {
       const start = Date.now()
-      const results = await hybridSearch(test.query, 20)
+      const { results } = await hybridSearch(test.query, 20)
       const duration = Date.now() - start
       console.log(`   ⏱  ${(duration / 1000).toFixed(1)}s`)
       

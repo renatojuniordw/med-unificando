@@ -2,7 +2,7 @@
 
 ## Tecnologia
 
-PostgreSQL 16 via Prisma 7 ORM.
+PostgreSQL 16 via Prisma 7 ORM (cliente gerado em `src/generated/prisma`, adapter `@prisma/adapter-pg`).
 
 Extensões:
 - `pgvector` — embeddings vetoriais para busca semântica
@@ -10,20 +10,25 @@ Extensões:
 
 ## Migrations
 
-Total: 10 migrations (em `prisma/migrations/`):
+Total: 15 migrations (em `prisma/migrations/`):
 
 | Migration | Descrição |
 |-----------|-----------|
-| `init` | Tabela `medicines` inicial |
-| `add_users` | Modelo `User` para autenticação |
-| `enrich_medicine_model` | Campos: category, atcCode, status, etc. |
-| `add_prices` | Modelo `Price` para preços CMED |
-| `add_synonyms_indications` | Campos `synonyms` e `indications` |
-| `add_sync_log` | Modelo `SyncLog` para log de sincronizações |
-| `add_therapeutic_class` | Campo `therapeuticClass` no modelo Medicine |
-| `add_farmacia_popular` | Campo `farmaciaPopular` no modelo Medicine |
-| `add_pg_trgm_and_search_index` | Extensão pg_trgm, índices GIN trigram, modelo SearchFeedback |
-| `add_pgvector_tsvector` | Colunas `embedding` (vector(384)) e `searchDocument` (tsvector) |
+| `20260717174911_init` | Tabela `medicines` inicial |
+| `20260717175640_add_users` | Modelo `User` para autenticação |
+| `20260717193631_enrich_medicine_model` | Campos: category, atcCode, status, etc. |
+| `20260717195040_add_prices` | Modelo `Price` para preços CMED |
+| `20260717213851_add_synonyms_indications` | Campos `synonyms` e `indications` |
+| `20260717223730_add_sync_log` | Modelo `SyncLog` para log de sincronizações |
+| `20260721132351_add_therapeutic_class` | Campo `therapeuticClass` no modelo Medicine |
+| `20260721191040_add_farmacia_popular` | Campo `farmaciaPopular` no modelo Medicine |
+| `20260721204758_add_pg_trgm_and_search_index` | Extensão pg_trgm, índice GIN trigram (5 colunas) |
+| `20260721214620_add_pgvector_tsvector` | Colunas `embedding` (vector(384)) + `search_document` (tsvector GENERATED), índice GIN |
+| `20260821000000_add_embedding_new_768` | Nova coluna `embedding_new` vector(768) + índice HNSW |
+| `20260821010000_add_search_logs` | Tabela `search_logs` (analytics de busca) |
+| `20260821020000_finalize_embedding_768` | Remove `embedding` (384d), renomeia `embedding_new` → `embedding` (768d) e o índice |
+| `20260821030000_add_search_feedback` | Tabela `search_feedback` + índices |
+| `20260903000000_make_search_document_regular` | `search_document` vira coluna **regular** (não GENERATED); índices para `referenceMedicine`, `atcCode`, `inclusionDate` |
 
 ## Modelos
 
@@ -52,8 +57,8 @@ model Medicine {
   anvisaFileDate       DateTime? // Data do arquivo ANVISA (Last-Modified do CSV)
   lastImportAt         DateTime? // Data da última importação
   farmaciaPopular      Boolean  @default(false) @map("farmacia_popular") // Farmácia Popular (MS)
-  embedding            Unsupported("vector(384)")? // Embedding pgvector para busca semântica
-  searchDocument       Unsupported("tsvector")?   @map("search_document") // Documento tsvector para busca textual
+  embedding            Unsupported("vector(768)")? // Embedding pgvector para busca semântica
+  searchDocument       Unsupported("tsvector")?   @map("search_document") // Documento tsvector (coluna regular)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
@@ -67,6 +72,8 @@ model Medicine {
   @@map("medicines")
 }
 ```
+
+> `embedding` é `vector(768)` (multilingual-e5-base). `search_document` é uma coluna **regular** (não GENERATED) — a fonte autoritativa é o script `scripts/generate-tsvector.ts`, que resolve nomes de forma farmacêutica/ATC (a versão GENERATED usava códigos crus e foi removida).
 
 ### Price (53.422 registros)
 
@@ -145,36 +152,60 @@ model SearchFeedback {
 }
 ```
 
+### search_logs (tabela raw — sem modelo Prisma)
+
+Tabela criada por migration e acessada via SQL cru (`$queryRawUnsafe`), usada para analytics de busca:
+
+```sql
+CREATE TABLE search_logs (
+  id SERIAL PRIMARY KEY,
+  query TEXT NOT NULL,
+  results_count INTEGER NOT NULL DEFAULT 0,
+  top_score REAL,
+  query_type TEXT,
+  response_time_ms INTEGER,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+- Escrita: `logSearch` em `src/lib/actions/semantic-search.ts` (fire-and-forget)
+- Leitura: `/api/search-analytics` e página admin `/admin/search-analytics`
+
 ## Índices
 
 | Tabela | Índices | Queries beneficiadas |
 |--------|---------|----------------------|
 | medicines | reference, activeIngredient, tradeName, similarHolder, category, status, farmaciaPopular | Busca textual, autocomplete, filtros por categoria/situação/Farmácia Popular |
-| medicines | `idx_medicines_embedding` (IVFFlat, lists=180) | Busca vetorial O(log n) por similaridade semântica |
-| medicines | `idx_medicines_search_document` (GIN) | Busca tsvector O(log n) por texto completo |
+| medicines | `idx_medicines_embedding` (HNSW, cosine) — 768 dims | Busca vetorial por similaridade semântica |
+| medicines | `idx_medicines_search_document` (GIN) | Busca tsvector por texto completo |
+| medicines | `idx_medicines_search_fields` (GIN trigram, 5 colunas) | Autocomplete fuzzy (operador `%`) |
+| medicines | `idx_medicines_reference_medicine`, `idx_medicines_atc_code`, `idx_medicines_inclusion_date` | Filtros ILIKE e ordenações em produção |
 | prices | reference, cnpj | Join com medicines por registro, filtro por empresa |
 | search_feedback | query+feedback, medicineId, createdAt | Análise de feedback, agregação por consulta |
+| search_logs | query, created_at DESC | Analytics: top queries, janelas de tempo |
 
 ## Embeddings
 
 Os embeddings são armazenados diretamente no banco de dados PostgreSQL usando a extensão **pgvector**:
 
-- **Modelo**: `multilingual-e5-small` (384 dimensões)
-- **Índice**: IVFFlat com `lists=180` para busca vetorial O(log n)
-- **Geração**: batch de 50 registros, apenas medicamentos sem embedding
-- **Texto indexado**: `nome | princípio ativo | categoria | detentor | forma farmacêutica | concentração | sinônimos | indicações | situação | registro`
+- **Modelo**: `Xenova/multilingual-e5-base` (768 dimensões) — configurável via `EMBEDDING_MODEL`/`EMBEDDING_DIMS`
+- **Índice**: HNSW com cosine (o antigo IVFFlat de 384d foi removido na migração de finalização)
+- **Geração**: batch de 50 registros (`generate-search-index.ts`), apenas medicamentos sem embedding (`WHERE embedding IS NULL`); retry 3x por lote
+- **Prefixo**: texto de documento com prefixo `passage:`; consultas usam `query:`
+- **Cache do modelo**: `/tmp/.transformers-cache` (volume `transformers_cache` no Docker)
+- **Texto indexado**: `nome | princípio ativo | forma farmacêutica | classe terapêutica | descrição ATC | indicações | sinônimos | concentração | categoria | tipo prescrição | detentor | situação | farmácia popular`
 
 ### Colunas
 
 | Coluna | Tipo | Descrição |
 |--------|------|-----------|
-| `medicines.embedding` | `vector(384)` | Embedding gerado por `multilingual-e5-small` |
-| `medicines.search_document` | `tsvector` | Documento de texto completo para busca keyword |
+| `medicines.embedding` | `vector(768)` | Embedding gerado por `multilingual-e5-base` |
+| `medicines.search_document` | `tsvector` | Documento de texto completo (coluna regular, populada por `generate-tsvector.ts`) |
 
 ### Índices
 
-- `idx_medicines_embedding`: IVFFlat (lists=180) para busca vetorial O(log n)
-- `idx_medicines_search_document`: GIN para busca tsvector O(log n)
+- `idx_medicines_embedding`: HNSW (cosine) para busca vetorial
+- `idx_medicines_search_document`: GIN para busca tsvector
 
 ## Comandos
 
@@ -191,9 +222,12 @@ npm run generate
 # Seed
 npm run seed
 
-# Gerar tsvector search documents
+# Gerar tsvector search documents (coluna regular)
 npm run tsvector
 
-# Gerar embeddings para busca semântica
+# Gerar embeddings para busca semântica (apenas os que faltam)
 npm run search-index
+
+# Re-indexar TODOS os embeddings (força regeneração completa)
+npx tsx scripts/reindex-embeddings.ts
 ```

@@ -99,28 +99,15 @@ describe('search - getFilteredStats with year filter', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('filters by year', async () => {
-    vi.mocked(prisma.medicine.findMany).mockResolvedValue([
-      { inclusionDate: '01/01/2024', status: 'Ativo', activeIngredient: 'A', tradeName: 'T1' },
-      { inclusionDate: '01/02/2024', status: 'Inativo', activeIngredient: 'B', tradeName: 'T2' },
-    ] as never)
+    vi.mocked(prisma.$queryRawUnsafe)
+      .mockResolvedValueOnce([{ total: 2 }])
+      .mockResolvedValueOnce([{ count: 1 }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
     const { getFilteredStats } = await import('@/lib/actions/search')
     const result = await getFilteredStats({ year: '2024' })
     expect(result.ativos).toBe(1)
     expect(result.inativos).toBe(1)
-  })
-})
-
-describe('search - getDistinctValues', () => {
-  beforeEach(() => vi.clearAllMocks())
-
-  it('returns distinct values', async () => {
-    vi.mocked(prisma.medicine.findMany).mockResolvedValue([
-      { activeIngredient: 'Ibuprofeno' },
-      { activeIngredient: 'Paracetamol' },
-    ] as never)
-    const { getDistinctValues } = await import('@/lib/actions/search')
-    const result = await getDistinctValues('activeIngredient')
-    expect(result.length).toBe(2)
   })
 })
 

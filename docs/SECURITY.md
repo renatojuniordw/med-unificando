@@ -14,9 +14,15 @@ Esta aplicação implementa múltiplas camadas de segurança seguindo princípio
 - JWT com `maxAge: 86400` e role/id no token
 
 ### Controle de Acesso
-- Rotas `/admin/*` protegidas por middleware NextAuth
-- Rate limit: 60 req/min por IP nas rotas `/api/*` — implementado via `src/proxy.ts` (middleware in-memory `Map<string, { count, resetAt }>`)
-- Middleware previne acesso não autenticado ao admin
+- **Páginas admin**: `/admin/(protected)/*` exigem sessão — o layout redireciona para `/admin/login`; `/admin/import` tem callback `authorized` no NextAuth
+- **Server actions admin**: `withAdmin` / `withAdminReturn` em `src/lib/auth-guard.ts` (role `ADMIN`)
+- **APIs admin**: `/api/search-analytics` e GET `/api/search-feedback` retornam 401 sem role `ADMIN`
+- **Rate limit por rota** (`src/lib/rate-limit.ts` — `Map<string, { count, resetAt }>` em memória, janela 60s):
+  - `/api/medicines`: 60 req/min/IP
+  - `/api/autocomplete`: 120 req/min/IP
+  - `POST /api/search-feedback`: 20 req/min/IP
+  - `POST /admin/login`: 10 req/min/IP (via `src/middleware.ts`)
+- Em excesso: `429` com header `Retry-After`
 
 ### Headers de Segurança
 - `Content-Security-Policy`:
@@ -29,6 +35,7 @@ Esta aplicação implementa múltiplas camadas de segurança seguindo princípio
   connect-src 'self' https://dados.anvisa.gov.br
   frame-ancestors 'none'
   ```
+- As fontes da aplicação são **self-hosted** via `next/font` (`/_next/static/media/...`, permitidas por `'self'`) — não há dependência de CDN de fontes no bundle
 - `X-Frame-Options: DENY`
 - `X-Content-Type-Options: nosniff`
 - `X-XSS-Protection: 1; mode=block`
@@ -62,8 +69,9 @@ Esta aplicação implementa múltiplas camadas de segurança seguindo princípio
 - Feedback de busca validado em `src/lib/actions/search-feedback.ts`:
   - Verificação de campos obrigatórios (`query`, `medicineId`, `medicineName`, `feedback`)
   - Validação de enum (`helpful` | `not_helpful`)
-  - `query` convertida para lowercase e trim
-  - `medicineId` validado como número via schema Prisma
+  - `query` convertida para lowercase e trim (via `normalizeQuery`)
+  - `query` limitada a 200 chars, `medicineName` a 300 chars
+  - `medicineId` validado como inteiro positivo
 
 ### Vulnerabilidades Conhecidas
 
@@ -75,9 +83,10 @@ Esta aplicação implementa múltiplas camadas de segurança seguindo princípio
 
 ## Limitações Conhecidas
 
-1. **Rate limit em memória** — Implementado via `Map<string, { count, resetAt }>` em `src/proxy.ts`. Funciona para single-worker. Para múltiplos workers, migrar para Redis.
-2. **xlsx@0.18.5** — Sem fix disponível para prototype pollution. Mitigado por ser fonte confiável (ANVISA).
-3. **Autenticação simples** — Apenas email/senha com Credentials provider. Sem 2FA. Para produção com dados sensíveis, considerar 2FA.
+1. **Rate limit em memória** — Implementado via `Map<string, { count, resetAt }>` em `src/lib/rate-limit.ts`. Funciona para single-instância. Para múltiplas instâncias/workers, migrar para Redis.
+2. **Spoofing de IP** — `getClientIp` usa o primeiro valor de `x-forwarded-for`. Em produção atrás de proxy, garantir que o proxy sobrescreva o header para não permitir burlar o limite por IP.
+3. **xlsx@0.18.5** — Sem fix disponível para prototype pollution. Mitigado por ser fonte confiável (ANVISA).
+4. **Autenticação simples** — Apenas email/senha com Credentials provider. Sem 2FA. Para produção com dados sensíveis, considerar 2FA.
 
 ## Relatório de Auditoria
 

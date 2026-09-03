@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
-import { hybridSearch } from "@/lib/actions/semantic-search";
+import { useState, useRef, useEffect } from "react";
+import { hybridSearch, type MatchReason } from "@/lib/actions/semantic-search";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Tooltip } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SemanticResultsTable } from "@/components/medicines/semantic-results-table";
@@ -40,7 +39,7 @@ const SUGGESTIONS = [
 export function SemanticSearch() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<{ score: number; medicine: MedicineResult; matchReasons?: any[] }[]>([]);
+  const [results, setResults] = useState<{ score: number; medicine: MedicineResult; matchReasons?: MatchReason[] }[]>([]);
   const [searchSuggestions, setSearchSuggestions] = useState<string[]>([]);
   const [searched, setSearched] = useState(false);
   const [view, setView] = useState<"cards" | "table">("cards");
@@ -133,8 +132,7 @@ export function SemanticSearch() {
     setShowSuggestions(false);
   }
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
+  function handleKeyDown(e: React.KeyboardEvent) {
       if (e.key === "Enter") {
         e.preventDefault();
         if (showSuggestions && activeIndex >= 0 && filteredSuggestions[activeIndex]) {
@@ -161,9 +159,7 @@ export function SemanticSearch() {
         setShowSuggestions(false);
         setActiveIndex(-1);
       }
-    },
-    [showSuggestions, filteredSuggestions, activeIndex, query],
-  );
+  }
 
   return (
     <div className="bg-[var(--color-bg)] border border-border rounded-md shadow-card p-6 md:p-8">

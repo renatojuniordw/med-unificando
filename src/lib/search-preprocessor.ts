@@ -14,11 +14,6 @@ const CONDITION_KEYWORDS = new Set([
   'tratar', 'tratamento', 'aliviar', 'alívio',
 ])
 
-const FILLER_WORDS = new Set([
-  'tomar', 'preciso', 'quero', 'buscar', 'procurar', 'acho',
-  'qual', 'quais', 'me', 'dá', 'passa', 'indica',
-])
-
 function hasConditionKeyword(words: string[]): boolean {
   const normalized = words.map(w => stripAccents(w))
   return normalized.some(w => CONDITION_KEYWORDS.has(w))

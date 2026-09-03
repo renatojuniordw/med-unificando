@@ -1,5 +1,13 @@
 import type { SearchFilters } from "@/types"
 
+// Busca OR por substring (case-insensitive) nos campos informados.
+// Fonte única para o padrão de busca textual usado em actions e API.
+export function buildQueryOr(fields: string[], query: string): Record<string, unknown>[] {
+  return fields.map(field => ({
+    [field]: { contains: query, mode: 'insensitive' },
+  }))
+}
+
 export function buildWhere(filters?: SearchFilters): Record<string, unknown> {
   const where: Record<string, unknown> = {}
   if (!filters) return where
@@ -14,13 +22,7 @@ export function buildWhere(filters?: SearchFilters): Record<string, unknown> {
   if (filters.farmaciaPopular) where.farmaciaPopular = true
 
   if (filters.query) {
-    const q = filters.query
-    const queryOr = [
-      { tradeName: { contains: q, mode: 'insensitive' } },
-      { activeIngredient: { contains: q, mode: 'insensitive' } },
-      { reference: { contains: q, mode: 'insensitive' } },
-    ]
-    where.AND = { OR: queryOr }
+    where.AND = { OR: buildQueryOr(['tradeName', 'activeIngredient', 'reference'], filters.query) }
   }
 
   return where

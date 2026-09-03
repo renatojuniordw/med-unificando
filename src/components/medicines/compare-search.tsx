@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useAutocomplete } from '@/hooks/use-autocomplete'
 import { Input } from '@/components/ui/input'
 
 interface SearchItem {
@@ -17,47 +17,10 @@ interface CompareSearchProps {
 }
 
 export function CompareSearch({ query, onQueryChange, results, searching, onAdd }: CompareSearchProps) {
-  const [activeIndex, setActiveIndex] = useState(-1)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    setActiveIndex(-1)
-  }, [results.length])
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        // Let the parent handle it
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      if (results.length > 0 && activeIndex >= 0 && results[activeIndex]) {
-        onAdd(results[activeIndex].id)
-        inputRef.current?.focus()
-      }
-      return
-    }
-
-    if (results.length === 0) return
-
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      setActiveIndex(prev => prev < results.length - 1 ? prev + 1 : 0)
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      setActiveIndex(prev => prev > 0 ? prev - 1 : results.length - 1)
-    } else if (e.key === 'Escape') {
-      e.preventDefault()
-      setActiveIndex(-1)
-    }
-  }, [results, activeIndex, onAdd])
+  const { activeIndex, setActiveIndex, containerRef, inputRef, handleKeyDown } = useAutocomplete({
+    itemCount: results.length,
+    onSelect: (index) => onAdd(results[index].id),
+  })
 
   return (
     <div className="relative" ref={containerRef}>

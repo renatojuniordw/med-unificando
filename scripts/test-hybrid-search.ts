@@ -4,7 +4,7 @@ import { hybridSearch } from '../src/lib/actions/semantic-search'
 async function test(query: string) {
   console.log(`\n=== BUSCA: "${query}" ===`)
   const start = Date.now()
-  const results = await hybridSearch(query, 20)
+  const { results } = await hybridSearch(query, 20)
   const elapsed = Date.now() - start
   
   if (results.length === 0) {

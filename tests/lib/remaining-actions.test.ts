@@ -103,20 +103,6 @@ describe('admin - getImportInfo', () => {
   })
 })
 
-describe('search - getDistinctValues with valid field', () => {
-  beforeEach(() => vi.clearAllMocks())
-
-  it('returns filtered values', async () => {
-    vi.mocked(prisma.medicine.findMany).mockResolvedValue([
-      { status: 'Ativo' },
-      { status: 'Inativo' },
-    ] as never)
-    const { getDistinctValues } = await import('@/lib/actions/search')
-    const result = await getDistinctValues('status')
-    expect(result.length).toBe(2)
-  })
-})
-
 describe('admin - syncWithAnvisa up to date', () => {
   beforeEach(() => vi.clearAllMocks())
 
@@ -133,8 +119,11 @@ describe('admin - syncWithAnvisa up to date', () => {
     })
     const { syncWithAnvisa } = await import('@/lib/actions/admin')
     const result = await syncWithAnvisa()
-    expect(result.skipped).toBe(true)
-    expect(result.count).toBe(999)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.skipped).toBe(true)
+      expect(result.count).toBe(999)
+    }
   })
 })
 

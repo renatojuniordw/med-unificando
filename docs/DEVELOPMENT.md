@@ -30,8 +30,8 @@ npx prisma migrate deploy
 # 6. Seed (importa dados da ANVISA)
 NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx prisma/seed.ts
 
-# 7. Embeddings para busca semântica
-npx tsx scripts/generate-embeddings.ts
+# 7. Embeddings para busca semântica (multilingual-e5-base, 768d)
+npm run search-index
 
 # 8. Sincronizar Farmácia Popular
 npm run farmacia-popular
@@ -83,24 +83,32 @@ src/
 │   ├── dashboard/   # DashboardFilters, FilterBar, StatCards, ChartsSection
 │   ├── layout/      # Header (active link), Footer
 │   └── medicines/   # 19 componentes (SearchForm, AutocompleteField, MedicineTable, etc.)
-├── hooks/           # use-favorites, use-recent-searches, use-debounced-search, use-medicine-search
+├── hooks/           # use-favorites, use-recent-searches, use-debounced-search
 ├── lib/
-│   ├── actions/     # 15 server actions
-│   ├── dictionaries/# ATC, formas farmacêuticas, tarjas, classes
-│   ├── config.ts    # Configurações centralizadas
+│   ├── actions/     # 17 server actions
+│   ├── dictionaries/# ATC, formas farmacêuticas, tarjas, classes, sinônimos
+│   ├── config.ts    # Configurações centralizadas (SITE, SEARCH, EMBEDDING, ANVISA)
 │   ├── constants.ts # Constantes nomeadas
+│   ├── rate-limit.ts # Rate limiter in-memory (por IP, por escopo)
+│   ├── auth-guard.ts # withAuth / withAdmin / isAdmin
+│   ├── auth.config.ts # Config NextAuth
+│   ├── search-preprocessor.ts # Classificação de queries
 │   ├── format.ts    # Normalização de texto
+│   ├── text-utils.ts # Utilitários de texto
 │   ├── build-where.ts # Construção de filtros Prisma
 │   ├── query-parser.ts # Parse de query
 │   ├── keyword-utils.ts # Sinônimos e expansão
-│   ├── search-relevance.ts # Labels de relevância
+│   ├── search-relevance.ts # Cálculo de relevância
 │   ├── score-adjustments.ts # Ajustes por feedback
 │   ├── embeddings-generator.ts # Geração batch de embeddings
+│   ├── csv-utils.ts # Escape CSV
+│   ├── safe-json-ld.ts # JSON-LD sanitizado
 │   ├── pdf-parser.ts # Parse de PDF
-│   └── theme-provider.tsx # Dark mode context
+│   ├── theme-provider.tsx # Dark mode context
+│   └── hooks/use-medicine-search.ts # Busca com URL search params
 ├── types/           # TypeScript interfaces
-├── auth.ts          # NextAuth config
-└── proxy.ts         # Rate limiter middleware
+├── auth.ts          # Instância NextAuth
+└── middleware.ts    # Rate limit do login (10/min)
 ```
 
 ## Convenções
@@ -166,20 +174,21 @@ Isso atualiza os embeddings no banco de dados PostgreSQL (pgvector) com os medic
 
 ## Busca Semântica
 
-Usa `@xenova/transformers` com o modelo `multilingual-e5-small` (384 dimensões).
+Usa `@xenova/transformers` com o modelo `Xenova/multilingual-e5-base` (768 dimensões).
 
-O modelo é baixado automaticamente na primeira execução e cacheado em `/tmp/.transformers-cache`.
+O modelo é baixado automaticamente na primeira execução e cacheado em `/tmp/.transformers-cache` (volume `transformers_cache` no Docker).
 
 O fluxo:
-1. `npm run search-index` → gera embeddings no banco pgvector
-2. Busca semântica: pgvector IVFFlat index (cosine distance) com **semantic gate** (score mínimo 0.80)
-3. Busca keyword: tsvector + GIN index (stemming pt-br + sinônimos) com **keyword gate** fallback
-4. **RRF fusion** (Reciprocal Rank Fusion) combina os dois rankings
-5. **Score adjustments** baseados em feedback dos usuários
-6. **Synonym expansion** com 35+ entradas
+1. `npm run search-index` → gera embeddings no banco pgvector (coluna `embedding` vector(768), índice HNSW)
+2. Busca semântica: pgvector cosine distance com **semantic gate** (thresholds em `SEARCH` no `config.ts`)
+3. Busca keyword: tsvector + GIN index (stemming pt-br + sinônimos)
+4. Busca trigram: pg_trgm (`%` + `similarity`) para keyword/autocomplete
+5. **RRF fusion** (Reciprocal Rank Fusion) combina os 3 rankings (k=60; pesos: semântica 0.40, keyword 0.35, trigram 0.25)
+6. **Score adjustments** baseados em feedback dos usuários
+7. **Synonym expansion** com mapa consolidado em `dictionaries/synonyms.ts`
 
-O texto usado para gerar cada embedding inclui:
-`nome | princípio ativo | categoria | detentor | forma farmacêutica | concentração | sinônimos | indicações | situação | registro`
+O texto usado para gerar cada embedding (prefixo `passage:`) inclui:
+`nome | princípio ativo | forma farmacêutica | classe terapêutica | descrição ATC | indicações | sinônimos | concentração | categoria | tipo prescrição | detentor | situação | farmácia popular`
 
 ## Testes
 
@@ -196,7 +205,7 @@ Testes estão em `tests/` usando Vitest + @testing-library/react + jsdom.
 - `use-favorites` — Favoritos em localStorage (toggle, isFavorite)
 - `use-recent-searches` — Últimas 5 buscas em localStorage
 - `use-debounced-search` — Busca com debounce genérica, proteção contra race condition
-- `use-medicine-search` — URL search params → server data → pagination, proteção contra race condition
+- `use-medicine-search` (`src/lib/hooks/`) — URL search params → server data → pagination, proteção contra race condition
 
 ## Encoding
 

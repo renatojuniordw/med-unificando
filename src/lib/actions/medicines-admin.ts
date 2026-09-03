@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { withAdmin, withAdminReturn } from '@/lib/auth-guard'
+import { buildQueryOr } from '@/lib/build-where'
 import { z } from 'zod'
 
 export interface AdminMedicineSummary {
@@ -18,11 +19,7 @@ export async function searchMedicinesForAdmin(query: string): Promise<AdminMedic
 
     const medicines = await prisma.medicine.findMany({
       where: {
-        OR: [
-          { reference: { contains: query, mode: 'insensitive' } },
-          { activeIngredient: { contains: query, mode: 'insensitive' } },
-          { tradeName: { contains: query, mode: 'insensitive' } },
-        ],
+        OR: buildQueryOr(['reference', 'activeIngredient', 'tradeName'], query),
       },
       select: { id: true, tradeName: true, reference: true, activeIngredient: true, status: true },
       take: 20,

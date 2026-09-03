@@ -208,15 +208,6 @@ describe('search - getDashboardStats', () => {
   })
 })
 
-describe('search - getDistinctValues', () => {
-  beforeEach(() => vi.clearAllMocks())
-
-  it('returns empty for unknown field', async () => {
-    const { getDistinctValues } = await import('@/lib/actions/search')
-    expect(await getDistinctValues('unknown')).toEqual([])
-  })
-})
-
 describe('search - getFilteredStats', () => {
   beforeEach(() => vi.clearAllMocks())
 

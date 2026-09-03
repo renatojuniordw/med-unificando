@@ -65,38 +65,47 @@ A CMED define preços máximos por apresentação:
 
 ### Arquitetura Híbrida com RRF Fusion
 
-A busca combina **tsvector** (keyword com stemming e sinônimos) e **pgvector** (busca semântica vetorial) usando **Reciprocal Rank Fusion (RRF)** para combinar os rankings.
+A busca combina **3 fontes** — pgvector (semântica), tsvector (keyword) e pg_trgm (trigram) — usando **Reciprocal Rank Fusion (RRF)** para combinar os rankings.
 
 #### Busca Semântica (pgvector)
 
-- Modelo: `multilingual-e5-small` — 384 dimensões, ~118MB (processamento 100% local, zero custo de API)
-- Texto indexado: nome + princípio ativo + categoria + detentor + forma farmacêutica + concentração + sinônimos + indicações + situação + registro
-- Índice: IVFFlat para busca O(log n)
-- **Semantic Gate**: apenas resultados com cosine similarity ≥ **0.80** são considerados
-- **Standalone threshold**: quando a busca semântica roda sozinha (sem keyword complementar), o threshold é **0.855**
+- Modelo: `Xenova/multilingual-e5-base` — 768 dimensões (processamento 100% local, zero custo de API)
+- Texto indexado (prefixo `passage:`): nome + princípio ativo + forma farmacêutica + classe terapêutica + descrição ATC + indicações + sinônimos + concentração + categoria + tipo prescrição + detentor + situação + farmácia popular
+- Índice: HNSW (cosine)
+- **Semantic Gate**: thresholds configuráveis em `SEARCH` (queries gerais vs. queries de nome de medicamento, mais restritivas)
+- **Standalone threshold**: quando a busca semântica roda sozinha, threshold mais alto
 
 #### Busca Textual (tsvector)
 
-- Índice GIN com stemming português via configuração de texto da base
-- Mapa de sinônimos médicos com **35+ entradas** (ex: "coração" ↔ "cardíaco", "pressão" ↔ "hipertensão")
+- Índice GIN com stemming português; coluna `search_document` regular, populada por `generate-tsvector.ts` (resolve nomes de forma farmacêutica/ATC)
+- Mapa de sinônimos médicos (`SYNONYM_MAP` em `dictionaries/synonyms.ts`, 23+ entradas; ex: "coração" ↔ "cardíaco", "pressão" ↔ "hipertensão")
 - **Synonym expansion**: termos médicos são expandidos automaticamente antes da consulta
 - **Compound subject parsing**: expressões compostas (ex: "ácido acetilsalicílico") são analisadas como unidades
+
+#### Busca Trigram (pg_trgm)
+
+- Índice GIN trigram; operador `%` + `similarity` em `tradeName`/`activeIngredient`
+- Thresholds próprios para queries gerais e de nome de medicamento
 
 #### RRF Fusion
 
 ```
-score = 1/(60 + rank_keyword) + 1/(60 + rank_semantic)
+RRF(d) = 0.40/(60 + rank_semantica) + 0.35/(60 + rank_keyword) + 0.25/(60 + rank_trigram)
 ```
 
-#### Score Adjustments
+(k=60; pesos em `SEARCH.RRF_K`, `SEMANTIC_WEIGHT`, `KEYWORD_WEIGHT`, `TRIGRAM_WEIGHT`)
+
+#### Score Adjustments / Pós-processamento
 
 - Feedback dos usuários (útil/não útil) gera **boost** ou **penalty** no score final
 - Boosts/penalties são aplicados por medicineId e tipo de query
-- Ajustes são normalizados para evitar distorção dos resultados
+- Ajustes normalizados para evitar distorção dos resultados
+- Penalidade de falso positivo por substring, boost por match de nome (exato/prefixo/princípio ativo), penalidade de fonte única e de falta de suporte
 
-#### Fallback: Keyword Gate
+#### Fallbacks
 
-Se a busca semântica não retornar resultados relevantes (score < 0.80), o sistema tenta **keyword search** pura como fallback, usando o tsvector com expansão de sinônimos.
+- Sem resultados semânticos relevantes → **keyword + trigram** (sem a fonte semântica)
+- Apenas semântica disponível → **semântica pura**
 
 ## 7. Farmácia Popular
 
@@ -120,7 +129,7 @@ O programa Farmácia Popular do Ministério da Saúde disponibiliza medicamentos
 - Preços CMED importados separadamente
 - Farmácia Popular sincronizado separadamente (lista do Ministério da Saúde)
 - **therapeuticClass**: sincronizado do CSV DADOS_ABERTOS_MEDICAMENTOS (campo `SUBSTANCIA` mapeado para classe terapêutica)
-- **Embeddings**: sincronizados apenas para novos medicamentos (sem embedding existente), em batches de 50
+- **Embeddings**: sincronizados apenas para novos medicamentos (sem embedding existente), em batches de 50 — modelo `multilingual-e5-base` (768d). Para regeneração completa, usar `scripts/reindex-embeddings.ts`
 - Cada sincronização é registrada em `SyncLog` (type, count, status, timestamp)
 
 ### Backfill Scripts
@@ -166,12 +175,13 @@ Aplicativo instalável via navegador com `manifest.json`. Ideal para acesso mobi
 
 ## 13. Segurança
 
-- Rate limit de 60 requisições/minuto nas rotas `/api/*`
-- **proxy.ts middleware**: rate limiter adicional no middleware de API para proteção distribuída
-- **CSP headers**: Content-Security-Policy configurado para evitar XSS e ataques de injeção
+- Rate limit por rota via `src/lib/rate-limit.ts`: `/api/medicines` 60/min, `/api/autocomplete` 120/min, `POST /api/search-feedback` 20/min
+- **middleware.ts**: rate limit adicional para `POST /admin/login` (10/min)
+- **CSP headers**: Content-Security-Policy configurado para evitar XSS e injeção (fontes self-hosted via next/font)
 - Security headers: X-Frame-Options: DENY, X-Content-Type-Options: nosniff, X-XSS-Protection, Referrer-Policy, Permissions-Policy
 - Docker: read-only filesystem, non-root user, sem privilégios
 - Body size limit de 10MB para uploads
+- Páginas `/admin/(protected)/*` exigem sessão; actions admin usam `withAdmin`; APIs de analytics/feedback exigem role `ADMIN`
 
 ## 14. Feedback de Busca
 

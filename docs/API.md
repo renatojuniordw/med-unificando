@@ -1,8 +1,10 @@
 # API REST
 
+> Porta padrão: `11006`. Rate limit por IP implementado em `src/lib/rate-limit.ts` (in-memory, janela de 60s).
+
 ## GET /api/medicines
 
-Lista medicamentos com paginação, filtros e exportação.
+Lista medicamentos com paginação, filtros e exportação. Rate limit: **60 req/min/IP**.
 
 ### Parâmetros
 
@@ -10,19 +12,11 @@ Lista medicamentos com paginação, filtros e exportação.
 |-----------|------|--------|-----------|
 | `page` | number | 1 | Número da página |
 | `pageSize` | number | 20 | Itens por página (max 100) |
-| `reference` | string | — | Filtro por número de registro (LIKE insensitive) |
-| `activeIngredient` | string | — | Filtro por princípio ativo (LIKE insensitive) |
-| `tradeName` | string | — | Filtro por nome comercial (LIKE insensitive) |
+| `reference` | string | — | Filtro por número de registro (contains) |
+| `activeIngredient` | string | — | Filtro por princípio ativo (contains) |
+| `tradeName` | string | — | Filtro por nome comercial (contains) |
 | `category` | string | — | Filtro exato por categoria (Similar, Genérico, etc.) |
 | `status` | string | — | Filtro exato por situação (Ativo, Inativo) |
-| `pharmaceuticalForm` | string | — | Filtro por forma farmacêutica |
-| `prescriptionType` | string | — | Filtro por tipo de prescrição (tarja) |
-| `atcCode` | string | — | Filtro por código ATC |
-| `farmaciaPopular` | boolean | — | Filtro por Farmácia Popular (true/false) |
-| `therapeuticClass` | string | — | Filtro por classe terapêutica |
-| `query` | string | — | Busca textual genérica |
-| `sortBy` | string | — | Campo para ordenação |
-| `sortOrder` | string | asc | asc ou desc |
 | `format` | string | — | Se `csv`, retorna CSV ao invés de JSON |
 
 ### Exemplos
@@ -39,15 +33,6 @@ curl "http://localhost:11006/api/medicines?activeIngredient=ibuprofeno"
 
 # Múltiplos filtros
 curl "http://localhost:11006/api/medicines?category=Genérico&status=Ativo"
-
-# Filtro por forma farmacêutica e tipo de prescrição
-curl "http://localhost:11006/api/medicines?pharmaceuticalForm=Comprimido&prescriptionType=Tarja%20Vermelha"
-
-# Busca textual genérica
-curl "http://localhost:11006/api/medicines?query=paracetamol"
-
-# Ordenação por nome comercial
-curl "http://localhost:11006/api/medicines?sortBy=tradeName&sortOrder=asc"
 
 # Exportar como CSV
 curl "http://localhost:11006/api/medicines?format=csv" -o medicamentos.csv
@@ -89,14 +74,48 @@ curl "http://localhost:11006/api/medicines?format=csv" -o medicamentos.csv
 
 ### Resposta (CSV)
 
+Colunas: `referencia,principio_ativo,nome_comercial,detentor,forma_farmaceutica,concentracao,categoria,codigo_atc,tarja,situacao`. Nome do arquivo: `medicamentos-{page}.csv`.
+
 ```
 referencia,principio_ativo,nome_comercial,detentor,...
 106460143,teicoplanina,TEICOPLANINA,LABORATORIO QUIMICO...
 ```
 
+Erros: 400/500 com `{ "error": "..." }`; 429 com `{ "error": "Muitas requisições..." }` + header `Retry-After`.
+
+## GET /api/autocomplete
+
+Sugestões de medicamentos enquanto o usuário digita. Rate limit: **120 req/min/IP**.
+
+### Parâmetros
+
+| Parâmetro | Tipo | Padrão | Descrição |
+|-----------|------|--------|-----------|
+| `q` | string | — | Termo de busca (mínimo 2 caracteres) |
+| `limit` | number | 8 | Máximo de sugestões (max 20) |
+
+### Exemplo
+
+```bash
+curl "http://localhost:11006/api/autocomplete?q=dipirona&limit=5"
+```
+
+### Resposta
+
+```json
+{
+  "suggestions": [
+    { "label": "ANFEBRIL", "sublabel": "dipirona" },
+    { "label": "ANADOR", "sublabel": "dipirona" }
+  ]
+}
+```
+
+Implementação: busca por trigram (`pg_trgm`, operador `%`) em `tradeName`/`activeIngredient`, `GROUP BY` + `ORDER BY GREATEST(similarity(...)) DESC`, usa o índice GIN `idx_medicines_search_fields`. Com `q` < 2 caracteres retorna lista vazia; erros internos retornam `{ suggestions: [] }` com 500 (logado via `console.error`).
+
 ## POST /api/search-feedback
 
-Envia feedback sobre resultado de busca.
+Envia feedback sobre resultado de busca. Rate limit: **20 req/min/IP**.
 
 ### Body
 
@@ -109,7 +128,7 @@ Envia feedback sobre resultado de busca.
 }
 ```
 
-`feedback` pode ser `"helpful"` ou `"not_helpful"`.
+`feedback` pode ser `"helpful"` ou `"not_helpful"`. Validações: campos obrigatórios, `query` ≤ 200 chars, `medicineName` ≤ 300 chars, `medicineId` inteiro > 0, enum de feedback. `query` é normalizada (lowercase/trim).
 
 ### Resposta (201)
 
@@ -117,9 +136,11 @@ Envia feedback sobre resultado de busca.
 { "success": true }
 ```
 
+Erros de validação: `{ "success": false, "error": "..." }`.
+
 ## GET /api/search-feedback
 
-Retorna estatísticas de feedback (admin).
+Retorna estatísticas de feedback (**admin apenas** — retorna 401 sem sessão com role `ADMIN`).
 
 ### Parâmetros
 
@@ -139,6 +160,24 @@ Retorna estatísticas de feedback (admin).
 }
 ```
 
+## GET /api/search-analytics
+
+Estatísticas das buscas registradas em `search_logs` (**admin apenas** — retorna 401 sem role `ADMIN`). Sem rate limit.
+
+### Resposta
+
+```json
+{
+  "topQueries": [{ "query": "dor de cabeça", "count": 45, "avg_score": 0.912 }],
+  "noResultsQueries": [{ "query": "xyz", "count": 12 }],
+  "performance": { "avg_ms": 210, "p95_ms": 480 },
+  "totalSearchesLast7Days": 1024,
+  "byType": [{ "query_type": "medicine-name", "count": 700 }]
+}
+```
+
+Janelas: 30 dias para top queries / sem resultados / performance / tipo; 7 dias para total de buscas.
+
 ## GET /api/health
 
 Health check da aplicação.
@@ -156,8 +195,7 @@ curl "http://localhost:11006/api/health"
   "database": "connected",
   "stats": {
     "medicines": 32585,
-    "prices": 53422,
-    "searchFeedback": 150
+    "prices": 53422
   }
 }
 ```
@@ -168,10 +206,13 @@ curl "http://localhost:11006/api/health"
 {
   "status": "unhealthy",
   "timestamp": "2026-07-17T20:00:00.000Z",
-  "database": "disconnected",
-  "error": "ERRO: conexão recusada"
+  "database": "disconnected"
 }
 ```
+
+## GET /api/auth/[...nextauth]
+
+Endpoints do NextAuth v5 (Credentials provider, JWT). Handlers delegados de `src/auth.ts` (GET/POST).
 
 ## GET /sitemap.xml
 
@@ -184,7 +225,6 @@ Sitemap gerado dinamicamente com todas as URLs da aplicação (~32.585+ URLs):
 /atc
 /sobre
 /detentor/[cnpj]
-/admin/medicamentos
 /medicamento/1
 /medicamento/2
 ...
@@ -204,14 +244,21 @@ Sitemap: https://medicamentos.unificando.com.br/sitemap.xml
 
 ## Autenticação
 
-Rotas `/admin/*` são protegidas por NextAuth v5 (Credentials provider, JWT).
-
-```
-POST /api/auth/login — Login com email e senha
-```
+- **Páginas admin**: `/admin/(protected)/*` exigem sessão (layout redireciona para `/admin/login`); `/admin/import` tem callback `authorized` no NextAuth.
+- **Server actions admin**: usam `withAdmin` / `withAdminReturn` de `src/lib/auth-guard.ts` (role `ADMIN`).
+- **APIs admin**: `/api/search-analytics` e GET `/api/search-feedback` verificam `session.user.role === 'ADMIN'` (401 se não).
+- **Login**: POST `/admin/login` tem rate limit de **10 tentativas/min** via `src/middleware.ts` (429 + `Retry-After`).
+- Sessão: JWT, expira em 24h, cookies `secure` em produção.
 
 ## Rate Limit
 
-Todas as rotas `/api/*` têm limite de **60 requisições por minuto por IP**, implementado via middleware em `src/proxy.ts`.
+| Rota | Limite (por IP, janela 60s) |
+|------|-----------------------------|
+| `/api/medicines` | 60 req/min |
+| `/api/autocomplete` | 120 req/min |
+| `POST /api/search-feedback` | 20 req/min |
+| `POST /admin/login` | 10 req/min (middleware) |
 
-Em caso de excesso, retorna `429 Too Many Requests`.
+Implementação: `src/lib/rate-limit.ts` — `Map<string, { count, resetAt }>` em memória (janela fixa de 60s), adequado para instância única; para multi-instância, migrar para Redis. Em excesso, retorna `429 Too Many Requests` com header `Retry-After`.
+
+> Atenção: `getClientIp` usa o primeiro valor de `x-forwarded-for` (ou `x-real-ip`). Em produção atrás de proxy, garanta que o proxy **sobrescreva** esses headers para evitar contornar o limite.

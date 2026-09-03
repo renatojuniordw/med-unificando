@@ -76,10 +76,11 @@ describe('search - getFilteredStats with status and category', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('filters by status and category', async () => {
-    vi.mocked(prisma.medicine.findMany).mockResolvedValue([
-      { inclusionDate: '01/01/2024', status: 'Ativo', category: 'Similar', activeIngredient: 'A', tradeName: 'T1' },
-      { inclusionDate: '01/02/2024', status: 'Ativo', category: 'Similar', activeIngredient: 'B', tradeName: 'T2' },
-    ] as never)
+    vi.mocked(prisma.$queryRawUnsafe)
+      .mockResolvedValueOnce([{ total: 2 }])
+      .mockResolvedValueOnce([{ count: 2 }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
     const { getFilteredStats } = await import('@/lib/actions/search')
     const result = await getFilteredStats({ status: 'Ativo', category: 'Similar' })
     expect(result.ativos).toBe(2)
@@ -99,6 +100,7 @@ describe('pdf-report - generate with prices and without', () => {
     vi.mocked(prisma.price.findMany).mockResolvedValue([
       { presentation: 'COMP 10MG', pf0Price: 10.5, pf18Price: 12.5 },
     ] as never)
+    vi.mocked(prisma.medicine.findMany).mockResolvedValue([])
     const { generateMedicinePdf } = await import('@/lib/actions/pdf-report')
     const buffer = await generateMedicinePdf(1)
     expect(buffer).toBeDefined()
@@ -113,6 +115,7 @@ describe('pdf-report - generate with prices and without', () => {
       prescriptionType: null, presentationCount: null,
     } as never)
     vi.mocked(prisma.price.findMany).mockResolvedValue([])
+    vi.mocked(prisma.medicine.findMany).mockResolvedValue([])
     const { generateMedicinePdf } = await import('@/lib/actions/pdf-report')
     const buffer = await generateMedicinePdf(2)
     expect(buffer).toBeDefined()

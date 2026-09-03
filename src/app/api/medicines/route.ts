@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { MEDICINE_LIMITS } from '@/lib/constants'
 import { normalizeMedicine } from '@/lib/format'
 import { buildWhere } from '@/lib/build-where'
+import { MEDICINE_EXPORT_HEADERS, medicineToExportRow, toCsv } from '@/lib/csv-export'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 
 export async function GET(request: NextRequest) {
@@ -42,20 +43,8 @@ export async function GET(request: NextRequest) {
     ])
 
     if (format === 'csv') {
-      const headers = [
-        'referencia', 'principio_ativo', 'nome_comercial', 'detentor',
-        'forma_farmaceutica', 'concentracao', 'categoria', 'codigo_atc', 'tarja', 'situacao',
-      ]
-      const escapeCsv = (val: unknown) => `"${String(val ?? '').replace(/"/g, '""')}"`
-      const normalizedData = data.map(normalizeMedicine)
-      const rows = normalizedData.map((m) => [
-        m.reference, m.activeIngredient, m.tradeName, m.similarHolder,
-        m.pharmaceuticalForm, m.concentration, m.category, m.atcCode, m.prescriptionType, m.status,
-      ])
-      const csv = [
-        headers.join(','),
-        ...rows.map(r => r.map(escapeCsv).join(',')),
-      ].join('\n')
+      const rows = data.map(normalizeMedicine).map(medicineToExportRow)
+      const csv = toCsv(MEDICINE_EXPORT_HEADERS, rows)
 
       return new NextResponse(csv, {
         headers: {

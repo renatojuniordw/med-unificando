@@ -2,15 +2,18 @@
 
 ## Na inicialização do Docker (automático)
 
-O `docker-entrypoint.sh` já executa automaticamente ao subir o container:
+O `docker-entrypoint.sh` já executa automaticamente ao subir o container **quando o banco está vazio** (`COUNT(*) FROM medicines = 0`):
 
 ```bash
-1. npx prisma migrate deploy        # Migrations
-2. npx tsx prisma/seed.ts           # ANVISA + Admin
+1. npx prisma migrate deploy                 # Migrations (schema)
+2. npx tsx prisma/seed.ts                    # ANVISA + Admin
 3. npx tsx scripts/sync-farmacia-popular.ts  # Farmácia Popular
+4. npx tsx scripts/backfill-indications.ts   # Indicações terapêuticas
+5. npx tsx scripts/generate-search-index.ts  # Embeddings (multilingual-e5-base, 768d)
+6. npx tsx scripts/generate-tsvector.ts      # Coluna tsvector (regular)
 ```
 
-Toda vez que o container for reiniciado (`docker compose restart` ou deploy), as sincronizações rodam automaticamente — sem precisar de Node instalado na VPS.
+> O init **só roda uma vez** (banco vazio). Se o banco já tiver dados, o entrypoint pula a sequência e apenas inicia o servidor. Para regenerar embeddings/tsvector depois, use `npm run search-index` / `npm run tsvector`.
 
 ## Rotina semanal via crontab da VPS
 

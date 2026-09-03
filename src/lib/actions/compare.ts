@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma"
 import { normalizeMedicine } from "@/lib/format"
+import { buildQueryOr } from "@/lib/build-where"
 import type { MedicineResult } from "@/types"
 
 export async function getMedicinesByIds(ids: number[]): Promise<MedicineResult[]> {
@@ -21,11 +22,7 @@ export async function searchMedicinesForCompare(
 
   const data = await prisma.medicine.findMany({
     where: {
-      OR: [
-        { reference: { contains: query, mode: 'insensitive' } },
-        { activeIngredient: { contains: query, mode: 'insensitive' } },
-        { tradeName: { contains: query, mode: 'insensitive' } },
-      ],
+      OR: buildQueryOr(['reference', 'activeIngredient', 'tradeName'], query),
     },
     take: 10,
     orderBy: { reference: 'asc' },

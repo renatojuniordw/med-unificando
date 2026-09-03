@@ -66,7 +66,7 @@ Consulta inteligente de medicamentos intercambiáveis da ANVISA com busca semân
 | Estilo | Tailwind CSS v4 |
 | Autenticação | NextAuth v5 (Credentials, JWT) |
 | IA (embeddings) | Xenova Transformers (ONNX local) |
-| IA (busca) | multilingual-e5-small (384d) + pgvector + tsvector |
+| IA (busca) | multilingual-e5-base (768d) + pgvector (HNSW) + tsvector + pg_trgm |
 | PDF | pdfmake (server-side) |
 | Exportação | xlsx |
 | Gráficos | recharts |
@@ -132,7 +132,8 @@ npm run dev
 | `ANVISA_MEDICINES_URL` | URL do CSV de medicamentos ANVISA | Não |
 | `ANVISA_PRICES_URL` | URL do CSV de preços CMED | Não |
 | `ANVISA_THERAPEUTIC_CLASS_URL` | URL do CSV de classes terapêuticas | Não |
-| `EMBEDDING_MODEL` | Modelo de embeddings (default: Xenova/multilingual-e5-small) | Não |
+| `EMBEDDING_MODEL` | Modelo de embeddings (default: Xenova/multilingual-e5-base) | Não |
+| `EMBEDDING_DIMS` | Dimensões do embedding (default: 768) | Não |
 
 ---
 
@@ -148,7 +149,8 @@ npm run dev
 | `npm run test:watch` | Vitest watch |
 | `npm run test:coverage` | Vitest coverage |
 | `npm run seed` | Importar dados ANVISA |
-| `npm run embeddings` | Gerar embeddings de busca semântica |
+| `npm run search-index` | Gerar embeddings de busca semântica (apenas os que faltam) |
+| `npx tsx scripts/reindex-embeddings.ts` | Regenerar embeddings de TODOS os registros |
 | `npm run tsvector` | Gerar tsvector search documents |
 | `npm run farmacia-popular` | Sincronizar lista Farmácia Popular |
 | `npm run backfill-indications` | Backfill de indicações terapêuticas |
@@ -180,6 +182,7 @@ npm run dev
 | `/admin/medicamentos` | Busca admin de medicamentos |
 | `/admin/medicamentos/[id]` | Edição admin de medicamento |
 | `/admin/search-feedback` | Console de feedback das buscas |
+| `/admin/search-analytics` | Analytics das buscas (top queries, performance) |
 
 ---
 
@@ -197,6 +200,9 @@ curl "http://localhost:11006/api/medicines?format=csv" -o medicamentos.csv
 
 # Health check
 curl http://localhost:11006/api/health
+
+# Autocomplete (sugestões de medicamentos)
+curl "http://localhost:11006/api/autocomplete?q=dipirona&limit=5"
 
 # Search Feedback
 curl -X POST http://localhost:11006/api/search-feedback \
@@ -218,9 +224,19 @@ src/
 │   ├── dashboard/             # Dashboard estatístico
 │   ├── compare/               # Comparação
 │   ├── admin/                 # Painel administrativo
+│   │   ├── (protected)/       # Layout que exige sessão
+│   │   ├── login/             # Login (rate limit 10/min)
+│   │   ├── import/            # Sincronização ANVISA + Preços + Farmácia Popular
 │   │   ├── medicamentos/      # Admin de medicamentos
-│   │   └── search-feedback/   # Feedback das buscas
+│   │   ├── search-feedback/   # Feedback das buscas
+│   │   └── search-analytics/  # Analytics das buscas
 │   └── api/                   # Rotas de API
+│       ├── medicines/         # REST público (JSON/CSV, 60/min)
+│       ├── autocomplete/      # Sugestões trigram (120/min)
+│       ├── search-feedback/   # POST feedback (20/min) + GET stats (admin)
+│       ├── search-analytics/  # GET analytics (admin)
+│       ├── auth/[...nextauth] # NextAuth v5
+│       └── health/            # Health check
 ├── components/
 │   ├── layout/                # Header, Footer, Breadcrumbs
 │   ├── medicines/             # Componentes de domínio
@@ -232,33 +248,43 @@ src/
 │   ├── use-recent-searches.ts # Buscas recentes
 │   └── use-debounced-search.ts # Busca com debounce
 ├── lib/
-│   ├── actions/               # Server Actions (15)
+│   ├── actions/               # Server Actions (17)
 │   ├── dictionaries/
 │   │   ├── atc-codes.ts
 │   │   ├── pharmaceutical-forms.ts
 │   │   ├── prescription-types.ts
+│   │   ├── synonyms.ts        # SYNONYM_MAP consolidado
 │   │   ├── therapeutic-classes.ts
 │   │   └── therapeutic-class-indications.ts
-│   ├── config.ts              # Configurações centralizadas
+│   ├── config.ts              # Configurações centralizadas (SITE, SEARCH, EMBEDDING, ANVISA)
 │   ├── constants.ts           # Constantes nomeadas
+│   ├── rate-limit.ts          # Rate limiter in-memory (por IP, por escopo)
+│   ├── auth-guard.ts          # withAuth / withAdmin / isAdmin
+│   ├── auth.config.ts         # Config NextAuth (signIn, maxAge)
+│   ├── search-preprocessor.ts # Classificação de queries
 │   ├── format.ts              # Formatadores
+│   ├── text-utils.ts          # Utilitários de texto
 │   ├── build-where.ts         # Montagem de WHERE dinâmico
 │   ├── query-parser.ts        # Parsing de consultas
 │   ├── keyword-utils.ts       # Utilitários de keyword
 │   ├── search-relevance.ts    # Cálculo de relevância
 │   ├── score-adjustments.ts   # Ajustes de score por feedback
 │   ├── embeddings-generator.ts # Geração de embeddings
+│   ├── csv-utils.ts           # Escape CSV
+│   ├── safe-json-ld.ts        # JSON-LD sanitizado
 │   ├── pdf-parser.ts          # Parsing de PDF
-│   └── theme-provider.tsx     # Tema claro/escuro
-├── auth.ts                    # NextAuth config
-├── proxy.ts                   # Rate limiter middleware
+│   ├── theme-provider.tsx     # Tema claro/escuro
+│   └── hooks/use-medicine-search.ts # Busca com URL search params
+├── auth.ts                    # Instância NextAuth
+├── middleware.ts              # Rate limit do login (10/min)
 └── types/
+    ├── index.ts               # Tipos compartilhados
     ├── medicine.ts            # Tipos de medicamento
     ├── next-auth.d.ts         # Extensão NextAuth
     ├── pdf-parse.d.ts         # Tipos PDF parse
     └── pdfmake.d.ts           # Tipos pdfmake
-tests/                         # Testes Vitest
-scripts/                       # Scripts utilitários (13)
+tests/                         # Testes Vitest (api, components, lib)
+scripts/                       # Scripts utilitários (14)
 prisma.config.ts
 vitest.config.ts
 postcss.config.mjs
@@ -289,9 +315,9 @@ Veja o detalhamento completo em [DESIGN_SYSTEM.md](./docs/DESIGN_SYSTEM.md).
 ## Segurança
 
 - **Docker**: read-only rootfs, `no-new-privileges`, `cap_drop ALL`, non-root
-- **HTTP**: security headers (X-Frame-Options, X-Content-Type-Options, CSP com fontes específicas)
-- **Rate Limit**: 60 req/min nas rotas `/api/*`
-- **Auth**: proteção das rotas `/admin/*` via NextAuth
+- **HTTP**: security headers (X-Frame-Options, X-Content-Type-Options, CSP com fontes específicas — fontes self-hosted via next/font)
+- **Rate Limit**: por rota via `src/lib/rate-limit.ts` (medicines 60/min, autocomplete 120/min, feedback 20/min) + login 10/min via middleware
+- **Auth**: páginas `/admin/*` protegidas por sessão (layout), actions admin com `withAdmin`, APIs de analytics/feedback exigem role `ADMIN`
 - **Sanitização**: Escape de CSV, validação de inputs, SearchFeedback sanitizado
 
 ---

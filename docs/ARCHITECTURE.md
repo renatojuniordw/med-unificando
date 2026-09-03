@@ -30,13 +30,13 @@ Med Unificando é uma aplicação Next.js 16 (App Router) com PostgreSQL que con
 med-unificando/
 ├── prisma/
 │   ├── schema.prisma              # Medicine, Price, User, SyncLog, SearchFeedback
-│   ├── migrations/                # Migrations versionadas
-│   ├── seed.ts                    # Importa CSV ANVISA (medicamentos)
-│   └── import-prices.ts           # Importa CSV CMED (preços)
+│   ├── migrations/                # 15 migrations versionadas
+│   └── seed.ts                    # Importa CSV ANVISA (medicamentos) + admin
 ├── scripts/
-│   ├── generate-search-index.ts   # Gera embeddings pgvector 384d (multilingual-e5-small)
-│   ├── generate-tsvector.ts       # Gera coluna tsvector para busca keyword
-│   ├── sync-farmacia-popular.ts   # Sincroniza PDF da Farmácia Popular via S3/external
+│   ├── generate-search-index.ts   # Gera embeddings pgvector 768d (multilingual-e5-base), incremental
+│   ├── reindex-embeddings.ts      # Re-indexa TODOS os embeddings (forçado)
+│   ├── generate-tsvector.ts       # Popula a coluna regular tsvector (fonte autoritativa)
+│   ├── sync-farmacia-popular.ts   # Sincroniza PDF da Farmácia Popular
 │   ├── backfill-indications.ts    # Preenche indicações terapêuticas
 │   ├── backfill-therapeutic-class.ts  # Preenche classe terapêutica do CSV DADOS_ABERTOS
 │   ├── add-active-ingredients.ts  # Adiciona princípios ativos normalizados
@@ -51,13 +51,13 @@ med-unificando/
 │   └── manifest.json              # PWA manifest
 ├── src/
 │   ├── app/
-│   │   ├── page.tsx               # Home (busca textual + semântica)
-│   │   ├── loading.tsx            # Loading state global
+│   │   ├── page.tsx               # Home (busca semântica + autocomplete)
+│   │   ├── loading.tsx            # Loading state global (skeleton realista)
 │   │   ├── not-found.tsx          # 404 customizada
 │   │   ├── sitemap.ts             # Sitemap dinâmico (~32k+ URLs)
 │   │   ├── robots.ts              # Configuração de indexação
 │   │   ├── opengraph-image.tsx    # OG Image gerada dinamicamente
-│   │   ├── medicamento/[id]/      # Detalhes + JSON-LD + breadcrumbs + bula + gráfico preços + similares com navegação
+│   │   ├── medicamento/[id]/      # Detalhes + JSON-LD + breadcrumbs + bula + gráfico preços + similares
 │   │   ├── referencias/           # Lista (paginação, A-Z, ordenação) + detalhe de referência
 │   │   ├── atc/                   # Árvore ATC (busca + autocomplete + expandir/recolher)
 │   │   ├── atc/[code]/            # Medicamentos por código (paginação, breadcrumbs, mobile cards)
@@ -66,126 +66,99 @@ med-unificando/
 │   │   ├── compare/               # Comparação lado a lado
 │   │   ├── sobre/                 # Sobre o projeto
 │   │   ├── admin/
-│   │   │   ├── page.tsx           # Login + painel de importação
+│   │   │   ├── (protected)/       # Layout que exige sessão (redirect p/ login)
+│   │   │   ├── login/             # Login do administrador (rate limit 10/min)
+│   │   │   ├── import/            # Sincronização ANVISA + Preços + Farmácia Popular
 │   │   │   ├── medicamentos/      # CRUD de medicamentos (admin)
-│   │   │   └── medicamentos/[id]/ # Edição individual
-│   │   ├── admin/search-feedback/ # Visualização de feedback de busca
+│   │   │   ├── medicamentos/[id]/ # Edição individual
+│   │   │   ├── search-feedback/   # Visualização de feedback de busca
+│   │   │   └── search-analytics/  # Analytics das buscas (search_logs)
 │   │   └── api/
-│   │       ├── medicines/         # API REST pública (JSON/CSV)
-│   │       ├── search-feedback/   # POST /api/search-feedback (armazena feedback)
+│   │       ├── medicines/         # API REST pública (JSON/CSV, rate limit 60/min)
+│   │       ├── autocomplete/      # Sugestões trigram (rate limit 120/min)
+│   │       ├── search-feedback/   # POST feedback (20/min) + GET stats (admin)
+│   │       ├── search-analytics/  # GET analytics (admin)
 │   │       ├── auth/[...nextauth] # NextAuth v5 (Credentials)
 │   │       └── health/            # Health check
 │   ├── components/
-│   │   ├── layout/                # Header, Footer
-│   │   ├── ui/
-│   │   │   ├── badge.tsx
-│   │   │   ├── button.tsx
-│   │   │   ├── card.tsx
-│   │   │   ├── input.tsx
-│   │   │   ├── pagination.tsx
-│   │   │   ├── skeleton.tsx
-│   │   │   ├── tooltip.tsx
-│   │   │   ├── toast.tsx
-│   │   │   ├── breadcrumbs.tsx
-│   │   │   ├── status-pill.tsx
-│   │   │   ├── clipboard-button.tsx
-│   │   │   ├── favorite-button.tsx
-│   │   │   ├── pdf-download-button.tsx
-│   │   │   ├── scroll-to-top.tsx
-│   │   │   ├── console-credits.tsx
-│   │   │   ├── error-boundary.tsx
-│   │   │   └── bar-chart.tsx
-│   │   ├── dashboard/
-│   │   │   ├── dashboard-filters.tsx
-│   │   │   ├── filter-bar.tsx
-│   │   │   ├── stat-cards.tsx
-│   │   │   └── charts-section.tsx
-│   │   ├── admin/
-│   │   │   ├── sync-card.tsx
-│   │   │   ├── import-stats.tsx
-│   │   │   ├── price-stats.tsx
-│   │   │   ├── confirm-modal.tsx
-│   │   │   └── sync-log-list.tsx
-│   │   └── medicines/
-│   │       ├── search-form.tsx              # Filtros de busca (query + 6 campos server-side)
-│   │       ├── autocomplete-field.tsx       # Autocomplete server-side com teclado
-│   │       ├── semantic-search.tsx          # Busca por descrição com IA
-│   │       ├── medicine-table.tsx           # Tabela + mobile cards + selecionar todos
-│   │       ├── medicine-info-card.tsx       # Card de informações (17 campos + ver mais)
-│   │       ├── similar-section.tsx          # Similares com navegação anterior/próximo
-│   │       ├── price-section.tsx            # Preços CMED
-│   │       ├── price-chart.tsx              # Gráfico de barras (recharts)
-│   │       ├── compare-view.tsx             # Comparação
-│   │       ├── compare-table.tsx            # Tabela comparativa com highlight de diferenças
-│   │       ├── compare-search.tsx           # Busca com autocomplete + teclado
-│   │       ├── export-button.tsx            # Exportação CSV/Excel
-│   │       ├── status-filter.tsx            # Pills de situação (Ativo/Inativo)
-│   │       ├── action-bar.tsx               # Ações contextuais
-│   │       ├── holder-content.tsx           # Detentor (cards mobile + autocomplete)
-│   │       ├── reference-search.tsx         # Referências (paginação + A-Z + ordenação)
-│   │       ├── similar-medicines-list.tsx   # Lista de similares com paginação
-│   │       ├── atc-tree.tsx                 # Árvore ATC (busca + autocomplete)
-│   │       └── atc-code-content.tsx         # Medicamentos ATC (paginação + breadcrumbs)
-│   ├── hooks/
-│   │   ├── use-favorites.ts
-│   │   ├── use-recent-searches.ts
-│   │   ├── use-debounced-search.ts
-│   │   └── use-medicine-search.ts
+│   │   ├── layout/                # Header (active link), Footer
+│   │   ├── ui/                    # Badge, Button, Card, Input, Pagination, Skeleton,
+│   │   │                          # Tooltip, Toast, Breadcrumbs, StatusPill, ClipboardButton,
+│   │   │                          # FavoriteButton, PdfDownloadButton, ScrollToTop,
+│   │   │                          # ConsoleCredits, ErrorBoundary, BarChart
+│   │   ├── dashboard/             # DashboardFilters, FilterBar, StatCards, ChartsSection
+│   │   ├── admin/                 # SyncCard, ImportStats, PriceStats, ConfirmModal, SyncLogList
+│   │   └── medicines/             # SearchForm, AutocompleteField, SemanticSearch, MedicineTable,
+│   │                              # MedicineInfoCard, SimilarSection, PriceSection, PriceChart,
+│   │                              # CompareView, CompareTable, CompareSearch, ExportButton,
+│   │                              # StatusFilter, ActionBar, HolderContent, ReferenceSearch,
+│   │                              # SimilarMedicinesList, AtcTree, AtcCodeContent, ViewToggle,
+│   │                              # SemanticResultsTable, SearchResultsCards, RecentSearches
+│   ├── hooks/                     # use-favorites, use-recent-searches, use-debounced-search
 │   ├── lib/
-│   │   ├── actions/
-│   │   │   ├── search.ts                       # searchMedicines, getDashboardStats, searchAutocomplete, countMedicines
-│   │   │   ├── semantic-search.ts              # IA local server-side (Xenova)
-│   │   │   ├── keyword-search.ts               # Busca tsvector + FTS
-│   │   │   ├── admin.ts                        # syncWithAnvisa, getImportInfo
-│   │   │   ├── prices.ts                       # syncPrices
-│   │   │   ├── embeddings.ts                   # Geração de embeddings (batch 50)
-│   │   │   ├── compare.ts                      # Comparação lado a lado
-│   │   │   ├── references.ts                   # Referências
-│   │   │   ├── atc.ts                          # Árvore ATC
-│   │   │   ├── export-action.ts                # CSV + Excel (xlsx)
-│   │   │   ├── pdf-report.ts                   # PDF (pdfmake)
-│   │   │   ├── search-feedback.ts              # CRUD de feedback de busca
-│   │   │   ├── farmacia-popular.ts             # Parse + match Farmácia Popular
-│   │   │   ├── farmacia-popular-ativos.ts      # Ativos da Farmácia Popular
-│   │   │   └── medicines-admin.ts              # CRUD admin de medicamentos
+│   │   ├── actions/               # 17 server actions
+│   │   │   ├── search.ts                    # searchMedicines, getDashboardStats, searchAutocomplete, countMedicines
+│   │   │   ├── semantic-search.ts           # hybridSearch (IA local, RRF 3 vias), classificação
+│   │   │   ├── keyword-search.ts            # Busca tsvector + FTS
+│   │   │   ├── trigram-search.ts            # Busca trigram (pg_trgm)
+│   │   │   ├── admin.ts                     # syncWithAnvisa, getImportInfo
+│   │   │   ├── prices.ts                    # syncPrices
+│   │   │   ├── embeddings.ts                # Geração de embeddings (batch 50)
+│   │   │   ├── compare.ts                   # Comparação lado a lado
+│   │   │   ├── references.ts                # Referências
+│   │   │   ├── atc.ts                       # Árvore ATC
+│   │   │   ├── export-action.ts             # CSV + Excel (xlsx)
+│   │   │   ├── pdf-report.ts                # PDF (pdfmake)
+│   │   │   ├── search-feedback.ts           # CRUD de feedback + applyScoreAdjustments
+│   │   │   ├── farmacia-popular.ts          # Parse + match Farmácia Popular
+│   │   │   ├── farmacia-popular-ativos.ts   # Ativos da Farmácia Popular
+│   │   │   ├── medicines-admin.ts           # CRUD admin de medicamentos
+│   │   │   └── medicine-detail.ts           # Detalhes do medicamento
 │   │   ├── dictionaries/
 │   │   │   ├── atc-codes.ts
 │   │   │   ├── pharmaceutical-forms.ts
 │   │   │   ├── prescription-types.ts
+│   │   │   ├── synonyms.ts                  # SYNONYM_MAP consolidado
 │   │   │   ├── therapeutic-classes.ts
 │   │   │   └── therapeutic-class-indications.ts
-│   │   ├── format.ts
-│   │   ├── build-where.ts
-│   │   ├── query-parser.ts
-│   │   ├── keyword-utils.ts
-│   │   ├── search-relevance.ts
-│   │   ├── score-adjustments.ts               # Ajusta scores baseado em feedback
-│   │   ├── embeddings-generator.ts
-│   │   ├── pdf-parser.ts
-│   │   ├── theme-provider.tsx
-│   │   └── prisma.ts
-│   ├── types/
-│   │   ├── index.ts
-│   │   ├── medicine.ts
-│   │   ├── next-auth.d.ts
-│   │   ├── pdf-parse.d.ts
-│   │   └── pdfmake.d.ts
-│   ├── auth.ts                    # Configuração NextAuth v5
-│   ├── proxy.ts                   # Rate limiter middleware (upstash/next)
-│   └── middleware.ts              # Segurança + rate limit
-├── tests/                         # Testes (Vitest)
+│   │   ├── config.ts              # Configurações centralizadas (SITE, SEARCH, EMBEDDING, ANVISA)
+│   │   ├── constants.ts           # MEDICINE_LIMITS etc.
+│   │   ├── rate-limit.ts          # Rate limiter in-memory (por IP, por escopo)
+│   │   ├── auth-guard.ts          # withAuth, withAuthReturn, withAdmin, withAdminReturn, isAdmin
+│   │   ├── auth.config.ts         # Config NextAuth (signIn, maxAge, cookies)
+│   │   ├── search-preprocessor.ts # classifyQuery, refineLowConfidenceClassification
+│   │   ├── format.ts              # Normalização de texto
+│   │   ├── text-utils.ts          # Utilitários de texto (normalizeQuery etc.)
+│   │   ├── build-where.ts         # Construção de filtros Prisma
+│   │   ├── query-parser.ts        # Parse de query
+│   │   ├── keyword-utils.ts       # Sinônimos e expansão
+│   │   ├── search-relevance.ts    # Cálculo de relevância (honestScore)
+│   │   ├── score-adjustments.ts   # Ajustes de score por feedback
+│   │   ├── embeddings-generator.ts # Geração batch de embeddings
+│   │   ├── csv-utils.ts           # Escape CSV
+│   │   ├── safe-json-ld.ts        # JSON-LD sanitizado
+│   │   ├── pdf-parser.ts          # Parse de PDF
+│   │   ├── theme-provider.tsx     # Dark mode context
+│   │   ├── prisma.ts              # PrismaClient singleton
+│   │   └── hooks/use-medicine-search.ts  # Busca com URL search params
+│   ├── types/                     # index, medicine, next-auth.d.ts, pdf-parse.d.ts, pdfmake.d.ts
+│   ├── auth.ts                    # Instância NextAuth v5
+│   ├── middleware.ts              # Rate limit do login (POST /admin/login, 10/min)
+│   └── generated/prisma/          # Cliente Prisma gerado
+├── tests/                         # Testes Vitest (api, components, lib/actions, lib)
 ├── prisma.config.ts
 ├── vitest.config.ts
 ├── postcss.config.mjs
 ├── eslint.config.mjs
 ├── docker-entrypoint.sh
-├── Dockerfile                     # Multi-stage (node:22-alpine, non-root)
+├── Dockerfile                     # Multi-stage (node:22-slim, non-root)
 ├── docker-compose.yml             # App + PostgreSQL (healthcheck, limites)
 ├── .env.example
 └── docs/
     ├── ARCHITECTURE.md
     ├── API.md
     ├── BUSINESS_RULES.md
+    ├── CRON.md
     ├── DATABASE.md
     ├── DEPLOYMENT.md
     ├── DESIGN_SYSTEM.md
@@ -203,29 +176,44 @@ med-unificando/
 4. Extrai `therapeuticClass` do campo `CLASSE_TERAPEUTICA` do CSV DADOS_ABERTOS_MEDICAMENTOS
 5. Registra log em `SyncLog` (type, count, status)
 6. Preços CMED: mesmo fluxo via `TA_PRECOS_MEDICAMENTOS.csv`
+7. No Docker, a sequência completa é orquestrada pelo `docker-entrypoint.sh` quando o banco está vazio
 
-### Busca Semântica (Híbrida com RRF)
-1. `npm run generate-search-index` → multilingual-e5-small (384d) → embeddings no PostgreSQL (pgvector)
-2. tsvector GIN index para busca keyword rápida com stemming pt-br + sinônimos
-3. pgvector IVFFlat index para busca semântica O(log n) via cosine distance
-4. RRF (Reciprocal Rank Fusion) combina os dois rankings:
-   - `RRF(d) = 1/(60 + rank_keyword(d)) + 1/(60 + rank_semantic(d))`
-   - Peso 60 (k) controlável via `analyze-thresholds.ts`
-5. Score adjustments (`score-adjustments.ts`) aplicam re-ranking baseado em:
-   - Feedback explícito dos usuários (SearchFeedback)
-   - Popularidade (contagem de visualizações)
-   - Precisão do match (exato vs parcial)
-6. Texto do embedding inclui: nome, princípio ativo, categoria, sinônimos, indicações
+### Busca Híbrida (3 fontes + RRF)
+1. `npm run search-index` → `Xenova/multilingual-e5-base` (768d) → embeddings no PostgreSQL (pgvector, índice HNSW)
+2. `npm run tsvector` → coluna `search_document` tsvector (regular) + índice GIN, stemming pt-br + sinônimos
+3. pg_trgm → índice GIN trigram para keyword/autocomplete fuzzy
+4. `hybridSearch` orquestra as 3 fontes em paralelo (topK × 5):
+   - **Semântica**: `1 - (embedding <=> query_vector)` com cosine; `SET LOCAL ivfflat.probes` (best-effort); semantic gate
+   - **Keyword**: `ts_rank(search_document, to_tsquery('portuguese', ...))` com expansão de sinônimos
+   - **Trigram**: `GREATEST(similarity(tradeName), similarity(activeIngredient))` com o operador `%`
+5. **RRF fusion** combina os 3 rankings:
+   ```
+   RRF(d) = Σ peso / (k + posição)
+   k = 60 | semântica 0.40 | keyword 0.35 | trigram 0.25
+   ```
+6. Pós-processamento: penalidade de falso positivo por substring, boost por match de nome, verificação por keyword, penalidade de falta de suporte, ajustes por feedback
+7. Fallbacks: keyword+trigram (sem semântica) e semântica pura
+8. `logSearch` registra a busca em `search_logs` (analytics)
+
+### Classificação de Query
+- `classifyQuery` (heurística, `search-preprocessor.ts`): identifica frases de condição ("remédio para"), formas farmacêuticas, classes terapêuticas e nomes de medicamento (sufixos: -lina, -zepam, -prazol, -profeno, etc.)
+- `classifyByEmbedding`: compara o embedding da query com centróides (amostra de nomes reais de medicamentos do banco vs. indicações/sinônimos)
+- Somente reclassifica o fallback genérico quando a confiança ≤ 0.4
 
 ### SearchFeedback (Feedback Loop)
 1. Usuário interage com resultados (clica em "útil" / "não útil")
-2. POST → `/api/search-feedback/route.ts` → tabela `SearchFeedback`
+2. POST → `/api/search-feedback` (rate limit 20/min) → tabela `search_feedback`
 3. `score-adjustments.ts` consulta feedback agregado por medicamento
 4. Ajusta score no re-ranking: feedback positivo aumenta rank, negativo reduz
 5. Admin visualiza feedback em `/admin/search-feedback`
 
+### Analytics de Busca
+1. `logSearch` grava `query, results_count, top_score, query_type, response_time_ms` em `search_logs`
+2. `/api/search-analytics` (admin) expõe top queries, queries sem resultado, performance (avg/p95), total 7 dias e distribuição por tipo
+3. Admin visualiza em `/admin/search-analytics`
+
 ### Farmácia Popular
-1. PDF do Ministério da Saúde é baixado (ou recebido via S3)
+1. PDF do Ministério da Saúde é baixado
 2. `scripts/sync-farmacia-popular.ts` orquestra a sincronização
 3. `pdf-parser.ts` extrai tabelas do PDF
 4. `lib/actions/farmacia-popular.ts` faz matching por `activeIngredient`
@@ -233,10 +221,12 @@ med-unificando/
 6. Exibido no detalhe do medicamento como badge "Farmácia Popular"
 
 ### Geração de Embeddings
-1. `lib/actions/embeddings.ts` processa em lotes de 50 medicamentos
-2. Apenas medicamentos sem embedding ou com conteúdo alterado
-3. `multilingual-e5-small` via Xenova Transformers (server-side)
-4. Armazena vetor 384d na coluna `embedding` (pgvector)
+1. `scripts/generate-search-index.ts` processa em lotes de 50 medicamentos (DB batch 100, retry 3, delay 100ms)
+2. Apenas medicamentos sem embedding (`WHERE embedding IS NULL`)
+3. `Xenova/multilingual-e5-base` via Xenova Transformers (server-side, 100% local)
+4. Texto com prefixo `passage:` + campos enriquecidos (forma farmacêutica e ATC resolvidos por dicionários)
+5. Armazena vetor 768d na coluna `embedding` (pgvector)
+6. `scripts/reindex-embeddings.ts` força a regeneração completa (troca de modelo)
 
 ### Geração de PDF
 1. Botão "📥 BAIXAR PDF" na página de detalhes do medicamento
@@ -247,12 +237,12 @@ med-unificando/
 ### Exportação (CSV/Excel)
 1. Botão "Exportar" nos resultados de busca ou dashboard
 2. `lib/actions/export-action.ts` gera CSV ou Excel (xlsx library)
-3 Suporta filtros ativos (detentor, classe, preço)
+3. Suporta filtros ativos (detentor, classe, preço)
 4. Download via Response (Content-Disposition: attachment)
 
 ### Otimizações de SEO
 1. `generateMetadata()` em cada página de detalhe → title + description + Open Graph
-2. JSON-LD (Schema.org/MedicalDrug) no detalhe
+2. JSON-LD (Schema.org/MedicalDrug) no detalhe (sanitizado via `safe-json-ld.ts`)
 3. `sitemap.ts` → 32.585+ URLs
 4. `robots.ts` → permite indexação, bloqueia /admin/ e /api/
 5. `opengraph-image.tsx` → OG Image dinâmica por medicamento
@@ -267,7 +257,7 @@ med-unificando/
 | Decisão | Alternativa | Escolha | Motivo |
 |---------|-------------|---------|--------|
 | IA local vs OpenAI | API paga | Xenova Transformers | Zero custo, sem dependência externa |
-| Modelo de embedding | USE, BERT | multilingual-e5-small | 384d, 23MB, rápido, multi-língua |
+| Modelo de embedding | USE, BERT | multilingual-e5-base | 768 dims, multi-língua, melhor recall que e5-small |
 | CSV parser | Manual | xlsx library | Lida com aspas, multi-linha, encoding |
 | Encoding | UTF-8 direto | iconv-lite Latin-1 | CSV da ANVISA é ISO-8859-1 |
 | CSS | styled-components | Tailwind v4 | Build time, sem runtime |
@@ -278,14 +268,16 @@ med-unificando/
 | Export | csv-stringify | xlsx | Suporte nativo a Excel (.xlsx) |
 | Feedback | Session/memória | PostgreSQL (SearchFeedback) | Persistente, auditável, queryável |
 | Farmácia Popular | Manual OCR | pdf-parse + matching por activeIngredient | Custo zero, estrutura tabular previsível |
+| Rate limit | Redis | In-memory (Map) | Suficiente para instância única; migrar p/ Redis se multi-instância |
 
 ## Segurança
 
 - **Docker**: read-only rootfs, `no-new-privileges`, `cap_drop ALL`, non-root user (UID 1001)
 - **Rede**: bridge isolada `/16`
 - **HTTP**: security headers (X-Frame-Options: DENY, X-Content-Type-Options: nosniff, CSP via next.config.ts)
-- **CSP**: Content-Security-Policy configurado no `next.config.ts` (script-src, style-src, font-src restritos)
-- **Rate Limit interno**: `src/proxy.ts` (Upstash/next) — middleware de rate limiter por IP nas rotas `/api/*`
-- **Rate Limit externo**: middleware.ts — 60 req/min por IP nas rotas `/api/*`
+- **CSP**: Content-Security-Policy no next.config.ts — fontes self-hosted (next/font), sem CDN de fontes
+- **Rate limit interno**: `src/lib/rate-limit.ts` (in-memory Map, janela 60s) — escopos: medicines-api 60/min, autocomplete 120/min, search-feedback POST 20/min
+- **Rate limit login**: `src/middleware.ts` — POST /admin/login 10/min
+- **Auth**: páginas `/admin/(protected)/` exigem sessão (redirect p/ login); actions de admin usam withAdmin/withAdminReturn; `/admin/import` tem callback authorized; rotas `/api/search-analytics` e GET `/api/search-feedback` exigem role ADMIN
 - **Body Size**: limite de 10MB para server actions
 - **Prisma**: módulo não exposto ao cliente (Edge Runtime não o carrega)

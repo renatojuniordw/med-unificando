@@ -116,6 +116,9 @@ export function buildOrTsQuery(terms: string[]): string {
 }
 
 export function buildExpandedTsquery(query: string): string | null {
+  const cleanQuery = query.trim().toLowerCase()
+  if (!cleanQuery || cleanQuery.length < 2) return null
+
   const parsed = parseQuery(query)
   const allTerms = [
     ...parsed.pharmaceuticalForms,

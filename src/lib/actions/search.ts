@@ -62,31 +62,6 @@ export async function getHolderMedicines(
   return { data: data.map(normalizeMedicine) as Medicine[], total, page, pageSize }
 }
 
-export async function getDistinctValues(field: string): Promise<DistinctValue[]> {
-  const fieldToPrismaEnum: Record<string, Prisma.MedicineScalarFieldEnum> = {
-    reference: Prisma.MedicineScalarFieldEnum.reference,
-    activeIngredient: Prisma.MedicineScalarFieldEnum.activeIngredient,
-    tradeName: Prisma.MedicineScalarFieldEnum.tradeName,
-    similarHolder: Prisma.MedicineScalarFieldEnum.similarHolder,
-    pharmaceuticalForm: Prisma.MedicineScalarFieldEnum.pharmaceuticalForm,
-    category: Prisma.MedicineScalarFieldEnum.category,
-    status: Prisma.MedicineScalarFieldEnum.status,
-  }
-
-  const fieldEnum = fieldToPrismaEnum[field]
-  if (!fieldEnum) return []
-
-  const result = await prisma.medicine.findMany({
-    select: { [field]: true },
-    distinct: [fieldEnum],
-    orderBy: { [field]: 'asc' },
-  })
-
-  return result
-    .map((item) => ({ value: (item as Record<string, string>)[field] }))
-    .filter((item) => item.value)
-}
-
 /** Server-side autocomplete: busca valores que correspondem ao termo digitado */
 export async function searchAutocomplete(field: string, q: string): Promise<DistinctValue[]> {
   const fieldToPrismaEnum: Record<string, Prisma.MedicineScalarFieldEnum> = {

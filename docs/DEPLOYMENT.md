@@ -35,7 +35,7 @@ open http://localhost:11006
 > 2. `prisma/seed.ts` — ANVISA + admin
 > 3. `scripts/sync-farmacia-popular.ts` — Farmácia Popular
 > 4. `scripts/backfill-indications.ts` — indicações
-> 5. `scripts/generate-search-index.ts` — embeddings (~118MB)
+> 5. `scripts/generate-search-index.ts` — embeddings (multilingual-e5-base, 768 dims)
 > 6. `scripts/generate-tsvector.ts` — busca textual
 
 ### Atualizar
@@ -45,6 +45,40 @@ git pull
 npm run docker:build
 npm run docker:up
 ```
+
+### Reinicializar do zero (reset)
+
+Use quando quiser recomeçar com dados limpos — ex.: migrar de modelo de embedding antigo para o novo, dados inconsistentes, ou apagar usuários/feedback acumulados.
+
+> **Antes de resetar, faça backup** (ver seção [Backup](#backup)).
+
+```bash
+# 1. Para tudo e REMOVE os volumes de dados (pgdata + transformers_cache)
+docker compose down -v
+
+# 2. Sobe de novo (--build garante imagem com o código atual)
+docker compose up -d --build
+```
+
+Na subida, o `docker-entrypoint.sh` detecta banco vazio (`COUNT(*) = 0`) e executa o init completo: migrate → seed ANVISA → Farmácia Popular → indicações → **embeddings (multilingual-e5-base, 768 dims)** → tsvector.
+
+**Variante cirúrgica** (mantém o cache do modelo já baixado, evitando re-download na primeira subida):
+
+```bash
+docker compose down
+docker volume rm med-unificando_pgdata   # confirme o nome: docker volume ls | grep pgdata
+docker compose up -d --build
+```
+
+**O que é apagado:** todos os dados — `users` (contas de admin/usuários), feedback de busca, analytics de busca, `sync_log`. Só volta o que o seed recria (dados ANVISA + admin inicial via `ADMIN_EMAIL`/`ADMIN_PASSWORD`).
+
+**Ponto de atenção:** o init do entrypoint só roda quando `COUNT(*) FROM medicines = 0`. Se o banco tiver linhas mas embeddings vazios (ex.: dados importados sem o passo de embedding), o entrypoint pula o init — nesse caso rode manualmente:
+
+```bash
+docker compose exec app npx tsx scripts/generate-search-index.ts
+```
+
+**Monitorando o primeiro boot:** o healthcheck tem `start_period: 60s`, mas seed + download do modelo + embedding podem demorar mais. Acompanhe com `docker compose logs -f app` até ver `🚀 Iniciando Next.js...`.
 
 ### Logs
 
@@ -78,7 +112,7 @@ docker compose logs -f db      # Banco
 | `NODE_ENV` | Não | `production` (default) |
 | `PORT` | Não | `11006` (default) |
 | `BASE_URL` | Não | URL base para sitemap/robots (`https://seudominio.com.br`) |
-| `EMBEDDING_MODEL` | Não | Modelo de embedding (`Xenova/multilingual-e5-small`) |
+| `EMBEDDING_MODEL` | Não | Modelo de embedding (`Xenova/multilingual-e5-base`) |
 | `ANVISA_THERAPEUTIC_CLASS_URL` | Não | URL do CSV de classes terapêuticas |
 | `NEXT_TELEMETRY_DISABLED` | Não | `1` (default no Docker) |
 
@@ -193,8 +227,8 @@ cat backup.sql | docker exec -i medicamentos-db psql -U admin medicamentos
 | Recurso | Mínimo | Recomendado | Motivo |
 |---------|--------|-------------|--------|
 | CPU | 1 core | 2 cores | Modelo de IA na inicialização |
-| RAM | 512MB (app) + 256MB (db) | 1GB (app) + 512MB (db) | Embeddings multilingual-e5-small (~118MB em RAM) |
-| Disco | 2GB | 10GB | Dados + logs + backups + cache de modelo (~240MB) |
+| RAM | 512MB (app) + 256MB (db) | 1GB (app) + 512MB (db) | Embeddings multilingual-e5-base (768 dims) na inicialização |
+| Disco | 2GB | 10GB | Dados + logs + backups + cache do modelo de embedding (multilingual-e5-base) |
 | Docker | 24+ | 24+ | Suporte a healthcheck e resource limits |
 
 ## Docker Security
@@ -211,5 +245,5 @@ A configuração atual do `docker-compose.yml` já inclui:
 - **cap_add seletivo**: apenas o necessário (NET_BIND_SERVICE para app, CHOWN/DAC_OVERRIDE/SETUID/SETGID para db)
 - **Non-root user**: UID 1001 (app)
 - **Healthcheck**: monitoramento contínuo (app: curl `/api/health`, db: pg_isready)
-- **Volume persistente**: `transformers_cache` para cache do modelo (~240MB)
+- **Volume persistente**: `transformers_cache` para cache do modelo baixado na primeira execução (multilingual-e5-base)
 - **Portas privadas**: `127.0.0.1:` bind, sem exposição pública direta

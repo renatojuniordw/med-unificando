@@ -1,7 +1,6 @@
 'use server'
 
 import { prisma } from '@/lib/prisma'
-import { SEARCH } from '@/lib/config'
 
 export async function trigramSearch(
   query: string,
@@ -32,14 +31,4 @@ export async function trigramSearch(
     medicineId: r.id,
     trigramScore: Number(r.trigram_score),
   }))
-}
-
-export async function passesTrigramThreshold(
-  score: number,
-  isMedicineNameQuery: boolean
-): Promise<boolean> {
-  const min = isMedicineNameQuery
-    ? SEARCH.TRIGRAM_MIN_THRESHOLD_NAME
-    : SEARCH.TRIGRAM_MIN_THRESHOLD
-  return score >= min
 }

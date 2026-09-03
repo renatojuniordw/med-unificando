@@ -47,7 +47,9 @@ describe('embeddings', () => {
     const { regenerateEmbeddings } = await import('@/lib/actions/embeddings')
     const result = await regenerateEmbeddings()
     expect(result.success).toBe(true)
-    expect(result.count).toBe(100)
+    if (result.success) {
+      expect(result.count).toBe(100)
+    }
   })
 
   it('handles errors during generation', async () => {

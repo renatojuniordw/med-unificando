@@ -4,7 +4,7 @@ async function diagnoseSearch(query: string) {
   console.log(`\n🔍 Diagnosticando busca: "${query}"`)
   console.log('=' .repeat(60))
   
-  const results = await hybridSearch(query, 20)
+  const { results } = await hybridSearch(query, 20)
   
   console.log(`\n📊 Resultados encontrados: ${results.length}`)
   console.log('\n📋 Top 10 resultados com scores detalhados:')
