@@ -86,7 +86,9 @@ describe('getHolderMedicines', () => {
 
     await getHolderMedicines('ABC', 1, 20, 'dor', 'Ativo')
 
-    const where = vi.mocked(prisma.medicine.findMany).mock.calls[0][0].where
+    const args = vi.mocked(prisma.medicine.findMany).mock.calls[0][0]
+    expect(args).toBeDefined()
+    const where = args!.where ?? {}
     expect(where).toMatchObject({
       similarHolder: { contains: 'ABC', mode: 'insensitive' },
       OR: [
