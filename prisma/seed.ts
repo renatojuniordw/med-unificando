@@ -5,6 +5,10 @@ import * as XLSX from "xlsx"
 import iconv from "iconv-lite"
 import bcrypt from "bcryptjs"
 
+if (process.env.ALLOW_INSECURE_TLS === "true") {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"
+}
+
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
 })

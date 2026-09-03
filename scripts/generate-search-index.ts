@@ -9,7 +9,6 @@ import { getPrescriptionTypeName } from "../src/lib/dictionaries/prescription-ty
 const DIM = EMBEDDING.DIMS
 const EMBEDDING_COL = EMBEDDING.COLUMN
 const BATCH_SIZE = 50
-const DB_BATCH_SIZE = 100
 const RETRY_COUNT = 3
 const DELAY_MS = 100
 
